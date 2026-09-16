@@ -1,0 +1,52 @@
+[
+  {
+    "id": "swc-route-planner",
+    "kind": "founder",
+    "title": "Route planner",
+    "does": "Plans daily service routes for a working business.",
+    "by_line": "Kylar Vierra, founder",
+    "affiliation": "Goddard School of Business and Economics",
+    "partner": "Powder Mountain",
+    "when_label": "Summer 2026",
+    "rating_average": null,
+    "rating_count": null,
+    "running": true,
+    "metric_label": null,
+    "metric_before": null,
+    "metric_after": null,
+    "story": [
+      "Built in about two weeks while testing the format the Lab now runs on.",
+      "It replaced a hand-built routing process, and it has been in use since."
+    ],
+    "limits": "Built for one organization's constraints.",
+    "published": true,
+    "sort_order": 0,
+    "created_at": "2026-08-16T12:00:00-06:00",
+    "updated_at": "2026-08-18T05:38:39.381Z"
+  },
+  {
+    "id": "swc-budget-builder",
+    "kind": "founder",
+    "title": "Budget builder",
+    "does": "Builds a company budget that used to take weeks, in days.",
+    "by_line": "Kylar Vierra, founder",
+    "affiliation": "Goddard School of Business and Economics",
+    "partner": "Powder Mountain",
+    "when_label": "Summer 2026",
+    "rating_average": null,
+    "rating_count": null,
+    "running": true,
+    "metric_label": "Time to finish the budget",
+    "metric_before": "weeks",
+    "metric_after": "days",
+    "story": [
+      "Built while testing the same format.",
+      "It rebuilt a spreadsheet budget process end to end, and it is still how the budget gets done."
+    ],
+    "limits": "Fitted to one organization's accounts and approvals. Portable in shape, not in detail.",
+    "published": true,
+    "sort_order": 1,
+    "created_at": "2026-08-16T12:00:01-06:00",
+    "updated_at": "2026-08-18T05:38:55.189Z"
+  }
+]

@@ -1,0 +1,802 @@
+/* Typekit kit: basic-sans (UI/buttons), Goudy Bookletter 1911 (display),
+   and Magistral (hero facts). Their available weights are set explicitly.
+   Must stay the first line: `@import "tailwindcss"` expands in place, so
+   anything after it lands below Tailwind's rules and CSS rejects it. */
+@import url("https://use.typekit.net/yrs7pes.css");
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Neutral grounds and ink with a restrained Weber purple emphasis layer. */
+:root {
+  /* Coss-style neutral ground and border ramp. */
+  --ground: #ffffff;
+  --ground-raised: #fafafa;
+  --ground-sunken: #f4f4f5;
+  --line: #e4e4e7;
+  --line-strong: #d4d4d8;
+
+  /* The body face, behind --font-sans. A variable rather than a literal so
+     a surface can swap it: .projectum-ui repoints it to Geist, shadcn's face,
+     and every font-sans inside follows. */
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* Neutral charcoal ink scale. */
+  --ink: #18181b;
+  --ink-soft: #52525b;
+  --ink-faint: #71717a;
+
+  /* Brand purple returns only through existing emphasis roles. Grounds,
+     borders, and body ink remain neutral so the colour never becomes the
+     page atmosphere. */
+  --brand: #6d43a1;
+  --brand-deep: #492365;
+  --brand-wash: #f4eff8;
+
+  /* Inverted surfaces use the same neutral ramp. */
+  --ground-inverse: #18181b;
+  --ink-inverse: #ffffff;
+  --ink-inverse-soft: #d4d4d8;
+  --ink-inverse-faint: #a1a1aa;
+  --line-inverse: #3f3f46;
+  --brand-inverse: #d2afe8;
+
+  /* secondary: deep green (diagram "running" state, dataviz) */
+  --green: #3e6b4f;
+  --green-deep: #2c523a;
+  --green-wash: #dfe9dc;
+
+  /* semantic */
+  --error: #96372a;
+  --error-wash: #f6e0da;
+  --ok: #2c523a;
+  --ok-wash: #dfe9dc;
+
+  /* Images stay softer than application controls. */
+  --radius-control: 10px;
+  --radius-image: 16px;
+
+  /* Button padding, lifted from cursor.com/home's own tokens
+     (--button-padding-default / --button-padding-sm). em against
+     line-height 1, so a button sizes off its own type rather than a fixed
+     height, and both step down at 900px exactly as theirs do. */
+  --button-padding-default: 0.89em 1.45em 0.91em;
+  --button-padding-sm: 0.45em 0.8em 0.46em;
+
+  /* Fluid page gutter, used by the header bar and the hero panel. */
+  --space-edge: clamp(1rem, calc(0.82394rem + 0.75117vw), 1.5rem);
+
+  /* Header height, matching cursor.com's 52/56. The hero measures itself
+     against this, so the two never drift apart. */
+  --site-header-height: 52px;
+
+  /* Hero text placement. The block is inset from the corner rather than
+     pinned to it, and its top lines up with the top of the oval: the oval is
+     vertically centred with a radius of 0.36 x the hero's height, so its top
+     edge sits 14% down. Aligning to that is what makes the text read as
+     related to the orb instead of stuck to the page edge. */
+  --hero-text-inset: max(var(--space-edge), 3.5vw);
+  --hero-text-top: calc((100svh - var(--site-header-height)) * 0.14);
+
+  /* How wide the hero's text column can be before it runs into the oval.
+     The oval is centred, and its half-width works out to 0.3421 x the hero's
+     height (heightRatio 0.72 / 2, x aspect 0.88, x the 1.08 wobble reach).
+     So the text may run from the gutter to the middle of the screen, less
+     that half-width and a 2rem gap. Derived rather than guessed, so the two
+     cannot collide at any viewport — retune it if the oval's proportions
+     change. */
+  --hero-text-max: calc(
+    50vw - 0.3421 * (100svh - var(--site-header-height)) - var(--hero-text-inset) - 2rem
+  );
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+@media (min-width: 768px) {
+  :root {
+    --site-header-height: 56px;
+  }
+}
+
+/* cursor.com's button breakpoint. 900, not one of ours — it is their number,
+   and the whole point is that the control matches theirs. */
+@media (min-width: 900px) {
+  :root {
+    --button-padding-default: 0.78em 1.35em 0.8em;
+    --button-padding-sm: 0.4em 0.75em 0.42em;
+  }
+}
+
+@utility px-edge {
+  padding-inline: var(--space-edge);
+}
+
+@theme inline {
+  --color-ground: var(--ground);
+  --color-ground-raised: var(--ground-raised);
+  --color-ground-sunken: var(--ground-sunken);
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+  --color-ink: var(--ink);
+  --color-ink-soft: var(--ink-soft);
+  --color-ink-faint: var(--ink-faint);
+  --color-brand: var(--brand);
+  --color-brand-deep: var(--brand-deep);
+  --color-brand-wash: var(--brand-wash);
+  --color-ground-inverse: var(--ground-inverse);
+  --color-ink-inverse: var(--ink-inverse);
+  --color-ink-inverse-soft: var(--ink-inverse-soft);
+  --color-ink-inverse-faint: var(--ink-inverse-faint);
+  --color-line-inverse: var(--line-inverse);
+  --color-brand-inverse: var(--brand-inverse);
+  --color-green: var(--green);
+  --color-green-deep: var(--green-deep);
+  --color-green-wash: var(--green-wash);
+  --color-error: var(--error);
+  --color-error-wash: var(--error-wash);
+  --color-ok: var(--ok);
+  --color-ok-wash: var(--ok-wash);
+
+  /* Body. cursor.com/home runs CursorGothic, a proprietary self-hosted face
+     we cannot license — Inter is the nearest neo-grotesk substitute. */
+  --font-sans: var(--font-body);
+  /* Chrome: header text and nav. Buttons moved to --font-sans on 2026-09-01,
+     matching cursor.com, whose .btn sets no family and inherits the body. */
+  --font-ui: "basic-sans", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* Big headings and the hero headline. Goudy Bookletter 1911, from the same
+     kit, replaces t26-carbon and automate. The kit serves it at fvd=n4:
+     one weight, one style, no italic and no bold. Never set a weight on it,
+     the way Magistral is never bolded, or the browser fakes one by smearing
+     the outlines. The serif fallback is deliberate: falling back to Inter
+     would swap an old-style serif for a grotesque mid-load. */
+  --font-display: "goudy-bookletter-1911", var(--font-source-serif), ui-serif, Georgia, serif;
+  --font-goudy: "goudy-bookletter-1911", var(--font-source-serif), ui-serif, Georgia, serif;
+  /* The hero facts strip. Magistral ships 400 and nothing else — never set a
+     bold on it, or the browser fakes one by smearing the outlines. */
+  --font-magistral: "magistral", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+  /* The Projectum name beside its logo, and nothing else. TT Paplane, from
+     the same kit, ships 400 only, so never bold it either. */
+  --font-paplane: "tt-paplane", var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-heading: var(--font-body);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* Movement rules (2026-08-19): no global smooth scroll. In-page CTAs scroll
+   via ScrollLink (smooth, no URL residue); cross-page reference deep-links
+   land instantly. scroll-padding keeps anchored arrivals below the nav. */
+html {
+  scroll-padding-top: calc(var(--site-header-height) + 1.5rem);
+  /* The rubber-band stays (2026-09-02). Suppressing it to keep the sticky
+     header off the bounce cost more than it bought: on a trackpad a page
+     that refuses to overscroll reads as fighting the gesture. Native
+     behaviour wins. */
+}
+
+body {
+  background: var(--ground);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--brand-wash);
+  color: var(--ink);
+}
+
+/* Goudy is a single-face display role: keep it at its native 400/normal so
+   the browser never synthesizes heavier or italic outlines. */
+.display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-style: normal;
+  line-height: 1.08;
+  letter-spacing: -0.005em;
+  text-wrap: balance;
+}
+
+/* Every real control takes the UI face. Links styled as buttons carry
+   `font-ui` explicitly. */
+button,
+input,
+select,
+textarea {
+  font-family: var(--font-ui);
+}
+
+/* Buttons: cursor.com/home's `.btn`, copied off their stylesheet rather than
+   eyeballed. Their rule is display:inline-flex, centred, cursor:pointer,
+   font-size --text-base (1rem), font-weight --font-weight-normal (400),
+   line-height 1, padding --button-padding-default, a 1px border, and a pill
+   radius (they write Tailwind's max float; 9999px renders identically).
+   `.btn-sm` is their `.btn--sm`: --text-sm (0.875rem) and the sm padding.
+
+   Three things theirs does NOT have, so ours doesn't either: no transition
+   (their hover snaps), no transform on :active, and no white-space:nowrap —
+   a long label wraps inside the pill instead of running past its column.
+
+   The one deliberate difference is the family. Theirs is inherited from the
+   document, where a class repoints --font-sans to CursorGothic, a face
+   commissioned for them and not licensable. Buttons here take our own
+   --font-sans (Inter), which is the nearest widely available neo-grotesk and
+   already carries the hero. Revisit if a closer face lands in the Typekit
+   kit.
+
+   In @layer components so Tailwind's utilities still win: variants set
+   background, text, and border colour with ordinary classes. */
+@layer components {
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-weight: 400;
+    line-height: 1;
+    padding: var(--button-padding-default);
+    border: 1px solid transparent;
+    border-radius: var(--radius-control);
+  }
+
+  .btn-sm {
+    font-size: 0.875rem;
+    padding: var(--button-padding-sm);
+  }
+}
+
+.kicker {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-deep);
+}
+
+/* Visible focus everywhere (brand spec §4.3) */
+:focus-visible {
+  outline: 2px solid var(--brand-deep);
+  outline-offset: 3px;
+  border-radius: 2px;
+}
+
+/* The hero chat owns its focus state on the composer shell, matching the
+   familiar ChatGPT input rather than drawing a second ring around the
+   absolutely positioned textarea. */
+.chat-composer textarea:focus-visible {
+  outline: none;
+}
+
+/* Public forms set these variables on their shared surface. Admin controls
+   use the light fallbacks, so Field stays one component without dark-mode
+   selectors that rewrite Tailwind utilities. */
+.form-surface {
+  --form-text: var(--ink-inverse);
+  --form-muted: var(--ink-inverse-faint);
+  --form-field: #27272a;
+  --form-border: #3f3f46;
+  --form-border-hover: #71717a;
+  --form-focus: var(--brand-inverse);
+  --form-focus-ring: #3a2148;
+  color: var(--form-text);
+}
+
+.form-label {
+  color: var(--form-text, var(--ink));
+}
+
+.form-help,
+.form-muted {
+  color: var(--form-muted, var(--ink-faint));
+}
+
+.form-control {
+  color: var(--form-text, var(--ink));
+  background: var(--form-field, var(--ground));
+  border-color: var(--form-border, var(--line-strong));
+}
+
+.form-control::placeholder {
+  color: var(--form-muted, var(--ink-faint));
+}
+
+.form-control:hover {
+  border-color: var(--form-border-hover, var(--ink-faint));
+}
+
+.form-control:focus-visible {
+  outline: none;
+  border-color: var(--form-focus, var(--ink));
+  box-shadow: 0 0 0 3px var(--form-focus-ring, var(--ground-sunken));
+}
+
+.form-surface .form-error {
+  color: #fca5a5;
+}
+
+.form-surface :focus-visible {
+  outline-color: var(--ink-inverse-faint);
+}
+
+/* Inverted surfaces repoint emphasis and focus tones for dark grounds. */
+.on-dark .kicker {
+  color: var(--brand-inverse);
+}
+
+.on-dark :focus-visible {
+  outline-color: var(--brand-inverse);
+}
+
+/* Link arrows (2026-09-02). The hero's two asks nudged their arrow on hover
+   and nothing else on the site did, so the same 2px push is defined once
+   here and every arrow that trails a link takes it.
+
+   Driven by the ancestor's :hover rather than Tailwind's `group-hover`,
+   because that would mean adding `group` to every link that carries an
+   arrow, and half of them are ScrollLink or Link wrappers whose class lists
+   are already long. `a` and `button` cover every case on the site.
+
+   Decorative arrows that are not in a link (the "you are here" badge in
+   PartnerSteps) deliberately do not take the class: nothing there is
+   hoverable, so a transition would never fire. */
+.link-arrow,
+.link-arrow-down,
+.link-arrow-up {
+  transition: transform 200ms ease;
+}
+
+a:hover .link-arrow,
+button:hover .link-arrow {
+  transform: translateX(2px);
+}
+
+a:hover .link-arrow-down,
+button:hover .link-arrow-down {
+  transform: translateY(2px);
+}
+
+/* Back-to-top leads its label rather than trailing it, so it pushes the way
+   it points. */
+a:hover .link-arrow-up,
+button:hover .link-arrow-up {
+  transform: translateY(-2px);
+}
+
+/* Route-draw animation for section rails and diagrams */
+@keyframes draw-line {
+  from {
+    stroke-dashoffset: var(--draw-length, 600);
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
+
+/* Transform-only entrance: content stays visible even when animations are
+   paused (throttled tabs, low power). Never animate opacity on text that has
+   no other way to appear. */
+@keyframes rise {
+  from {
+    transform: translateY(8px);
+  }
+  to {
+    transform: translateY(0);
+  }
+}
+
+.rise {
+  animation: rise 0.4s ease-out;
+}
+
+/* Chat panel messages: a bubble arrives rather than appearing. One shot on
+   mount, so a streaming reply animates once and then fills in place. */
+@keyframes msg-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.msg-in {
+  animation: msg-in 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both;
+}
+
+/* A text caret blinks hard, on a square wave. `animate-pulse` fades on a
+   sine and reads as a glow, which is what made the composer look off. */
+@keyframes caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.caret-blink {
+  animation: caret-blink 1.06s steps(1, end) infinite;
+}
+
+/* The step timer's track. scaleX from a left origin, so it costs no layout
+   and the duration can be set per use with --bar-ms. */
+@keyframes bar-fill {
+  from {
+    transform: scaleX(0);
+  }
+  to {
+    transform: scaleX(1);
+  }
+}
+
+.bar-fill {
+  transform-origin: left;
+  animation: bar-fill var(--bar-ms, 5000ms) linear forwards;
+}
+
+/* The about section's pair of apertures. Each one's contour already breathes
+   on its own timer; these move the whole block, so the two swing toward each
+   other, fuse through the gooey filter at the near end of the swing, and pull
+   apart again. Offsets are in px, not percentages — a percentage translate
+   resolves against the element's own size, and these two are different sizes.
+   The periods are coprime-ish (19s against 23s) so the pair never returns to
+   the same relative pose. */
+@keyframes orb-drift-a {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(54px, 30px, 0) scale(1.05);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+@keyframes orb-drift-b {
+  0% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+  50% {
+    transform: translate3d(-44px, -34px, 0) scale(0.94);
+  }
+  100% {
+    transform: translate3d(0, 0, 0) scale(1);
+  }
+}
+
+.orb-drift-a {
+  animation: orb-drift-a 19s ease-in-out infinite;
+}
+
+.orb-drift-b {
+  animation: orb-drift-b 23s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .rise,
+  .msg-in,
+  .caret-blink,
+  .bar-fill,
+  .orb-drift-a,
+  .orb-drift-b,
+  .link-arrow,
+  .link-arrow-down,
+  .link-arrow-up,
+  [data-anim] {
+    animation: none !important;
+    transition: none !important;
+  }
+}
+
+/* ---------------------------------------------------------------------------
+   Dossier motif (case library): folder-tab cards and redaction bars.
+   Redaction bars are decorative shorthand for "sensitive detail removed";
+   they are always aria-hidden and never carry information. */
+
+.dossier {
+  position: relative;
+}
+
+.dossier::before {
+  content: "";
+  position: absolute;
+  top: -9px;
+  left: -1px;
+  width: 5.5rem;
+  height: 10px;
+  background: inherit;
+  border: 1px solid var(--line);
+  border-bottom: none;
+}
+
+.redact {
+  display: inline-block;
+  height: 0.5em;
+  background: var(--ink);
+  opacity: 0.16;
+  vertical-align: middle;
+}
+
+/* Sealed-solution compare: gentle, one-shot. */
+@keyframes seal-lift {
+  from {
+    opacity: 1;
+    transform: translateY(0) rotate(0deg);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-14px) rotate(-6deg);
+  }
+}
+
+.seal-lift {
+  animation: seal-lift 0.6s ease-in both;
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  /* Neutral like the rest: shadcn's dark default here is a violet. */
+  --sidebar-primary: oklch(0.922 0 0);
+  --sidebar-primary-foreground: oklch(0.205 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* The Projectum app surface (2026-09-11). Everything under it is stock shadcn
+   (base-nova, neutral), including its face, Geist. The marketing site keeps
+   Inter: shadcn init had pointed the whole document at Geist, and that change
+   was never asked for on the landing. Dialogs, menus and the mobile sheet
+   portal to <body>, outside this scope, so the root takes Geist too whenever
+   a Projectum page is mounted. */
+.projectum-ui,
+:root:has(.projectum-ui) {
+  --font-body: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+
+  /* Surfaces tuned for contrast between the whites, after ChatGPT's light
+     theme: a grey rail against a white canvas, a clearly darker grey for
+     hover and the active entry, and hairlines drawn from black at low
+     alpha so they hold on both the rail and the canvas. Text is untouched. */
+  --background: #ffffff;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #f4f4f4;
+  --muted: #f4f4f4;
+  --accent: #ececec;
+  --border: oklch(0 0 0 / 10%);
+  --input: oklch(0 0 0 / 14%);
+  --sidebar: #f9f9f9;
+  --sidebar-accent: #ececec;
+  --sidebar-border: oklch(0 0 0 / 8%);
+}
+/* Dark mode (Settings, Preferences), ChatGPT's current dark theme one for
+   one: a pure black canvas and rail split by a faint hairline, cards flat on
+   the black (as the light theme's white on white), #212121 for the active
+   entry, hover, inputs and menus, pure white text over #afafaf secondary
+   text, and white primary buttons. */
+.dark .projectum-ui,
+:root.dark:has(.projectum-ui) {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #000000;
+  --card-foreground: #ffffff;
+  --popover: #212121;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --secondary: #212121;
+  --secondary-foreground: #ffffff;
+  --muted: #212121;
+  --muted-foreground: #afafaf;
+  --accent: #212121;
+  --accent-foreground: #ffffff;
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: #8f8f8f;
+  --sidebar: #000000;
+  --sidebar-foreground: #ffffff;
+  --sidebar-accent: #212121;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: #8f8f8f;
+}
+.projectum-ui {
+  font-family: var(--font-body);
+}
+/* Switching dark mode crossfades the whole page as one (a view transition,
+   theme-switch.tsx), so buttons and their text change with everything
+   else. The switch stays live above the fade, its thumb sliding. */
+html.theme-fade::view-transition-old(root),
+html.theme-fade::view-transition-new(root) {
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+html.theme-fade::view-transition-old(theme-switch) {
+  display: none;
+}
+html.theme-fade::view-transition-new(theme-switch) {
+  animation: none;
+}
+/* The sidebar's icons on hover (app-sidebar.tsx): the All Projects folder
+   and each of Your Projects' folders hop, the Agents bot shakes its head,
+   and the collapse toggle nudges the
+   way the bar will go (--nudge, negative to fold, positive to open). Each
+   plays once and ends where it started. */
+@keyframes projectum-nudge {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  40% {
+    translate: var(--nudge, -3px) 0;
+  }
+  70% {
+    translate: calc(var(--nudge, -3px) * -0.35) 0;
+  }
+}
+@keyframes projectum-hop {
+  0%,
+  60%,
+  100% {
+    translate: 0 0;
+  }
+  30% {
+    translate: 0 -3px;
+  }
+  78% {
+    translate: 0 -1px;
+  }
+}
+@keyframes projectum-wiggle {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  20% {
+    rotate: -14deg;
+  }
+  45% {
+    rotate: 12deg;
+  }
+  70% {
+    rotate: -6deg;
+  }
+}
+/* The site's body colours are unlayered too, so they beat shadcn's
+   bg-background and text-foreground. Projectum takes shadcn's, so text with
+   no colour of its own, dialogs included, follows light and dark mode. */
+:root:has(.projectum-ui) body {
+  background: var(--background);
+  color: var(--foreground);
+}
+/* The site gives every control its UI face (basic-sans) in an unlayered
+   rule, which beats shadcn's classes. Projectum's controls take Geist like
+   the rest of the app, dialogs and menus included. */
+:root:has(.projectum-ui) :is(button, input, select, textarea) {
+  font-family: var(--font-body);
+}
+/* The site's purple focus outline above is unlayered, so it beats every
+   shadcn focus utility. Projectum hands focus back to the components' own
+   neutral rings, and to their own corners, which the site's 2px radius
+   would otherwise square off on focus. */
+:root:has(.projectum-ui) :focus-visible {
+  outline: revert-layer;
+  outline-offset: revert-layer;
+  border-radius: revert-layer;
+}

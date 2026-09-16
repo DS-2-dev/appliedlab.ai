@@ -1,0 +1,47 @@
+// "Continue with Google". A plain link, not a script: the route it points at
+// sets the PKCE cookie and hands the browser to Google, so this works before
+// any JavaScript loads.
+//
+// The multicolour G is Google's own mark, which its branding rules require on
+// a sign-in button. Without a Supabase project there is nowhere for Google to
+// send anyone back to, so the button renders visibly off, with the reason
+// under it, rather than as a link that fails after the click.
+
+import { copy } from "@/content/copy";
+
+const BUTTON =
+  "flex h-11 w-full items-center justify-center gap-3 rounded-[var(--radius-control)] border border-line-strong bg-ground font-sans text-[15px] font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors";
+
+function GoogleMark() {
+  return (
+    <svg aria-hidden width="18" height="18" viewBox="0 0 18 18">
+      <path fill="#4285F4" d="M17.64 9.2c0-.64-.06-1.25-.16-1.84H9v3.48h4.84a4.14 4.14 0 0 1-1.8 2.72v2.26h2.91c1.7-1.57 2.69-3.87 2.69-6.62z" />
+      <path fill="#34A853" d="M9 18c2.43 0 4.47-.8 5.96-2.18l-2.91-2.26c-.81.54-1.84.86-3.05.86-2.34 0-4.33-1.58-5.04-3.71H.96v2.33A9 9 0 0 0 9 18z" />
+      <path fill="#FBBC05" d="M3.96 10.71A5.4 5.4 0 0 1 3.68 9c0-.59.1-1.17.28-1.71V4.96H.96A9 9 0 0 0 0 9c0 1.45.35 2.83.96 4.04l3-2.33z" />
+      <path fill="#EA4335" d="M9 3.58c1.32 0 2.51.45 3.44 1.35l2.58-2.58C13.46.89 11.43 0 9 0A9 9 0 0 0 .96 4.96l3 2.33C4.67 5.16 6.66 3.58 9 3.58z" />
+    </svg>
+  );
+}
+
+export function GoogleButton({ next, enabled }: { next: string; enabled: boolean }) {
+  if (!enabled) {
+    return (
+      <div>
+        <span aria-disabled="true" className={`${BUTTON} cursor-not-allowed opacity-50`}>
+          <GoogleMark />
+          {copy.auth.google}
+        </span>
+        <p className="mt-2 text-xs leading-snug text-ink-faint">{copy.auth.googleUnavailable}</p>
+      </div>
+    );
+  }
+  return (
+    <a
+      href={`/api/auth/google?next=${encodeURIComponent(next)}`}
+      className={`${BUTTON} hover:border-ink-faint hover:bg-ground-raised`}
+    >
+      <GoogleMark />
+      {copy.auth.google}
+    </a>
+  );
+}
