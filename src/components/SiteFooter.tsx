@@ -5,6 +5,8 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { ArrowUpRight } from "lucide-react";
+import { CopyText } from "@/components/CopyText";
 import { copy } from "@/content/copy";
 import { LOGIN_HREF } from "@/lib/site";
 
@@ -58,14 +60,13 @@ export function SiteFooter() {
           </Column>
           <Column label={F.contactLabel}>
             <li>
-              <a href={`mailto:${F.email}`} className={LINK}>
-                {F.email}
-              </a>
+              <CopyText text={F.email} label={F.copyEmail} className={`${LINK} cursor-pointer`} />
             </li>
             <li>
               <a href={F.linkedinHref} target="_blank" rel="noopener noreferrer" className={LINK}>
                 <LinkedInMark />
                 {F.linkedin}
+                <ArrowUpRight aria-hidden className="size-3.5 opacity-60" strokeWidth={1.75} />
               </a>
             </li>
           </Column>
@@ -94,7 +95,7 @@ export function SiteFooter() {
       {/* The name along the bottom edge, cut off by the page's end. */}
       <p
         aria-hidden
-        className="-mb-[0.22em] text-center text-[15.5vw] leading-none font-medium tracking-[-0.05em] whitespace-nowrap text-black/[0.05] select-none"
+        className="-mb-[0.22em] text-center text-[15.5vw] leading-none font-medium tracking-[-0.05em] whitespace-nowrap text-ink select-none"
       >
         {F.name}
       </p>

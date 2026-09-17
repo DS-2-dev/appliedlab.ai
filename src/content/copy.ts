@@ -263,6 +263,7 @@ export const copy = {
     projectum: "Projectum demo",
     askLink: "Ask the Lab",
     email: "ailab@weber.edu",
+    copyEmail: "Copy the email address ailab@weber.edu",
     linkedin: "LinkedIn",
     // TODO: the Lab's LinkedIn page. Until its address is known, this opens
     // a LinkedIn search for the Lab.
