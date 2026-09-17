@@ -82,9 +82,61 @@ export const copy = {
         label: "The Pipeline",
         caption: "How a project runs",
         title: "From a posted problem to an internship",
-        body: "Partners post problems, and members claim them with an action plan and build toward milestones. Faculty reps review each submission, and a partner that moves to implement can hire the member as an intern.",
-        chips: ["Post", "Claim", "Build", "Review", "Hire"],
-        chain: true,
+        body: "Partners and members work side by side until a review gate, where a partner who moves to implement can hire the member as an intern.",
+        chips: [],
+        // The deck's pipeline, step by step. `who` lists the lanes a step
+        // touches, lead first.
+        pipeline: {
+          lanes: ["Partners", "Members", "Reps"],
+          phases: [
+            { label: "Phase 1", name: "Parallel pipeline", from: 0, to: 3 },
+            { label: "Gate", name: "Meet and discuss", from: 4, to: 4 },
+            { label: "Phase 2", name: "Integrated pipeline", from: 5, to: 6 },
+          ],
+          steps: [
+            {
+              title: "Partners post problems",
+              body: "Partner organizations submit their challenges to the notice board.",
+              who: ["Partners"],
+            },
+            {
+              title: "Members claim and start work",
+              body: "A member claims a project with an action plan, faculty approve it, and the work begins.",
+              who: ["Members", "Reps"],
+            },
+            {
+              title: "Project milestones",
+              body: "Members post their progress, and partners follow it from a distance.",
+              who: ["Members", "Partners"],
+            },
+            {
+              title: "Submission review",
+              body: "Faculty reps evaluate the submission with the member, and partners read the submission report.",
+              who: ["Reps", "Members", "Partners"],
+            },
+            {
+              title: "Partners and members meet",
+              body: "At the partner's request, reps introduce the two to go over the prototype and discuss implementation.",
+              who: ["Partners", "Members", "Reps"],
+            },
+            {
+              title: "Hired as an intern",
+              body: "If the partner moves to implement, the member joins the organization as an intern and reps stay in the loop.",
+              who: ["Members", "Partners", "Reps"],
+            },
+            {
+              title: "Project completion",
+              body: "The work ships, and the member leaves with an industry relationship and a line on the résumé.",
+              who: ["Members", "Partners"],
+            },
+          ],
+          back: "Back",
+          next: "Next",
+          stepWord: "Step",
+          of: "of",
+          whoLabel: "Who",
+        },
+        footnote: "The pipeline turns low-stakes experience into student-business relationships, with little friction.",
       },
       {
         id: "platform",

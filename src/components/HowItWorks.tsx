@@ -12,14 +12,15 @@
   an anchor at its own scroll position, which is what the header links and
   the rail's nodes jump to, so any step can be opened directly.
 
-  Steps whose chips are a sequence (`chain`) draw them as their own small
-  node chain inside the card, lit one after another.
+  The Pipeline step draws the whole pipeline as a lane diagram
+  (PipelineDiagram.tsx) that visitors click through.
 */
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowRight } from "lucide-react";
 import { copy } from "@/content/copy";
 import { Reveal } from "@/components/Reveal";
+import { PipelineDiagram } from "@/components/PipelineDiagram";
 import { ScrollLink } from "@/components/ScrollLink";
 
 const C = copy.how;
@@ -141,7 +142,14 @@ export function HowItWorks() {
                 <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
                   <div>
                     <h2 className="mt-5 max-w-2xl text-2xl leading-[1.12] font-light tracking-tight md:text-4xl lg:text-5xl">{step.title}</h2>
-                    <p className="mt-5 max-w-xl text-sm leading-relaxed font-light opacity-70 md:text-base">{step.body}</p>
+                    <p
+                      className={`mt-5 max-w-xl text-sm leading-relaxed font-light opacity-70 md:text-base ${
+                        // The Pipeline's step detail carries the story where space is short.
+                        "pipeline" in step ? "max-sm:hidden [@media(max-height:820px)]:hidden" : ""
+                      }`}
+                    >
+                      {step.body}
+                    </p>
                     {"cta" in step && (
                       <a
                         // The static site has no accounts, so joining opens the demo.
@@ -277,6 +285,7 @@ export function HowItWorks() {
                   )}
                 </div>
 
+                {"pipeline" in step && <PipelineDiagram data={step.pipeline} />}
                 {"aims" in step && (
                   <ul className="mt-8 grid gap-2 border-t border-white/15 pt-5 sm:mt-10 sm:grid-cols-3 sm:gap-8 sm:pt-6">
                     {step.aims.map((aim, i) => (
@@ -371,29 +380,13 @@ export function HowItWorks() {
                     </div>
                   </div>
                 )}
-                {"footnote" in step && <p className="mt-auto pt-8 pr-24 text-xs opacity-50">{step.footnote}</p>}
+                {"footnote" in step && (
+                  <p className={`mt-auto pt-8 pr-24 text-xs opacity-50 ${"pipeline" in step ? "max-sm:hidden" : ""}`}>
+                    {step.footnote}
+                  </p>
+                )}
 
-                {"chain" in step && step.chain ? (
-                  <ol className="mt-10 flex flex-wrap items-center gap-y-2">
-                    {step.chips.map((chip, i) => (
-                      <li key={chip} className="flex items-center">
-                        {i > 0 && (
-                          <span
-                            aria-hidden
-                            className="h-px w-3 origin-left bg-white/40 animate-in zoom-in-0 fill-mode-both duration-300 md:w-10"
-                            style={{ animationDelay: `${i * 180}ms` }}
-                          />
-                        )}
-                        <span
-                          className="rounded-full border border-white/25 px-2.5 py-1 text-xs whitespace-nowrap animate-in fade-in-0 fill-mode-both duration-300 md:px-3 md:text-sm"
-                          style={{ animationDelay: `${i * 180 + 90}ms` }}
-                        >
-                          {chip}
-                        </span>
-                      </li>
-                    ))}
-                  </ol>
-                ) : step.chips.length > 0 ? (
+                {step.chips.length > 0 ? (
                   <ul className="mt-10 flex flex-wrap gap-2">
                     {step.chips.map((chip, i) => (
                       <li
