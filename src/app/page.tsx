@@ -7,6 +7,7 @@ import { copy } from "@/content/copy";
 import { AskTheLab } from "@/components/AskTheLab";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Reveal } from "@/components/Reveal";
+import { SiteFooter } from "@/components/SiteFooter";
 import { ScrollLink } from "@/components/ScrollLink";
 import { SiteHeader } from "@/components/SiteHeader";
 import { JOIN_HREF } from "@/lib/site";
@@ -74,6 +75,7 @@ export default function Home() {
         <HowItWorks />
         <AskTheLab />
       </main>
+      <SiteFooter />
     </>
   );
 }

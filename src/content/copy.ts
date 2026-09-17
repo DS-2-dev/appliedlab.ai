@@ -253,6 +253,23 @@ export const copy = {
     reset: "New chat",
   },
 
+  // The landing's footer (2026-09-16). Microcopy.
+  footer: {
+    name: "Applied AI Lab",
+    school: "Weber State University",
+    labLabel: "The Lab",
+    contactLabel: "Contact",
+    tryLabel: "Try",
+    projectum: "Projectum demo",
+    askLink: "Ask the Lab",
+    email: "ailab@weber.edu",
+    linkedin: "LinkedIn",
+    // TODO: the Lab's LinkedIn page. Until its address is known, this opens
+    // a LinkedIn search for the Lab.
+    linkedinHref: "https://www.linkedin.com/search/results/companies/?keywords=Applied%20AI%20Lab%20Weber%20State",
+    place: "Shepherd Union, Ogden, Utah",
+  },
+
   notFound: {
     line: "There's nothing at this address.",
     cta: "Back to the Lab",
