@@ -93,8 +93,10 @@ Light is the default. Dark mode swaps the values.
 - Hover is mostly opacity (60% → 100%), plus the 2px arrow nudge.
 - Honour `prefers-reduced-motion`: drop the transforms and keep the opacity changes.
 
-## The star
+## The mark
 
-The home page's mark is the six-point star, `public/star.svg`, in black on
-the white page. `GooeyFilter` and `PixelOval` stay in the project for later
-use.
+The Lab's mark is `public/better.svg`: a six-point star inside an oval. The
+home page shows it as a turning chrome solid (`ChromeMark`), and everywhere
+else a logo appears (the header pill, footer, account pages, 404) it is the
+flat black SVG through `StarMark`. `GooeyFilter` and `GooBand` stay in the
+project for later use.
