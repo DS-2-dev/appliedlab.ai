@@ -476,29 +476,6 @@ textarea {
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: #8f8f8f;
 }
-/* Reveal (components/Reveal.tsx): a section's content fades in and rises
-   as it scrolls into view. */
-.reveal {
-  opacity: 0;
-  transform: translateY(24px);
-  transition:
-    opacity 550ms cubic-bezier(0.2, 0.6, 0.2, 1),
-    transform 550ms cubic-bezier(0.2, 0.6, 0.2, 1);
-}
-
-.reveal[data-shown] {
-  opacity: 1;
-  transform: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .reveal {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-}
-
 /* The landing heading's tilting word (page.tsx). Upright most of the time,
    it leans into an italic slant now and then and straightens again. The
    heading's face ships no italic, so the slant is a skew from the
