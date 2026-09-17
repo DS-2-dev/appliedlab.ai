@@ -5,6 +5,7 @@ import Link from "next/link";
 import { ArrowDown, ArrowRight } from "lucide-react";
 import { copy } from "@/content/copy";
 import { AskTheLab } from "@/components/AskTheLab";
+import { ChromeMark } from "@/components/ChromeMark";
 import { HowItWorks } from "@/components/HowItWorks";
 import { JoinCta } from "@/components/JoinCta";
 import { Reveal } from "@/components/Reveal";
@@ -20,14 +21,13 @@ export default function Home() {
     <>
       <SiteHeader />
       <main id="main" className="font-archivo bg-white text-ink">
-        {/* The hero: the shape (better.svg, for now) in a box across the top of the first
+        {/* The hero: the shape (better.svg, for now) in chrome, in a box across the top of the first
             screen, then one row beneath it, the large heading at the left
             and the rest of the copy with the buttons at the right. */}
         <section className="min-h-svh">
           <Reveal className="flex min-h-svh flex-col gap-10 px-5 pt-24 pb-10 lg:px-15 lg:pb-12">
             <div className="flex min-h-[10rem] flex-1 items-center">
-              {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG needs no optimizing */}
-              <img src="/better.svg" alt="" className="h-auto max-h-[62svh] w-full object-contain" />
+              <ChromeMark src="/better.svg" className="aspect-[1349/498] max-h-[62svh] w-full" />
             </div>
 
             {/* From lg the right column stretches to the heading block's
