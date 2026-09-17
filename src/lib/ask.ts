@@ -1,7 +1,8 @@
 // The Ask the Lab request, shared by the Next.js route (src/app/api/ask)
 // and the Cloudflare Worker that serves the static site (worker/). Both
-// validate the same way and send Claude the same request; only where the
-// schedule data comes from differs.
+// validate the same way and use the same instructions and facts. The route
+// always asks Claude; the Worker asks Claude when it has an API key and a
+// free Cloudflare Workers AI model otherwise.
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { LAB_KNOWLEDGE } from "@/content/lab-knowledge";
@@ -60,6 +61,12 @@ export function scheduleNote(settings: Settings, events: LabEvent[]): string {
     `- Regular meetings: ${settings.meeting_schedule}.`,
     upcoming.length ? `Upcoming:\n${upcoming.join("\n")}` : `- ${settings.offseason_line}`,
   ].join("\n");
+}
+
+// The whole system prompt as one string, for hosts that take it that way
+// (the Worker's Cloudflare Workers AI path).
+export function systemPrompt(schedule: string): string {
+  return `${INSTRUCTIONS}\n\n${LAB_KNOWLEDGE}\n\n${schedule}`;
 }
 
 // Rate limit: questions per visitor per window.

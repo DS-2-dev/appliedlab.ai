@@ -285,6 +285,12 @@ textarea {
   font-family: inherit;
 }
 
+/* Text boxes there mark focus on their own frame (the chat composer's
+   border), so the old purple outline stays off them. */
+.font-archivo :is(input, textarea):focus-visible {
+  outline: none;
+}
+
 /* Buttons: cursor.com/home's `.btn`, copied off their stylesheet rather than
    eyeballed. Their rule is display:inline-flex, centred, cursor:pointer,
    font-size --text-base (1rem), font-weight --font-weight-normal (400),

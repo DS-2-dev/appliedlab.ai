@@ -18,5 +18,7 @@
       "simple": { "limit": 6, "period": 60 }
     }
   ],
+  // Cloudflare Workers AI, the free engine when no Claude key is set.
+  "ai": { "binding": "AI" },
   "observability": { "enabled": true }
 }

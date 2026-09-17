@@ -1,10 +1,18 @@
 # appliedlab-ask
 
 The Cloudflare Worker that answers Ask the Lab on the GitHub Pages site.
-Pages serves files only, so the chat sends its questions here. It runs the
-same request as the Next.js route (`src/lib/ask.ts`), keeps the Claude API
-key as a secret, allows only the Lab's own origins, and limits each visitor
-to 6 questions a minute.
+Pages serves files only, so the chat sends its questions here. It uses the
+same instructions and facts as the Next.js route (`src/lib/ask.ts`), allows
+only the Lab's own origins, and limits each visitor to 6 questions a minute.
+
+It has two engines:
+
+- **Free (the default):** Cloudflare Workers AI, Llama 3.3 70B. Cloudflare's
+  free daily allowance covers about 70 questions a day at this prompt's
+  size. Past that, requests fail, the chat shows its email note, and the
+  free plan never bills.
+- **Claude:** set the `ANTHROPIC_API_KEY` secret and the Worker asks Claude
+  instead, exactly as `/api/ask` does. Delete the secret to go back to free.
 
 ## First deploy
 
@@ -15,8 +23,8 @@ npm install
 cd worker
 npm install
 npx wrangler login                          # opens Cloudflare in the browser
-npx wrangler secret put ANTHROPIC_API_KEY   # paste the key when asked
 npm run deploy                              # prints the Worker's URL
+npx wrangler secret put ANTHROPIC_API_KEY   # optional: switch to Claude
 ```
 
 The Worker is deployed at `https://appliedlab-ask.now-playing.workers.dev`,
