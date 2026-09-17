@@ -10,6 +10,8 @@
 // Works on a pinned panel too (How it works): while it is stuck to the
 // screen it stays fully shown, and it fades only as its section carries it
 // on or off. Visible throughout for anyone who asks for reduced motion.
+// The page's last section passes `leave={false}`: nothing follows it, so it
+// only comes in and stays sharp at the end of the page.
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { prefersReducedMotion } from "@/lib/motion";
@@ -26,7 +28,15 @@ const BLUR = 14; // px, fully out of view
 
 const clamp = (v: number) => Math.min(1, Math.max(0, v));
 
-export function Reveal({ children, className }: { children: ReactNode; className?: string }) {
+export function Reveal({
+  children,
+  className,
+  leave: leaves = true,
+}: {
+  children: ReactNode;
+  className?: string;
+  leave?: boolean;
+}) {
   const el = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -44,7 +54,7 @@ export function Reveal({ children, className }: { children: ReactNode; className
       const vh = window.innerHeight;
       const { top, bottom } = node.getBoundingClientRect();
       const enter = clamp((ENTER_FROM * vh - top) / ((ENTER_FROM - ENTER_TO) * vh));
-      const leave = clamp((bottom - LEAVE_TO * vh) / ((LEAVE_FROM - LEAVE_TO) * vh));
+      const leave = !leaves ? 1 : clamp((bottom - LEAVE_TO * vh) / ((LEAVE_FROM - LEAVE_TO) * vh));
       const v = Math.min(enter, leave);
       const shift = (leave - enter) * DRIFT;
       if (v === lastV && shift === lastShift) return;
@@ -67,7 +77,7 @@ export function Reveal({ children, className }: { children: ReactNode; className
       window.removeEventListener("resize", onScroll);
       cancelAnimationFrame(frame);
     };
-  }, []);
+  }, [leaves]);
 
   return (
     <div ref={el} className={className}>
