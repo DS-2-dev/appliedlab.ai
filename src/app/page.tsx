@@ -11,6 +11,7 @@ import { HowItWorks } from "@/components/HowItWorks";
 import { JoinCta } from "@/components/JoinCta";
 import { Reveal } from "@/components/Reveal";
 import { SiteFooter } from "@/components/SiteFooter";
+import { SmoothScroll } from "@/components/SmoothScroll";
 import { ScrollLink } from "@/components/ScrollLink";
 import { SiteHeader } from "@/components/SiteHeader";
 import { JOIN_HREF } from "@/lib/site";
@@ -20,6 +21,7 @@ const H = copy.home;
 export default function Home() {
   return (
     <>
+      <SmoothScroll />
       <SiteHeader />
       <main id="main" className="font-archivo bg-white text-ink">
         {/* The hero: the shape (better.svg, for now) in chrome, in a box across the top of the first

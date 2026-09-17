@@ -112,6 +112,7 @@ export function AskTheLab() {
           <div
             ref={log}
             aria-live="polite"
+            data-lenis-prevent
             className="mt-10 max-h-[28rem] w-full space-y-6 overflow-y-auto px-1"
           >
             {turns.map((t, i) =>

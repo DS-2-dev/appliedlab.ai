@@ -1,8 +1,9 @@
 "use client";
 
 // An in-page link that glides to its target instead of jumping, leaving
-// the URL as it was. The site has no global smooth scroll, so the glide
-// lives here, and reduced motion gets the plain jump.
+// the URL as it was. On the landing SmoothScroll takes the click first and
+// glides with Lenis; without it (reduced motion, other pages) the browser's
+// own smooth scroll does, and reduced motion gets the plain jump.
 
 import type { ComponentProps, MouseEvent } from "react";
 import { prefersReducedMotion } from "@/lib/motion";
