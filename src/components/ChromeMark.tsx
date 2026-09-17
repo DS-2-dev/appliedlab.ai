@@ -105,7 +105,7 @@ export function ChromeMark({ src, className }: { src: string; className?: string
       model.rotation.y = REST_ANGLE;
       scene.add(model);
 
-      // Fit the model to 90% of the view, whatever the box's shape.
+      // Fit the model to nearly the whole view, close to the flat SVG it fades in over.
       const fit = () => {
         const w = host.clientWidth || 1;
         const h = host.clientHeight || 1;
@@ -114,7 +114,7 @@ export function ChromeMark({ src, className }: { src: string; className?: string
         camera.updateProjectionMatrix();
         const viewH = 2 * camera.position.z * Math.tan(THREE.MathUtils.degToRad(camera.fov / 2));
         const viewW = viewH * camera.aspect;
-        model.scale.setScalar(Math.min((viewW * 0.9) / size.x, (viewH * 0.9) / size.y));
+        model.scale.setScalar(Math.min((viewW * 0.96) / size.x, (viewH * 0.96) / size.y));
       };
       fit();
       const ro = new ResizeObserver(fit);

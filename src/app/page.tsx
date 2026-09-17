@@ -35,7 +35,7 @@ export default function Home() {
                 button row ends level with the heading's last line. */}
             <div className="grid gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-12">
               <div className="lg:col-span-8">
-                <p className="kicker mb-4 opacity-35">{H.kicker}</p>
+                <p className="mb-4 text-base font-medium tracking-tight text-black/60">{H.kicker}</p>
                 <h1 className="max-w-4xl text-[2rem] leading-[1.02] font-light tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl">
                   {H.heading.split(H.headingTilt).map((part, i) =>
                     i === 0 ? (
