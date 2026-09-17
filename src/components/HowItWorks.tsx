@@ -146,7 +146,6 @@ export function HowItWorks() {
               >
                 <p className="kicker flex gap-3">
                   <span className="opacity-40">{pad2(active + 1)}</span>
-                  <span className="opacity-70">{step.label}</span>
                   {"status" in step && (
                     <span className="-my-0.5 rounded-full border border-white/25 px-2 py-0.5 font-normal tracking-normal normal-case opacity-80">
                       {step.status}
