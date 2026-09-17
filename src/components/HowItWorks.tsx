@@ -144,19 +144,18 @@ export function HowItWorks() {
                 key={step.id}
                 className="flex flex-1 flex-col animate-in duration-500 ease-out fade-in-0 slide-in-from-bottom-3 motion-reduce:animate-none"
               >
-                <p className="kicker flex gap-3">
-                  <span className="opacity-40">{pad2(active + 1)}</span>
-                  {"status" in step && (
-                    <span className="-my-0.5 rounded-full border border-white/25 px-2 py-0.5 font-normal tracking-normal normal-case opacity-80">
+                {"status" in step && (
+                  <p className="-mb-1">
+                    <span className="rounded-full border border-white/25 px-2.5 py-0.5 text-[11px] opacity-80">
                       {step.status}
                     </span>
-                  )}
-                </p>
+                  </p>
+                )}
 
                 {/* The intro, with the step's side panel beside it from lg */}
                 <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
                   <div>
-                    <h2 className="mt-5 max-w-2xl text-2xl leading-[1.12] font-light tracking-tight md:text-4xl lg:text-5xl">
+                    <h2 className="mt-3 max-w-2xl text-2xl leading-[1.12] font-light tracking-tight md:text-4xl lg:text-5xl">
                       {step.title}
                     </h2>
                     {/* A compact step's own detail carries the story where space is short. */}
@@ -188,9 +187,18 @@ export function HowItWorks() {
 
                 <StepBands step={step} />
 
-                <p className={`mt-auto pt-8 text-xs opacity-50 ${compact ? "max-sm:hidden" : ""}`}>{step.footnote}</p>
+                <p className={`mt-auto pt-8 pr-20 text-xs opacity-50 ${compact ? "max-sm:hidden" : ""}`}>{step.footnote}</p>
               </div>
 
+
+              {/* The step's number, large in the corner. */}
+              <span
+                key={`n-${step.id}`}
+                aria-hidden
+                className="pointer-events-none absolute right-7 bottom-5 text-4xl font-light tracking-tight tabular-nums opacity-30 animate-in fade-in-0 duration-500 md:right-12 md:bottom-9 md:text-6xl"
+              >
+                {pad2(active + 1)}
+              </span>
             </div>
           </div>
         </Reveal>
