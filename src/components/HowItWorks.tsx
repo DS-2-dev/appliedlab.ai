@@ -149,20 +149,20 @@ export function HowItWorks() {
                   {"exchange" in step && (
                     <aside className="hidden self-end sm:block">
                       <p className="text-[11px] font-medium tracking-[0.18em] uppercase opacity-40">{step.exchange.label}</p>
-                      {/* The two questions as a short exchange: the student's
-                          block at the left, the employer's answering from the
-                          right just below it. */}
-                      <div className="mt-4 flex flex-col gap-2.5">
+                      {/* The two questions as square blocks: the student's at
+                          the left, the employer's at the right and set lower,
+                          so they read one after the other. */}
+                      <div className="mt-4 flex items-start justify-between">
                         {step.exchange.asks.map((ask, i) => (
                           <div
                             key={ask.who}
-                            className={`w-[82%] rounded-2xl bg-white px-4 py-3 text-[#1a1a1a] animate-in fade-in-0 slide-in-from-bottom-2 fill-mode-both duration-500 ${
-                              i % 2 === 0 ? "self-start rounded-bl-md" : "self-end rounded-br-md"
+                            className={`flex aspect-square w-[47%] flex-col justify-between rounded-2xl bg-white p-4 text-[#1a1a1a] animate-in fade-in-0 slide-in-from-bottom-2 fill-mode-both duration-500 ${
+                              i % 2 === 1 ? "mt-16" : ""
                             }`}
                             style={{ animationDelay: `${200 + i * 180}ms` }}
                           >
                             <p className="text-xs text-black/50">{ask.who}</p>
-                            <p className="mt-0.5 text-[15px] leading-snug">&ldquo;{ask.question}&rdquo;</p>
+                            <p className="text-lg leading-snug">&ldquo;{ask.question}&rdquo;</p>
                           </div>
                         ))}
                       </div>
