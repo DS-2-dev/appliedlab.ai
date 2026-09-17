@@ -15,17 +15,9 @@ import path from "node:path";
 const root = path.resolve(import.meta.dirname, "..");
 const stage = path.join(root, ".pages-build");
 
-// Routes and files that need a server. pages-static/ puts back stand-ins
-// for Log in, Sign up and the password reset request; anything else that
-// links to them switches on NEXT_PUBLIC_STATIC_SITE.
-const SERVER_ONLY = [
-  "src/proxy.ts",
-  "src/app/api",
-  "src/app/login",
-  "src/app/signup",
-  "src/app/forgot-password",
-  "src/app/reset-password",
-];
+// Routes and files that need a server. The pages that stay (Log in, Sign
+// up, Projectum) switch on NEXT_PUBLIC_STATIC_SITE themselves.
+const SERVER_ONLY = ["src/proxy.ts", "src/app/api", "src/app/reset-password"];
 
 const SKIP = new Set([".git", "package-lock.json", ".next", ".pages-build", "node_modules", "out", "pages-static", "worker"]);
 

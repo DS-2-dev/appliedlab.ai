@@ -1,20 +1,14 @@
-// Projectum on the GitHub Pages build: the demo, open to anyone. There are no
+// Projectum on the static site: the demo, open to anyone. There are no
 // accounts on a static site, so it opens as the demo account and keeps its
 // projects in this browser, as the signed-in page does today. The view and
 // theme are read in the browser (projectum-view.tsx).
 
-import type { Metadata } from "next";
 import { Suspense } from "react";
-import { copy } from "@/content/copy";
 import { AgentsPanel } from "@/components/projectum/agents-panel";
 import { ProjectumView } from "@/components/projectum/projectum-view";
 import { SettingsPanel } from "@/components/projectum/settings-panel";
 import { DARK_FIRST_PAINT, THEME_COOKIE } from "@/components/projectum/theme";
 import { TooltipProvider } from "@/components/ui/tooltip";
-
-export const metadata: Metadata = {
-  title: `${copy.projectum.title} | ${copy.meta.title}`,
-};
 
 const DEMO = { name: "Projectum demo", email: "demo@weber.edu" };
 
@@ -22,7 +16,7 @@ const DEMO = { name: "Projectum demo", email: "demo@weber.edu" };
 // here the check runs in the browser, still ahead of paint.
 const DARK_IF_SAVED = `if(document.cookie.split("; ").includes("${THEME_COOKIE}=dark")){${DARK_FIRST_PAINT}}`;
 
-export default function ProjectumPage() {
+export function StaticProjectum() {
   return (
     <TooltipProvider>
       <script dangerouslySetInnerHTML={{ __html: DARK_IF_SAVED }} />

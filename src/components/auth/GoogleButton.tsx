@@ -8,9 +8,9 @@
 // under it, rather than as a link that fails after the click.
 
 import { copy } from "@/content/copy";
+import { authButton } from "./AuthShell";
 
-const BUTTON =
-  "flex h-11 w-full items-center justify-center gap-3 rounded-[var(--radius-control)] border border-line-strong bg-ground font-sans text-[15px] font-medium text-ink shadow-[0_1px_2px_rgba(0,0,0,0.05)] transition-colors";
+const BUTTON = `${authButton} border border-black/10 bg-white text-ink`;
 
 function GoogleMark() {
   return (
@@ -31,14 +31,14 @@ export function GoogleButton({ next, enabled, note }: { next: string; enabled: b
           <GoogleMark />
           {copy.auth.google}
         </span>
-        <p className="mt-2 text-xs leading-snug text-ink-faint">{note ?? copy.auth.googleUnavailable}</p>
+        <p className="mt-2 text-center text-xs leading-snug text-black/45">{note ?? copy.auth.googleUnavailable}</p>
       </div>
     );
   }
   return (
     <a
       href={`/api/auth/google?next=${encodeURIComponent(next)}`}
-      className={`${BUTTON} hover:border-ink-faint hover:bg-ground-raised`}
+      className={`${BUTTON} hover:border-black/20 hover:bg-black/[0.03]`}
     >
       <GoogleMark />
       {copy.auth.google}

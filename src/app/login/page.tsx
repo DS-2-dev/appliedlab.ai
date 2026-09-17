@@ -6,9 +6,10 @@ import { devAuthAllowed, getSessionUser } from "@/lib/auth";
 import { projectumDemoAction } from "@/lib/auth-actions";
 import { safeNext } from "@/lib/auth-rules";
 import { hasSupabase } from "@/lib/data/supabase";
-import { AuthDivider, AuthShell, authLink } from "@/components/auth/AuthShell";
+import { AuthDivider, AuthShell, DemoLink, authLink } from "@/components/auth/AuthShell";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { LoginForm } from "@/components/auth/AuthForms";
+import { STATIC_SITE } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -33,9 +34,10 @@ export default async function LoginPage({
 }: {
   searchParams: Promise<{ next?: string; error?: string }>;
 }) {
-  const params = await searchParams;
+  // The static site is built once, with no session and no query string.
+  const params: { next?: string; error?: string } = STATIC_SITE ? {} : await searchParams;
   const next = safeNext(params.next);
-  if (await getSessionUser()) redirect(next);
+  if (!STATIC_SITE && (await getSessionUser())) redirect(next);
 
   const signupHref = next === "/projectum" ? "/signup" : `/signup?next=${encodeURIComponent(next)}`;
 
@@ -52,21 +54,26 @@ export default async function LoginPage({
         </>
       }
     >
-      <GoogleButton next={next} enabled={hasSupabase()} />
+      <GoogleButton
+        next={next}
+        enabled={!STATIC_SITE && hasSupabase()}
+        note={STATIC_SITE ? copy.auth.staticGoogle : undefined}
+      />
       <AuthDivider />
       <LoginForm next={next} initialError={params.error ? URL_ERRORS[params.error] : undefined} />
 
-      {/* Local preview only: straight into /projectum as a demo account, for
-          working on that page without making one. */}
-      {devAuthAllowed() && (
-        <form action={projectumDemoAction} className="mt-5 text-center">
-          <button
-            type="submit"
-            className="cursor-pointer text-xs text-ink-faint underline-offset-4 hover:text-ink hover:underline"
-          >
-            {copy.auth.projectumDemo}
-          </button>
-        </form>
+      {/* The static site, and the local server preview, open the Projectum
+          demo without an account. */}
+      {STATIC_SITE ? (
+        <DemoLink />
+      ) : (
+        devAuthAllowed() && (
+          <form action={projectumDemoAction} className="mt-5 text-center">
+            <button type="submit" className={`cursor-pointer text-sm ${authLink}`}>
+              {copy.auth.projectumDemo}
+            </button>
+          </form>
+        )
       )}
     </AuthShell>
   );

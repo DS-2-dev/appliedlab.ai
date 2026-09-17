@@ -13,10 +13,12 @@ import { AllProjects } from "@/components/projectum/all-projects";
 import { AppSidebar, type ProjectumView } from "@/components/projectum/app-sidebar";
 import { ProjectBoard } from "@/components/projectum/project-board";
 import { SettingsPanel } from "@/components/projectum/settings-panel";
+import { StaticProjectum } from "@/components/projectum/static-projectum";
 import { DARK_FIRST_PAINT, THEME_COOKIE } from "@/components/projectum/theme";
 import { ThemeSync } from "@/components/projectum/theme-switch";
 import { SidebarInset, SidebarProvider } from "@/components/ui/sidebar";
 import { TooltipProvider } from "@/components/ui/tooltip";
+import { STATIC_SITE } from "@/lib/site";
 
 export const dynamic = "force-dynamic";
 
@@ -29,6 +31,9 @@ export default async function ProjectumPage({
 }: {
   searchParams: Promise<{ view?: string | string[]; project?: string | string[] }>;
 }) {
+  // The static site has no accounts: the demo, open to anyone.
+  if (STATIC_SITE) return <StaticProjectum />;
+
   const user = await getSessionUser();
   if (!user) redirect("/login?next=/projectum");
 

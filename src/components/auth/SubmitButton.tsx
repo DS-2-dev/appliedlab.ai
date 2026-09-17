@@ -6,6 +6,7 @@
 
 import { useFormStatus } from "react-dom";
 import { Loader2 } from "lucide-react";
+import { authButton } from "./AuthShell";
 
 export function SubmitButton({ label, pendingLabel }: { label: string; pendingLabel: string }) {
   const { pending } = useFormStatus();
@@ -13,11 +14,11 @@ export function SubmitButton({ label, pendingLabel }: { label: string; pendingLa
     <button
       type="submit"
       disabled={pending}
-      className="btn h-11 w-full bg-brand-deep py-0 text-white hover:bg-brand disabled:cursor-wait disabled:opacity-75"
+      className={`${authButton} bg-black text-white hover:bg-black/80 disabled:cursor-wait disabled:opacity-70`}
     >
       {pending ? (
         <>
-          <Loader2 aria-hidden className="mr-2 size-4 animate-spin" />
+          <Loader2 aria-hidden className="size-4 animate-spin" />
           {pendingLabel}
         </>
       ) : (

@@ -1,9 +1,9 @@
 "use client";
 
-// The browser half of Projectum on the GitHub Pages build. The server page
-// (src/app/projectum/page.tsx) reads ?view=, ?project= and the theme and
-// sidebar cookies on each request; a static page is built once, so this
-// reads them here instead, after the page loads.
+// The browser half of Projectum on the static site (StaticProjectum). The
+// server page reads ?view=, ?project= and the theme and sidebar cookies on
+// each request; a static page is built once, so this reads them here
+// instead, after the page loads.
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";

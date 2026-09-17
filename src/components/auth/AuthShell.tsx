@@ -1,12 +1,17 @@
-// The frame every account page shares: the wordmark home, then one narrow
-// column centred on a white page. Deliberately not the site header. Someone
-// on a log in form has one job, and the nav's links and buttons would only
-// be ways out of it.
+// The frame every account page shares, in the landing's look: the star and
+// the Lab's name at the top left, then one narrow centred column with the
+// star over a light heading, like the ChatGPT and Claude sign-in screens.
+// Deliberately not the site header. Someone on a log in form has one job,
+// and the nav's links and buttons would only be ways out of it.
 
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { copy } from "@/content/copy";
-import { AsteriskMark } from "@/components/AsteriskMark";
+
+function Star({ className }: { className: string }) {
+  // eslint-disable-next-line @next/next/no-img-element -- a static SVG needs no optimizing
+  return <img src="/star.svg" alt="" aria-hidden className={className} />;
+}
 
 export function AuthShell({
   heading,
@@ -20,25 +25,21 @@ export function AuthShell({
   footer?: ReactNode;
 }) {
   return (
-    <div className="auth-shell flex min-h-screen flex-col bg-ground">
-      <header className="flex h-[var(--site-header-height)] items-center px-edge">
-        <Link href="/" className="flex items-center gap-2 whitespace-nowrap font-ui">
-          <AsteriskMark size={15} className="shrink-0 text-brand-deep" />
-          <span className="text-[1rem] font-semibold tracking-[-0.022em] text-ink">
-            {copy.nav.wordmark}
-          </span>
+    <div className="font-archivo flex min-h-svh flex-col bg-white text-ink">
+      <header className="flex h-16 items-center px-5 lg:px-15">
+        <Link href="/" className="flex items-center gap-2.5 whitespace-nowrap">
+          <Star className="w-5" />
+          <span className="text-[15px] font-medium tracking-tight">{copy.nav.wordmark}</span>
         </Link>
       </header>
 
-      <main
-        id="main"
-        className="flex flex-1 justify-center px-5 pb-20 pt-10 md:items-center md:pb-28 md:pt-0"
-      >
-        <div className="w-full max-w-[400px]">
-          <h1 className="display text-[2rem] leading-tight text-ink">{heading}</h1>
-          {body && <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">{body}</p>}
-          <div className="mt-8">{children}</div>
-          {footer && <p className="mt-8 text-center text-sm text-ink-soft">{footer}</p>}
+      <main id="main" className="flex flex-1 justify-center px-5 pt-8 pb-20 md:items-center md:pt-0 md:pb-28">
+        <div className="w-full max-w-[380px] animate-in fade-in-0 slide-in-from-bottom-2 duration-500 motion-reduce:animate-none">
+          <Star className="mx-auto w-14" />
+          <h1 className="mt-6 text-center text-3xl font-light tracking-tight text-balance">{heading}</h1>
+          {body && <p className="mt-3 text-center text-[15px] leading-relaxed font-light text-black/55">{body}</p>}
+          <div className="mt-9">{children}</div>
+          {footer && <p className="mt-8 text-center text-sm text-black/55">{footer}</p>}
         </div>
       </main>
     </div>
@@ -47,10 +48,10 @@ export function AuthShell({
 
 export function AuthDivider() {
   return (
-    <div className="my-6 flex items-center gap-3 text-xs uppercase tracking-[0.12em] text-ink-faint">
-      <span aria-hidden className="h-px flex-1 bg-line" />
+    <div className="kicker my-6 flex items-center gap-4 text-black/35">
+      <span aria-hidden className="h-px flex-1 bg-black/10" />
       {copy.auth.divider}
-      <span aria-hidden className="h-px flex-1 bg-line" />
+      <span aria-hidden className="h-px flex-1 bg-black/10" />
     </div>
   );
 }
@@ -62,13 +63,28 @@ export function AuthAlert({ message }: { message?: string }) {
   return (
     <p
       role="alert"
-      className="rounded-[var(--radius-control)] border border-error/25 bg-error-wash px-3.5 py-2.5 text-sm leading-snug text-error"
+      className="rounded-2xl bg-black/[0.04] px-4 py-3 text-center text-sm leading-snug text-black/75 animate-in fade-in-0 duration-300"
     >
       {message}
     </p>
   );
 }
 
+// On the static site, where accounts are not open, the way into Projectum.
+export function DemoLink() {
+  return (
+    <p className="mt-5 text-center text-sm">
+      <Link href="/projectum" className={authLink}>
+        {copy.auth.staticDemo}
+      </Link>
+    </p>
+  );
+}
+
 // Link styling for the small switches under each form.
 export const authLink =
-  "font-medium text-brand-deep underline-offset-4 hover:underline";
+  "font-medium text-ink underline decoration-black/20 underline-offset-4 transition hover:decoration-black";
+
+// The round buttons every account form uses.
+export const authButton =
+  "flex h-12 w-full cursor-pointer items-center justify-center gap-2.5 rounded-full text-[15px] transition disabled:cursor-not-allowed";

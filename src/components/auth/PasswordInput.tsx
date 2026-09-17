@@ -29,7 +29,7 @@ export function PasswordInput({
         type={shown ? "text" : "password"}
         autoComplete={autoComplete}
         required
-        className={`${inputClass} pr-11`}
+        className={`${inputClass} pr-12`}
         aria-invalid={invalid || undefined}
         aria-describedby={describedBy}
       />
@@ -38,7 +38,7 @@ export function PasswordInput({
         onClick={() => setShown((v) => !v)}
         aria-pressed={shown}
         aria-label={shown ? copy.auth.fields.hide : copy.auth.fields.show}
-        className="absolute inset-y-0 right-0 flex w-11 cursor-pointer items-center justify-center text-ink-faint transition-colors hover:text-ink"
+        className="absolute top-1/2 right-1.5 grid size-9 -translate-y-1/2 cursor-pointer place-items-center rounded-full text-black/40 transition hover:bg-black/5 hover:text-black"
       >
         {shown ? <EyeOff aria-hidden className="size-4" /> : <Eye aria-hidden className="size-4" />}
       </button>

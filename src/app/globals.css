@@ -35,22 +35,6 @@
   --brand-deep: #492365;
   --brand-wash: #f4eff8;
 
-  /* semantic */
-  --error: #96372a;
-  --error-wash: #f6e0da;
-
-  /* Images stay softer than application controls. */
-  --radius-control: 10px;
-  --radius-image: 16px;
-
-  /* Button padding (.btn), in em against line-height 1, so a button sizes
-     off its own type; it steps down at 900px. */
-  --button-padding-default: 0.89em 1.45em 0.91em;
-
-  /* Fluid page gutter and header height, for the sign-in screens' bar. */
-  --space-edge: clamp(1rem, calc(0.82394rem + 0.75117vw), 1.5rem);
-  --site-header-height: 52px;
-
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -85,22 +69,6 @@
   --sidebar-ring: oklch(0.708 0 0);
 }
 
-@media (min-width: 768px) {
-  :root {
-    --site-header-height: 56px;
-  }
-}
-
-@media (min-width: 900px) {
-  :root {
-    --button-padding-default: 0.78em 1.35em 0.8em;
-  }
-}
-
-@utility px-edge {
-  padding-inline: var(--space-edge);
-}
-
 /* The landing's small uppercase labels. Opacity stays per use. */
 @utility kicker {
   font-size: 11px;
@@ -121,8 +89,6 @@
   --color-brand: var(--brand);
   --color-brand-deep: var(--brand-deep);
   --color-brand-wash: var(--brand-wash);
-  --color-error: var(--error);
-  --color-error-wash: var(--error-wash);
 
   --font-sans: var(--font-body);
   /* basic-sans, for the sign-in screens' wordmark and controls. */
@@ -204,69 +170,14 @@ body {
   text-wrap: balance;
 }
 
-/* The sign-in screens' controls take the UI face. Everywhere else a control
-   inherits its surface's face, as Tailwind's preflight sets. */
-.auth-shell :is(button, input, select, textarea) {
-  font-family: var(--font-ui);
-}
-
-/* .btn, the sign-in screens' buttons. In @layer components so Tailwind's
-   utilities still win when a variant sets colours with ordinary classes. */
-@layer components {
-  .btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    cursor: pointer;
-    font-family: var(--font-body);
-    font-size: 1rem;
-    font-weight: 400;
-    line-height: 1;
-    padding: var(--button-padding-default);
-    border: 1px solid transparent;
-    border-radius: var(--radius-control);
-  }
-}
-
 /* Visible focus, in the base layer so a component's own focus style wins.
    Projectum's components carry their own rings, so it stays off there. */
 @layer base {
   :root:not(:has(.projectum-ui)) :focus-visible {
-    outline: 2px solid var(--brand-deep);
+    outline: 2px solid var(--ink);
     outline-offset: 3px;
     border-radius: 2px;
   }
-}
-
-/* Field's controls. A surface can set the --form-* variables to recolour
-   them; otherwise they take the light fallbacks. */
-.form-label {
-  color: var(--form-text, var(--ink));
-}
-
-.form-help,
-.form-muted {
-  color: var(--form-muted, var(--ink-faint));
-}
-
-.form-control {
-  color: var(--form-text, var(--ink));
-  background: var(--form-field, var(--ground));
-  border-color: var(--form-border, var(--line-strong));
-}
-
-.form-control::placeholder {
-  color: var(--form-muted, var(--ink-faint));
-}
-
-.form-control:hover {
-  border-color: var(--form-border-hover, var(--ink-faint));
-}
-
-.form-control:focus-visible {
-  outline: none;
-  border-color: var(--form-focus, var(--ink));
-  box-shadow: 0 0 0 3px var(--form-focus-ring, var(--ground-sunken));
 }
 
 .dark {

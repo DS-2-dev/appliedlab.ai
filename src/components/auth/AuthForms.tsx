@@ -13,23 +13,21 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { copy } from "@/content/copy";
-import { Field, inputClass } from "@/components/ui/Field";
-import {
-  forgotAction,
-  loginAction,
-  resetAction,
-  signupAction,
-  type AuthState,
-} from "@/lib/auth-actions";
+import { Field, errorClass, inputClass, labelClass } from "@/components/ui/Field";
+import * as serverActions from "@/lib/auth-actions";
+import type { AuthState } from "@/lib/auth-actions";
+import { staticActions } from "@/lib/auth-static";
+import { STATIC_SITE } from "@/lib/site";
 import { AuthAlert, authLink } from "./AuthShell";
 import { PasswordInput } from "./PasswordInput";
 import { SubmitButton } from "./SubmitButton";
 
+// The static site has no server, so its forms answer from auth-static.
+const { forgotAction, loginAction, resetAction, signupAction } = STATIC_SITE ? staticActions : serverActions;
+
 const A = copy.auth;
 const F = A.fields;
 
-const labelClass = "form-label block font-sans text-sm font-medium leading-none";
-const errorClass = "form-error mt-1.5 text-sm text-error";
 
 function EmailField({ state, withHelp }: { state: AuthState; withHelp?: boolean }) {
   const error = state.errors?.email;
@@ -56,9 +54,9 @@ function EmailField({ state, withHelp }: { state: AuthState; withHelp?: boolean 
 // Shown in place of a form once an email has gone out.
 function Sent({ heading, body, children }: { heading: string; body: string; children?: React.ReactNode }) {
   return (
-    <div role="status" className="rounded-[var(--radius-image)] border border-line bg-ground-raised p-6">
-      <h2 className="display text-xl text-ink">{heading}</h2>
-      <p className="mt-2 text-[15px] leading-relaxed text-ink-soft">{body}</p>
+    <div role="status" className="rounded-3xl border border-black/10 p-6 text-center">
+      <h2 className="text-xl font-light tracking-tight">{heading}</h2>
+      <p className="mt-2 text-[15px] leading-relaxed font-light text-black/55">{body}</p>
       {children}
     </div>
   );
@@ -74,17 +72,17 @@ export function LoginForm({ next, initialError }: { next: string; initialError?:
   const formError = e.form ?? (state.values ? undefined : initialError);
 
   return (
-    <form action={action} noValidate className="space-y-5">
+    <form action={action} noValidate className="space-y-4">
       <input type="hidden" name="next" value={next} />
       <AuthAlert message={formError} />
       <EmailField state={state} />
 
       <div>
-        <div className="flex items-baseline justify-between gap-4">
+        <div className="flex items-baseline justify-between gap-4 pr-5">
           <label htmlFor="password" className={labelClass}>
             {F.password.label}
           </label>
-          <Link href="/forgot-password" className={`text-sm ${authLink}`}>
+          <Link href="/forgot-password" className="text-[13px] leading-none text-black/50 transition hover:text-black">
             {A.login.forgot}
           </Link>
         </div>
@@ -124,7 +122,7 @@ export function SignupForm() {
   }
 
   return (
-    <form action={action} noValidate className="space-y-5">
+    <form action={action} noValidate className="space-y-4">
       <AuthAlert message={e.form} />
       <Field id="name" label={F.name.label} error={e.name}>
         <input
@@ -164,7 +162,7 @@ export function ForgotForm() {
         body={A.forgot.sentBody.replace("{email}", state.sent.email)}
       >
         {state.sent.devLink && (
-          <p className="mt-4 text-sm text-ink-faint">
+          <p className="mt-4 text-sm text-black/45">
             {A.forgot.devNote}{" "}
             <Link href={state.sent.devLink} className={authLink}>
               {A.forgot.devLink}
@@ -176,7 +174,7 @@ export function ForgotForm() {
   }
 
   return (
-    <form action={action} noValidate className="space-y-5">
+    <form action={action} noValidate className="space-y-4">
       <AuthAlert message={state.errors?.form} />
       <EmailField state={state} />
       <SubmitButton label={A.forgot.submit} pendingLabel={A.forgot.pending} />
@@ -191,11 +189,11 @@ export function ResetForm({ token }: { token?: string }) {
   const e = state.errors ?? {};
 
   return (
-    <form action={action} noValidate className="space-y-5">
+    <form action={action} noValidate className="space-y-4">
       {token && <input type="hidden" name="token" value={token} />}
       <AuthAlert message={e.form} />
       {e.form === A.errors.linkExpired && (
-        <p className="text-sm">
+        <p className="text-center text-sm">
           <Link href="/forgot-password" className={authLink}>
             {A.reset.requestNew}
           </Link>

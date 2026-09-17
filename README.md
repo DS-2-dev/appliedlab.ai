@@ -10,10 +10,15 @@ npm install
 npm run dev
 ```
 
-With no env vars the site uses the local JSON store in `data/` (events,
-settings, local accounts) and offers a dev-preview Projectum sign-in
-(development builds only). Add `ANTHROPIC_API_KEY` to `.env.local` for Ask
-the Lab to answer through `/api/ask` (see `.env.example`).
+`npm run dev` previews the live site as it is: the static mode
+(`NEXT_PUBLIC_STATIC_SITE=1`), where Log in and Sign up say accounts open
+with the platform launch, Projectum opens as its demo, and Ask the Lab calls
+the Cloudflare Worker.
+
+`npm run dev:server` runs the full version instead. With no env vars it uses
+the local JSON store in `data/` (events, settings, local accounts) and offers
+a dev-preview Projectum sign-in. Add `ANTHROPIC_API_KEY` to `.env.local` for
+Ask the Lab to answer through `/api/ask` (see `.env.example`).
 
 ## Accounts
 
@@ -29,9 +34,9 @@ The public site is a static build served by GitHub Pages at appliedlab.ai:
 npm run build:pages   # writes out/
 ```
 
-`scripts/build-pages.mjs` leaves out everything that needs a server (sign-in,
-API routes, server actions, proxy) and swaps in `pages-static/`, so Projectum
-opens as its demo. `.github/workflows/pages.yml` runs it and deploys on
+`scripts/build-pages.mjs` builds the same static mode `npm run dev` shows. It
+leaves out what needs a server (API routes, the password reset, proxy) and
+swaps in `pages-static/` for the server actions. `.github/workflows/pages.yml` runs it and deploys on
 every push to main.
 
 Ask the Lab needs a server, which Pages lacks, so on the static site it
