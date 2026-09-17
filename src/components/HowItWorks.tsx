@@ -127,19 +127,50 @@ export function HowItWorks() {
                   <span className="opacity-40">{String(active + 1).padStart(2, "0")}</span>
                   <span className="opacity-70">{step.label}</span>
                 </p>
-                <h2 className="mt-5 max-w-2xl text-2xl leading-[1.12] font-light tracking-tight md:text-4xl lg:text-5xl">{step.title}</h2>
-                <p className="mt-5 max-w-xl text-sm leading-relaxed font-light opacity-70 md:text-base">{step.body}</p>
+                {/* About puts the model beside its intro from lg; every other
+                    step is the single column. */}
+                <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-14">
+                  <div>
+                    <h2 className="mt-5 max-w-2xl text-2xl leading-[1.12] font-light tracking-tight md:text-4xl lg:text-5xl">{step.title}</h2>
+                    <p className="mt-5 max-w-xl text-sm leading-relaxed font-light opacity-70 md:text-base">{step.body}</p>
 
-                {/* About's extras: the purpose, the three aims in a row, and
-                    who leads the Lab along the foot of the card. */}
-                {"purpose" in step && (
-                  <p className="mt-8 max-w-xl">
-                    <span className="block text-[11px] font-medium tracking-[0.18em] uppercase opacity-40">
-                      {step.purposeLabel}
-                    </span>
-                    <span className="mt-2 block text-lg leading-snug font-light md:text-xl">{step.purpose}</span>
-                  </p>
-                )}
+                    {/* About's extras: the purpose, the three aims in a row, and
+                        who leads the Lab along the foot of the card. */}
+                    {"purpose" in step && (
+                      <p className="mt-8 max-w-xl">
+                        <span className="block text-[11px] font-medium tracking-[0.18em] uppercase opacity-40">
+                          {step.purposeLabel}
+                        </span>
+                        <span className="mt-2 block text-lg leading-snug font-light md:text-xl">{step.purpose}</span>
+                      </p>
+                    )}
+                  </div>
+
+                  {"exchange" in step && (
+                    <aside className="hidden self-end sm:block">
+                      <p className="text-[11px] font-medium tracking-[0.18em] uppercase opacity-40">{step.exchange.label}</p>
+                      <div className="mt-4 space-y-3">
+                        {step.exchange.asks.map((ask, i) => (
+                          <div
+                            key={ask.who}
+                            className="rounded-2xl border border-white/15 px-4 py-3 animate-in fade-in-0 fill-mode-both duration-500"
+                            style={{ animationDelay: `${200 + i * 150}ms` }}
+                          >
+                            <p className="text-xs opacity-50">{ask.who}</p>
+                            <p className="mt-1 text-[15px]">&ldquo;{ask.question}&rdquo;</p>
+                          </div>
+                        ))}
+                      </div>
+                      <p
+                        className="mt-4 text-sm opacity-70 animate-in fade-in-0 fill-mode-both duration-500"
+                        style={{ animationDelay: "520ms" }}
+                      >
+                        {step.exchange.answer}
+                      </p>
+                    </aside>
+                  )}
+                </div>
+
                 {"aims" in step && (
                   <ul className="mt-8 grid gap-2 border-t border-white/15 pt-5 sm:mt-10 sm:grid-cols-3 sm:gap-8 sm:pt-6">
                     {step.aims.map((aim, i) => (

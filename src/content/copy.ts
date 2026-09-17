@@ -67,6 +67,15 @@ export const copy = {
           { title: "Deeper relationships", body: "Students learn by building alongside peers and faculty." },
         ],
         people: "Founded by Kylar Vierra and advised by Gavin Roberts, Chair of Economics.",
+        // The demand-forward model, as the two questions it answers.
+        exchange: {
+          label: "The model",
+          asks: [
+            { who: "Students ask", question: "What can I do for you?" },
+            { who: "Employers ask", question: "What can you do for me?" },
+          ],
+          answer: "The Lab answers both.",
+        },
       },
       {
         id: "pipeline",
