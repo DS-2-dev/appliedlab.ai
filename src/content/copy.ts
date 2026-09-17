@@ -235,6 +235,17 @@ export const copy = {
 
   // Ask the Lab (2026-09-16): the landing's chat, after How it works. The
   // answers come from /api/ask. PROVISIONAL, pending Kylar.
+  // The invitation card after Ask the Lab (2026-09-17). PROVISIONAL,
+  // pending Kylar.
+  cta: {
+    kicker: "Join",
+    heading: "Start building with the Lab",
+    body: "Students from any major, faculty and organizations each have a place in the Lab. Tell us who you are, and the Lab follows up by email.",
+    join: "Join the Lab",
+    partner: "Bring a problem",
+    partnerHref: "mailto:ailab@weber.edu",
+  },
+
   ask: {
     kicker: "Questions",
     heading: "Ask anything about the Lab",

@@ -6,6 +6,7 @@ import { ArrowDown, ArrowRight } from "lucide-react";
 import { copy } from "@/content/copy";
 import { AskTheLab } from "@/components/AskTheLab";
 import { HowItWorks } from "@/components/HowItWorks";
+import { JoinCta } from "@/components/JoinCta";
 import { Reveal } from "@/components/Reveal";
 import { SiteFooter } from "@/components/SiteFooter";
 import { ScrollLink } from "@/components/ScrollLink";
@@ -74,6 +75,7 @@ export default function Home() {
 
         <HowItWorks />
         <AskTheLab />
+        <JoinCta />
       </main>
       <SiteFooter />
     </>
