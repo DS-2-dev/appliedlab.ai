@@ -14,6 +14,7 @@
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, RotateCcw } from "lucide-react";
 import { copy } from "@/content/copy";
+import { Reveal } from "@/components/Reveal";
 
 const A = copy.ask;
 const STATIC_SITE = process.env.NEXT_PUBLIC_STATIC_SITE === "1";
@@ -100,7 +101,7 @@ export function AskTheLab() {
           heading over one large composer, with the suggestions under it.
           Once a conversation starts, it runs in a centred column above the
           composer. */}
-      <div className="mx-auto flex w-full max-w-3xl flex-col items-center">
+      <Reveal className="mx-auto flex w-full max-w-3xl flex-col items-center">
         <p className="mb-3 text-[11px] font-medium tracking-[0.18em] uppercase opacity-35">{A.kicker}</p>
         <h2 className="text-center text-3xl font-light tracking-tight md:text-4xl">{A.heading}</h2>
 
@@ -197,7 +198,7 @@ export function AskTheLab() {
         )}
 
         <p className="mt-4 text-center text-xs opacity-40">{A.footnote}</p>
-      </div>
+      </Reveal>
     </section>
   );
 }
