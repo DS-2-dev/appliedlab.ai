@@ -104,12 +104,13 @@ export function AskTheLab() {
   const started = turns.length > 0;
 
   return (
-    <section id="ask" className="flex min-h-svh flex-col px-5 pt-20 pb-24 text-ink lg:px-15">
+    <section id="ask" className="flex min-h-svh flex-col justify-center px-5 py-24 text-ink lg:px-15">
       {/* Laid out like the ChatGPT and Claude home screens: a centred
           heading over one large composer, with the suggestions under it.
           Once a conversation starts, it runs in a centred column above the
-          composer. */}
-      <Reveal className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center">
+          composer. The whole block sits in the middle of the screen, so
+          scrolling to the end of the page centres it. */}
+      <Reveal className="mx-auto flex w-full max-w-3xl flex-col items-center">
         <p className="kicker mb-3 opacity-35">{A.kicker}</p>
         <h2 className="text-center text-3xl font-light tracking-tight md:text-4xl">{A.heading}</h2>
 
