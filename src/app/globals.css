@@ -188,6 +188,7 @@
   --font-magistral: "magistral", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
   /* The Projectum name beside its logo, and nothing else. TT Paplane, from
      the same kit, ships 400 only, so never bold it either. */
+  --font-archivo: var(--font-archivo-face), ui-sans-serif, system-ui, sans-serif;
   --font-paplane: "tt-paplane", var(--font-geist), ui-sans-serif, system-ui, sans-serif;
   --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
@@ -234,9 +235,10 @@
 
 /* Movement rules (2026-08-19): no global smooth scroll. In-page CTAs scroll
    via ScrollLink (smooth, no URL residue); cross-page reference deep-links
-   land instantly. scroll-padding keeps anchored arrivals below the nav. */
+   land instantly. The landing's sections fill the screen and land flush
+   with its top, under the see-through header, so there is no scroll
+   padding. */
 html {
-  scroll-padding-top: calc(var(--site-header-height) + 1.5rem);
   /* The rubber-band stays (2026-09-02). Suppressing it to keep the sticky
      header off the bounce cost more than it bought: on a trackpad a page
      that refuses to overscroll reads as fighting the gesture. Native
@@ -275,6 +277,12 @@ input,
 select,
 textarea {
   font-family: var(--font-ui);
+}
+
+/* The redesigned landing sets Archivo on its sections; controls inside
+   them take that face too instead of the old UI face. */
+.font-archivo :is(button, input, select, textarea) {
+  font-family: inherit;
 }
 
 /* Buttons: cursor.com/home's `.btn`, copied off their stylesheet rather than
@@ -318,14 +326,6 @@ textarea {
   }
 }
 
-.kicker {
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--brand-deep);
-}
-
 /* Visible focus everywhere (brand spec §4.3) */
 :focus-visible {
   outline: 2px solid var(--brand-deep);
@@ -333,27 +333,8 @@ textarea {
   border-radius: 2px;
 }
 
-/* The hero chat owns its focus state on the composer shell, matching the
-   familiar ChatGPT input rather than drawing a second ring around the
-   absolutely positioned textarea. */
-.chat-composer textarea:focus-visible {
-  outline: none;
-}
-
-/* Public forms set these variables on their shared surface. Admin controls
-   use the light fallbacks, so Field stays one component without dark-mode
-   selectors that rewrite Tailwind utilities. */
-.form-surface {
-  --form-text: var(--ink-inverse);
-  --form-muted: var(--ink-inverse-faint);
-  --form-field: #27272a;
-  --form-border: #3f3f46;
-  --form-border-hover: #71717a;
-  --form-focus: var(--brand-inverse);
-  --form-focus-ring: #3a2148;
-  color: var(--form-text);
-}
-
+/* Field's controls. A surface can set the --form-* variables to recolour
+   them; otherwise they take the light fallbacks. */
 .form-label {
   color: var(--form-text, var(--ink));
 }
@@ -383,233 +364,6 @@ textarea {
   box-shadow: 0 0 0 3px var(--form-focus-ring, var(--ground-sunken));
 }
 
-.form-surface .form-error {
-  color: #fca5a5;
-}
-
-.form-surface :focus-visible {
-  outline-color: var(--ink-inverse-faint);
-}
-
-/* Inverted surfaces repoint emphasis and focus tones for dark grounds. */
-.on-dark .kicker {
-  color: var(--brand-inverse);
-}
-
-.on-dark :focus-visible {
-  outline-color: var(--brand-inverse);
-}
-
-/* Link arrows (2026-09-02). The hero's two asks nudged their arrow on hover
-   and nothing else on the site did, so the same 2px push is defined once
-   here and every arrow that trails a link takes it.
-
-   Driven by the ancestor's :hover rather than Tailwind's `group-hover`,
-   because that would mean adding `group` to every link that carries an
-   arrow, and half of them are ScrollLink or Link wrappers whose class lists
-   are already long. `a` and `button` cover every case on the site.
-
-   Decorative arrows that are not in a link (the "you are here" badge in
-   PartnerSteps) deliberately do not take the class: nothing there is
-   hoverable, so a transition would never fire. */
-.link-arrow,
-.link-arrow-down,
-.link-arrow-up {
-  transition: transform 200ms ease;
-}
-
-a:hover .link-arrow,
-button:hover .link-arrow {
-  transform: translateX(2px);
-}
-
-a:hover .link-arrow-down,
-button:hover .link-arrow-down {
-  transform: translateY(2px);
-}
-
-/* Back-to-top leads its label rather than trailing it, so it pushes the way
-   it points. */
-a:hover .link-arrow-up,
-button:hover .link-arrow-up {
-  transform: translateY(-2px);
-}
-
-/* Route-draw animation for section rails and diagrams */
-@keyframes draw-line {
-  from {
-    stroke-dashoffset: var(--draw-length, 600);
-  }
-  to {
-    stroke-dashoffset: 0;
-  }
-}
-
-/* Transform-only entrance: content stays visible even when animations are
-   paused (throttled tabs, low power). Never animate opacity on text that has
-   no other way to appear. */
-@keyframes rise {
-  from {
-    transform: translateY(8px);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-.rise {
-  animation: rise 0.4s ease-out;
-}
-
-/* Chat panel messages: a bubble arrives rather than appearing. One shot on
-   mount, so a streaming reply animates once and then fills in place. */
-@keyframes msg-in {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-.msg-in {
-  animation: msg-in 0.34s cubic-bezier(0.22, 0.61, 0.36, 1) both;
-}
-
-/* A text caret blinks hard, on a square wave. `animate-pulse` fades on a
-   sine and reads as a glow, which is what made the composer look off. */
-@keyframes caret-blink {
-  0%,
-  49% {
-    opacity: 1;
-  }
-  50%,
-  100% {
-    opacity: 0;
-  }
-}
-
-.caret-blink {
-  animation: caret-blink 1.06s steps(1, end) infinite;
-}
-
-/* The step timer's track. scaleX from a left origin, so it costs no layout
-   and the duration can be set per use with --bar-ms. */
-@keyframes bar-fill {
-  from {
-    transform: scaleX(0);
-  }
-  to {
-    transform: scaleX(1);
-  }
-}
-
-.bar-fill {
-  transform-origin: left;
-  animation: bar-fill var(--bar-ms, 5000ms) linear forwards;
-}
-
-/* The about section's pair of apertures. Each one's contour already breathes
-   on its own timer; these move the whole block, so the two swing toward each
-   other, fuse through the gooey filter at the near end of the swing, and pull
-   apart again. Offsets are in px, not percentages — a percentage translate
-   resolves against the element's own size, and these two are different sizes.
-   The periods are coprime-ish (19s against 23s) so the pair never returns to
-   the same relative pose. */
-@keyframes orb-drift-a {
-  0% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(54px, 30px, 0) scale(1.05);
-  }
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-}
-
-@keyframes orb-drift-b {
-  0% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-  50% {
-    transform: translate3d(-44px, -34px, 0) scale(0.94);
-  }
-  100% {
-    transform: translate3d(0, 0, 0) scale(1);
-  }
-}
-
-.orb-drift-a {
-  animation: orb-drift-a 19s ease-in-out infinite;
-}
-
-.orb-drift-b {
-  animation: orb-drift-b 23s ease-in-out infinite;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .rise,
-  .msg-in,
-  .caret-blink,
-  .bar-fill,
-  .orb-drift-a,
-  .orb-drift-b,
-  .link-arrow,
-  .link-arrow-down,
-  .link-arrow-up,
-  [data-anim] {
-    animation: none !important;
-    transition: none !important;
-  }
-}
-
-/* ---------------------------------------------------------------------------
-   Dossier motif (case library): folder-tab cards and redaction bars.
-   Redaction bars are decorative shorthand for "sensitive detail removed";
-   they are always aria-hidden and never carry information. */
-
-.dossier {
-  position: relative;
-}
-
-.dossier::before {
-  content: "";
-  position: absolute;
-  top: -9px;
-  left: -1px;
-  width: 5.5rem;
-  height: 10px;
-  background: inherit;
-  border: 1px solid var(--line);
-  border-bottom: none;
-}
-
-.redact {
-  display: inline-block;
-  height: 0.5em;
-  background: var(--ink);
-  opacity: 0.16;
-  vertical-align: middle;
-}
-
-/* Sealed-solution compare: gentle, one-shot. */
-@keyframes seal-lift {
-  from {
-    opacity: 1;
-    transform: translateY(0) rotate(0deg);
-  }
-  to {
-    opacity: 0;
-    transform: translateY(-14px) rotate(-6deg);
-  }
-}
-
-.seal-lift {
-  animation: seal-lift 0.6s ease-in both;
-}
 
 .dark {
   color-scheme: dark;
@@ -716,6 +470,36 @@ button:hover .link-arrow-up {
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: #8f8f8f;
 }
+/* The landing heading's tilting word (page.tsx). Upright most of the time,
+   it leans into an italic slant now and then and straightens again. The
+   heading's face ships no italic, so the slant is a skew from the
+   baseline. Still for anyone who asks for reduced motion. */
+@keyframes tilt-word {
+  0%,
+  62%,
+  100% {
+    transform: translateX(0) skewX(0deg);
+  }
+  70%,
+  88% {
+    /* the lean pushes the top of the word right, so it steps back a touch
+       to keep its space before the next word */
+    transform: translateX(-0.05em) skewX(-12deg);
+  }
+}
+
+.tilt-word {
+  display: inline-block;
+  transform-origin: 50% 85%;
+  animation: tilt-word 7s cubic-bezier(0.65, 0, 0.35, 1) 1.5s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-word {
+    animation: none;
+  }
+}
+
 .projectum-ui {
   font-family: var(--font-body);
 }

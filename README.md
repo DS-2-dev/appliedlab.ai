@@ -37,8 +37,14 @@ npm run build:pages   # writes out/
 
 `scripts/build-pages.mjs` leaves out everything that needs a server (sign-in,
 API routes, server actions, proxy) and swaps in `pages-static/`, so Projectum
-opens as its demo and the forms fall back to email.
+opens as its demo.
 `.github/workflows/pages.yml` runs it and deploys on every push to main.
+
+The Ask the Lab chat needs a server, which Pages lacks, so on the static
+site it calls a Cloudflare Worker (`worker/`, deploy steps in
+`worker/README.md`) whose URL the workflow passes in as
+`NEXT_PUBLIC_ASK_URL` from the repo variable `ASK_URL`. Locally it uses
+`/api/ask` with `ANTHROPIC_API_KEY` in `.env.local`.
 
 ## Copy
 
@@ -58,7 +64,7 @@ line) live in settings, editable at /admin/settings.
 - `src/lib/data/`: the data seam. `local.ts` (JSON in `data/`) or
   `supabase.ts`, chosen by env vars in `index.ts`.
 - `src/lib/auth.ts`: officer gate used by every admin page and API route.
-- `src/components/visuals/`: the interactive section diagrams.
+- `design/`: the style rules (`STYLE.md`) and tokens for the redesign.
 - `supabase/migration.sql`: schema + RLS, matches spec-v2 §5.1.
 - `src/app/globals.css`: provisional brand tokens (one-file swap when the
   final tokens land).

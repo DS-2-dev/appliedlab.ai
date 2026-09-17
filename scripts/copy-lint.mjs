@@ -11,11 +11,6 @@ import path from "path";
 
 const FILES = [
   "src/content/copy.ts",
-  // Added 2026-08-16 with the IA restructure: these are public copy too, and
-  // the handbook is the largest single body of prose on the site.
-  "src/content/handbook.ts",
-  "src/content/cases.ts",
-  "src/content/showcase.ts",
   "data/settings.json",
   "data/events.json",
   "data/showcase.json",
@@ -66,10 +61,9 @@ const STALE_PATTERNS = [
   { re: /\b(Mondays?|Tuesdays?|Wednesdays?|Thursdays?|Fridays?|Saturdays?|Sundays?)\b/, label: "WEEKDAY" },
   { re: /\b\d{1,2}:\d{2}\s?[ap]m\b/i, label: "CLOCK TIME" },
 ];
-// The month check skips cases.ts and showcase.ts (months there are case
-// narrative, "The August inbox") and skips strings carrying a year
-// ("December 2026" is a dated roadmap entry, not a schedule fact).
-const MONTH_FILES = new Set(["src/content/copy.ts", "src/content/handbook.ts"]);
+// The month check skips strings carrying a year ("December 2026" is a dated
+// roadmap entry, not a schedule fact).
+const MONTH_FILES = new Set(["src/content/copy.ts"]);
 const MONTHS = /\b(January|February|March|April|May|June|July|August|September|October|November|December)\b/;
 
 let failures = 0;

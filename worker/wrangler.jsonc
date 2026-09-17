@@ -1,0 +1,22 @@
+// The Cloudflare Worker behind Ask the Lab on the static site. Deploy steps
+// are in worker/README.md.
+{
+  "name": "appliedlab-ask",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-09-01",
+  "compatibility_flags": ["nodejs_compat"],
+  // Sites allowed to call the Worker.
+  "vars": {
+    "ALLOWED_ORIGINS": "https://appliedlab.ai,https://www.appliedlab.ai,http://localhost:3000"
+  },
+  // At most 6 questions a minute per visitor. Cloudflare allows a period of
+  // 10 or 60 seconds; the namespace_id is any number unique to this account.
+  "ratelimits": [
+    {
+      "name": "ASK_LIMITER",
+      "namespace_id": "4101",
+      "simple": { "limit": 6, "period": 60 }
+    }
+  ],
+  "observability": { "enabled": true }
+}

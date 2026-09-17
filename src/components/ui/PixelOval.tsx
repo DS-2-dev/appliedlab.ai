@@ -7,9 +7,10 @@
   soft, slightly lumpy oval rather than the dead-perfect one `border-radius`
   would give you.
 
-  The fill is one image tiled across the blocks: each cell shows its own slice
-  via background-position, so together they reconstruct the picture and the
-  oval reads as a window onto it.
+  The fill is solid black, or one image tiled across the blocks when `src`
+  is given: each cell shows its own slice via background-position, so
+  together they reconstruct the picture and the oval reads as a window onto
+  it.
 
   Every `shiftMs` the contour's phases advance, so edge blocks join and leave
   the shape and the outline drifts. Cells are never unmounted — the whole
@@ -58,7 +59,7 @@ export function PixelOval({
   heightRatio = 0.72,
   aspect = 0.88,
   wobble = 0.08,
-  src = "/jetty.jpg",
+  src,
   shiftMs = 2000,
   centerX = 0.5,
   centerY = 0.5,
@@ -136,10 +137,13 @@ export function PixelOval({
   // The grid covers the oval at its widest possible wobble, so a block that
   // will ever be needed already exists and only has to fade in.
   const reach = 1 + wobble;
-  const regionW = rx * 2 * reach;
-  const regionH = ry * 2 * reach;
-  const cols = Math.ceil(regionW / pixelSize);
-  const rows = Math.ceil(regionH / pixelSize);
+  // Whole cells, and an odd count each way, so a row and a column run
+  // through the centre and the grid is the same on both sides of it.
+  const odd = (n: number) => (n % 2 === 1 ? n : n + 1);
+  const cols = odd(Math.ceil((rx * 2 * reach) / pixelSize));
+  const rows = odd(Math.ceil((ry * 2 * reach) / pixelSize));
+  const regionW = cols * pixelSize;
+  const regionH = rows * pixelSize;
 
   const cells: { x: number; y: number; on: boolean }[] = [];
   if (rx > 0 && ry > 0) {
@@ -235,7 +239,9 @@ export function PixelOval({
               height: pixelSize,
               opacity: c.on ? 1 : 0,
               transition: "opacity 700ms ease",
-              backgroundImage: background ?? `url(${src})`,
+              // Solid black unless given an image or a CSS background.
+              backgroundImage: background ?? (src ? `url(${src})` : undefined),
+              backgroundColor: background || src ? undefined : "#000",
               // One image across the whole region; each cell shows its slice.
               backgroundSize: `${regionW}px ${regionH}px`,
               backgroundPosition: `${-c.x}px ${-c.y}px`,

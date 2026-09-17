@@ -1,23 +1,11 @@
 /*
-  ALL site-chrome copy lives here, including the landing's three audience
-  deals. Handbook body content lives in handbook.ts; case packages in
-  cases.ts; showcase entries in the database.
+  All site copy lives here. The public site was cleared for a redesign on
+  2026-09-16; what remains is the page title, the sign-in screens and
+  Projectum.
 
-  VOICE + CONTENT RULES: canonical in the lab-voice skill at
-  .claude/skills/lab-voice/SKILL.md (repo root), which carries the 16 rules,
-  the genre boundary, and the worked examples. copy-lint
-  (scripts/copy-lint.mjs) is the mechanical arm and runs on every content
-  file. The register in one line: a graduate writer explaining the Lab to a
-  casual reader. Write to the skill, then run the lint.
-
-  OWNERSHIP: the ownership and seal-optionality sentences published on /work,
-  /partners, the case detail page, and the handbook instruments are
-  commitments. Rephrase only without weakening them; the exact terms live in
-  the skill.
-
-  STATUS: PROVISIONAL, every string, pending Kylar's markup pass.
-  Flags: [VERIFY disclaimer] footer.orgLine; [TAGLINE] hero.headline is the
-  provisional tagline, overridden by the settings tagline when set.
+  VOICE + CONTENT RULES: canonical in the lab-voice skill
+  (.claude/skills/lab-voice/SKILL.md). copy-lint (scripts/copy-lint.mjs)
+  is the mechanical arm. Write to the skill, then run the lint.
 */
 
 export const copy = {
@@ -29,583 +17,110 @@ export const copy = {
 
   nav: {
     wordmark: "Applied AI Lab",
-    wordmarkSuffix: "at Weber State",
-    skipLink: "Skip to content",
+    // The header's links, after the advisory board deck's sections. The
+    // pages behind them are not built yet.
     items: [
-      { label: "For students", href: "/#for-students" },
-      { label: "For faculty", href: "/#for-faculty" },
-      { label: "For organizations", href: "/#for-organizations" },
-      { label: "How it works", href: "/handbook" },
-      { label: "The work", href: "/work" },
+      { label: "About", href: "/#about" },
+      { label: "The Pipeline", href: "/#pipeline" },
+      { label: "Platform", href: "/#platform" },
+      { label: "Student Roles", href: "/#roles" },
+      { label: "Partners", href: "/#partners" },
     ],
-    // The three the header shows while the site is one page. They do not
-    // navigate yet: each opens the construction notice below, and the href is
-    // kept so they become ordinary links the day those pages go up.
-    launchItems: [
-      { label: "Work", href: "/work" },
-      { label: "Handbook", href: "/handbook" },
-      { label: "Join", href: "/join" },
-    ],
-    construction: {
-      heading: "This page is still being built",
-      body: "The landing page is what is ready today. This one goes up shortly, and the header will take you straight to it.",
-      close: "Stay here",
-    },
-    cta: "Sign up",
-    ctaHref: "/join",
     login: "Log in",
-    loginHref: "/login",
-    // Replace Log in and Sign up in the header once someone is signed in.
-    dashboard: "Dashboard",
-    dashboardHref: "/projectum",
-    logout: "Log out",
+    signup: "Sign up",
     // In place of Log in on the static site, which has no accounts.
     demo: "Try Projectum",
   },
 
-  hero: {
-    eyebrow: "Applied AI Lab at Weber State",
-    headline: "Build the thing in your head.",
-    sub: "Everyone has ideas, and few have the skills to execute them. AI closes that gap. The Lab is where Weber State students close it, on problems organizations bring.",
-    ctaPrimary: "Come to the next meeting",
-    ctaSecondary: "See how it runs",
-    // consolidated reassurance strip (2026-08-22 audit): the lines every
-    // deciding student needed, on one screen instead of three page-bottoms
-    facts: [
-      "Any major.",
-      "No experience needed.",
-      "Meetings are free.",
-      "A laptop helps but isn't required.",
-      "The first weeks start from zero.",
-    ],
+  // The landing hero (2026-09-16), written for students of every major and
+  // for the organizations that bring problems. PROVISIONAL, pending Kylar.
+  home: {
+    kicker: "Applied AI Lab at Weber State",
+    heading: "Students solving industry problems with AI.",
+    // The word in the heading that tilts into italic now and then.
+    headingTilt: "solving",
+    lede: "Organizations bring the challenges their teams face every day, and students from any major build the solutions with AI. Students gain hands-on experience, and a partner can hire the student who built its tool as an intern.",
+    join: "Join the Lab",
+    // Scrolls to the first step of How it works, below the hero.
+    how: "See how it works",
+    howHref: "#about" as const,
   },
 
-  howItWorks: {
+  // How it works (2026-09-16): the landing's scroll-driven section, one step
+  // per header link, after the advisory board deck. PROVISIONAL, pending
+  // Kylar. `id` is the anchor the header links to.
+  how: {
     kicker: "How it works",
-    heading: "Problem. Build. Review. Show.",
-    intro:
-      "Here is the whole thing in one breath. A member takes one problem and works it for a semester, start to finish.",
     steps: [
-      // `body` is the longer half, recovered from earlier versions of the
-      // site (commits 4521e21 and bfe8632) where each step had more than one
-      // line: the sealed-solution promise on 01, the two halves of a meeting
-      // on 02, the rubric on 03, and the showcase's own paragraph on 04.
       {
-        id: "problem",
-        num: "01",
-        title: "Start with a problem",
-        caption:
-          "Bring one from your own life or work, or claim a case, which is a problem a local organization brings us.",
-        body:
-          "A case is a problem a local organization brings, and any solution they already hold stays sealed until your review, so what you build is judged on its own.",
+        id: "about",
+        label: "About",
+        caption: "What the Lab is",
+        title: "A student-led lab for applied AI",
+        body: "Members of the Applied AI Lab take on industry challenges and solve them with AI. Students gain hands-on experience, organizations put AI to work, and peers and faculty build together.",
+        chips: ["Any major", "Meetings are free", "Faculty alongside"],
       },
       {
-        id: "build",
-        num: "02",
-        title: "Build in the room",
-        caption:
-          "Each meeting opens with one short skill, and the rest of the hour is yours, with help beside you.",
-        body:
-          "We open by taking one real problem apart from start to finish, so you see the whole shape of a build before touching your own. The rest of the meeting belongs to your project. You build, and we walk the room and help you get unstuck.",
+        id: "pipeline",
+        label: "The Pipeline",
+        caption: "How a project runs",
+        title: "From a posted problem to an internship",
+        body: "Partners post problems, and members claim them with an action plan and build toward milestones. Faculty reps review each submission, and a partner that moves to implement can hire the member as an intern.",
+        chips: ["Post", "Claim", "Build", "Review", "Hire"],
+        chain: true,
       },
       {
-        id: "review",
-        num: "03",
-        title: "Face the review",
-        caption:
-          "A faculty member rates the finished work on four criteria and talks it through with you in person.",
-        body:
-          "The four are the same every time and published in advance, so you know what you are being read against before you start rather than after you finish.",
+        id: "platform",
+        label: "Platform",
+        caption: "Where the work lives",
+        title: "A notice board and a project tracker",
+        body: "Partners post problems to a notice board, and faculty approve each claim before work begins. Approval unlocks a funded Claude account, and every milestone is logged where partners and reps can follow it.",
+        chips: ["Notice board", "Project tracker", "Launching next"],
       },
       {
-        id: "showcase",
-        num: "04",
-        title: "Show it in public",
-        caption:
-          "The semester ends with a public showcase where members present what they built.",
-        body:
-          "Members present working tools to the organizations that asked for them, and to anyone curious. It is open, and it is the end of the line every project is built toward.",
+        id: "roles",
+        label: "Student Roles",
+        caption: "How students grow",
+        title: "Three levels, each one earned",
+        body: "Every student starts as an Affiliate who comes to meetings and events. Members on an approved project become Sponsored with a funded Claude account, and a Builder is hired by a partner to implement the work.",
+        chips: ["Affiliate", "Sponsored", "Builder"],
+        chain: true,
       },
-    ],
-    fullLink: "The whole design, in one place",
-  },
-
-  // The short club description Kylar asked for (2026-09-01), sitting between
-  // the four steps and the pipelines. Every line of its body is already
-  // written: the definition, what you get, and what it asks all come from the
-  // students block, so the landing and the member deal cannot drift apart.
-  clubShort: {
-    kicker: "What we do",
-    heading: "We connect classrooms to real work",
-    // The card's two halves. Both are one card as of 2026-09-02, so each half
-    // needs its own name or the deal reads as a continuation of the
-    // description rather than a separate promise.
-    subheading: "What the Lab is",
-    dealSubheading: "What membership is",
-    // The three paragraphs are the first site's, recovered from commit
-    // bfe8632, where this was the club's own description. Three edits, all
-    // for copy-lint: "Lab" cased to match the site, the two prose colons
-    // rewritten, and the bare "December" given its year.
-    paragraphs: [
-      "Weber State students are learning AI tools faster than any syllabus can keep up with. Local organizations are sitting on problems they would love to hand somebody. The Lab puts the two in the same room.",
-      "A business brings us something real. A student takes it on and spends the semester building a working solution with modern AI tools, automated workflows for instance, which are multi-step tasks a computer runs on its own. Weekly meetings are where the building happens. A monthly social keeps it human. The showcase in December 2026 is where everything lands in public.",
-      "The format got a test run before launch. While road-testing it, the founder built a route planner for a working business in about two weeks, and rebuilt a budget process that used to take weeks into one that finishes in days. Both are still running. That is the bar for a Lab project. It has to run.",
+      {
+        id: "partners",
+        label: "Partners",
+        caption: "What organizations bring",
+        title: "Bring the problems your team runs into",
+        body: "Organizations post as many problems as they like, from pricing models to scheduling tools. Members from any discipline build the solutions, and partners review each submission and meet the students behind it.",
+        chips: ["Finance", "Computer science", "Accounting", "Design"],
+      },
     ],
   },
 
-  thisFall: {
-    kicker: "This semester",
-    heading: "Week by week",
-    intro: "Rooms can change, and each meeting's room is posted here.",
-    todayLabel: "today",
-    milestones: [
-      {
-        id: "blockparty",
-        date: "2026-08-28",
-        dateLabel: "Fri Aug 28",
-        title: "Wildcat Block Party",
-        note: "Find our table. 8 am to 2 pm on campus.",
-      },
-      {
-        id: "kickoff",
-        date: "2026-09-03",
-        dateLabel: "Thu Sep 3",
-        title: "Kickoff",
-        note: "What the Lab is, how the semester runs, how to start a project.",
-      },
-      {
-        id: "weekly",
-        date: null,
-        dateLabel: "Sep to Dec",
-        title: "Weekly workshops",
-        note: "One off-campus social a month.",
-      },
-      {
-        id: "thanksgiving",
-        date: "2026-11-26",
-        dateLabel: "Thu Nov 26",
-        title: "No meeting",
-        note: "Thanksgiving.",
-      },
-      {
-        id: "showcase",
-        date: "2026-12-03",
-        dateLabel: "Thu Dec 3",
-        title: "Public showcase",
-        note: "Members present finished work in public.",
-      },
+  // Ask the Lab (2026-09-16): the landing's chat, after How it works. The
+  // answers come from /api/ask. PROVISIONAL, pending Kylar.
+  ask: {
+    kicker: "Questions",
+    heading: "Ask anything about the Lab",
+    placeholder: "Ask about meetings, projects or partnering",
+    send: "Send",
+    suggestions: [
+      "Do I need experience with AI to join?",
+      "How does a project go from a problem to an internship?",
+      "What does a Sponsored member get?",
+      "How can my organization bring a problem?",
     ],
-    roomFallback: "Shepherd Union, room posted here",
-    joinHeading: "Joining",
-    joinBody: "Meetings are free for students and faculty.",
-    joinFacts: "A laptop helps but isn't required.",
-    fundedLine: "Members with an active project get a Claude account funded by the Lab. Claude is the AI assistant members build with, made by Anthropic.",
-    joinCta: "Get the kickoff reminder",
-  },
-
-  // ------------------------------------------------------------------ /join
-
-  join: {
-    meta: { title: "Join" },
-    kicker: "Welcome",
-    heading: "Join the Lab",
-    lede: "Membership is showing up, and meetings are free.",
-    whatToBring: "A laptop helps but isn't required. The first weeks start from zero.",
-    formHeading: "Leave your name",
-    formIntro:
-      "Rooms can change from week to week. Leave your name and we'll send the kickoff reminder and each week's room, and we'll know to look for you.",
-    fields: {
-      name: { label: "Your name" },
-      email: { label: "Email", help: "Reminders and rooms only. We don't share it." },
-      major: { label: "Major or college (optional)" },
-    },
-    submit: "Send",
-    successHeading: "You're on the list",
-    successBody: "We'll look for you at the next meeting.",
-    duplicateMsg: "You're already on the list.",
-    // The QR scan switch: one page captures every kind of visitor, and the
-    // escape is a plain link, never a gate.
-    audience: {
-      label: "I'm here as",
-      options: [
-        { id: "student", label: "A student" },
-        { id: "faculty", label: "Faculty" },
-        { id: "organization", label: "An organization" },
-      ],
-    },
-    roleLinks: {
-      student: { label: "What membership involves", href: "/#for-students" },
-      faculty: { label: "What the Representative role involves", href: "/#for-faculty" },
-      organization: { label: "How partnering works", href: "/#for-organizations" },
-    },
-    justLooking: { text: "Just looking?", cta: "See the Lab" },
-  },
-
-  nextMeeting: {
-    kicker: "Next meeting",
-    // rendered from settings.meeting_schedule, so prose stays weekday-free
-    cadence: "The Lab meets {schedule} in Shepherd Union.",
-    calendarLead: "Put it on your calendar:",
-    semesterCta: "The whole semester (.ics)",
-  },
-
-  calendar: {
-    addGoogle: "Google Calendar",
-  },
-
-  statusKey: {
-    label: "The markers",
-    items: ["Running now", "This semester", "Planned, designed with the build ahead"],
-  },
-
-  theWork: {
-    kicker: "The work",
-    heading: "Built here, still running",
-    intro:
-      "Two tools built while testing the format are in use today. The record shows what got built, who built it, and whether it still runs.",
-    recordNote: "Member work joins after faculty review. The founder built these two while testing the format.",
-    cta: "See the work",
-  },
-
-  // The close of the landing: purpose, vision, people (2026-08-22, moved
-  // from the retired /about; the statement is the master plan's, verbatim)
-  close: {
-    kicker: "Purpose",
-    statement: "To bring people together, ask hard questions, and elevate everyone involved.",
-    belonging: "Every college and every discipline at Weber State belongs here.",
-    vision: "To build a model that transforms America's student-employer working relationships.",
-    peopleHeading: "Student led, with faculty backing",
-    people: [
-      {
-        name: "Gavin Roberts",
-        role: "Advisor",
-        detail: "Chair of Economics, Goddard School of Business and Economics.",
-      },
-      {
-        name: "Kylar Vierra",
-        role: "President",
-        detail: "Founder. Runs the weekly meetings and builds alongside members.",
-      },
-    ],
-    officersNote: "Officer roles are open this semester. Ask at a meeting.",
-    horizon:
-      "If this works, freshmen will be building real solutions and standing out to businesses before they graduate. High-impact, kind, highly valuable people that everyone wants to work with.",
-    whyCta: { label: "Why it runs this way", href: "/handbook#why" },
-  },
-
-  // ------------------------------------------------------------------ /work
-
-  work: {
-    meta: { title: "The work" },
-    kicker: "The work",
-    heading: "The library and the record",
-    lede: "The case library holds problems to work on, and the record holds what has been built.",
-    statusLine: "The first claimable cases go up before the kickoff.",
-
-    libraryKicker: "The library",
-    libraryHeading: "Cases to work from",
-    libraryLede:
-      "A case is a problem an organization brought in and allowed us to package. When they hold a solution of their own, it stays sealed while you work, so you face the problem the same way they did.",
-    exampleNote:
-      "These two are examples of the format. The first draws on the Lab's own summer work with the details changed, and neither is claimable.",
-    exampleBadge: "Example, not claimable",
-    openHeading: "Ready to claim",
-
-    howKicker: "How a case works",
-    sealedHeading: "Sealed until your review",
-    sealedBody:
-      "When the organization holds a solution of its own, it stays sealed while you work. Your Representative opens it with you at the review and sets it beside yours, so the comparison happens after you have committed to an approach.",
-    sealedCustody:
-      "Until the portal exists, a sealed solution lives in a drive folder only the reviewing Representative can open.",
-    aiBoundary:
-      "The case write-up itself is working material. After redaction, members build against it with AI tools. The sealed solution never touches those tools.",
-    ownershipHeading: "Who owns what",
-    ownershipSealed:
-      "The sealed solution is the Partner's property. Your Representative shows it once, in person, at your review, and it is never shared beyond that meeting or processed by AI.",
-    ownershipMember:
-      "The solution you build is yours. It appears in the Partner's view and at the showcase under your name, and a Partner who wants to use it makes an agreement with you.",
-    schemaHeading: "What a case package contains",
-    rubricHeading: "How finished work is rated",
-    rubricBody:
-      "A Representative rates finished casework from 1 to 5 on four criteria, and written feedback comes with the rating. The two of you then meet in person for thirty minutes, and the organization's solution comes out for comparison.",
-    claimHeading: "Claiming one",
-    claimBody:
-      "Come to a meeting and say which case you want. Cases are worked solo by default, and a Representative can approve a pair on a large one. A project of your own works the same way, so write it up and start.",
-
-    recordKicker: "The record",
-    recordHeading: "Finished work",
-    recordLede: "The record shows finished work, who built it, and whether it still runs.",
-    memberNote:
-      "Member work joins after the first review round. Each published piece shows the following.",
-    memberOwnLine:
-      "Members own what they build, and a Partner who wants to use a member's solution makes an agreement with that member.",
-    founderNote:
-      "The founder built both of these while testing the format, before the Lab opened. They carry no faculty rating, and both are in use.",
-    showcaseEventLine: "The semester closes with a public showcase in Shepherd Union.",
-    runningLabel: "Still in use",
-    limitsLabel: "What it doesn't do",
-    ratingLabel: "Faculty rating",
-    unratedLabel: "Not faculty rated",
-    partnerUnnamed: "Organization not named",
-  },
-
-  // ------------------------------------------------------ /cases/[slug]
-
-  caseDetail: {
-    backTo: "The library",
-    fields: {
-      org: "Organization",
-      domain: "Domain",
-      scope: "Scope",
-      needs: "What you need coming in",
-      businessModel: "The organization",
-      problem: "The problem",
-      dependencies: "Constraints and dependencies",
-      achieves: "What solving it achieves",
-      constraints: "Hard limits",
-      deliverable: "What you hand in",
-      mess: "What is deliberately unresolved",
-      sealed: "The organization's own solution",
-    },
-    sealedNote:
-      "Your Representative opens it with you at the review, in person. It remains the Partner's property, and it is never shared beyond that meeting or processed by AI.",
-    claimHeading: "Claiming",
-    claimBody: "Come to a meeting and say you want this one.",
-    partnerCta: { text: "Run an organization with a problem like this one?", label: "Bring it to us", href: "/#for-organizations" },
-  },
-
-  // ------------------------------------------------------------- /handbook
-
-  handbookPage: {
-    backToTop: "Back to top",
-    contentsHeading: "Contents",
-    sourceNote: "Last updated August 19, 2026.",
-  },
-
-  // -------------------------------------------------------------- /faculty
-
-  // The deals render as landing sections (2026-08-22); /join consumes
-  // faculty.start and partners.start for its forms.
-  // The three deals (2026-08-22): each audience's complete offer, rendered
-  // as landing sections. The /join forms consume faculty.start and
-  // partners.start unchanged. Role pages are retired.
-  students: {
-    id: "for-students",
-    label: "For students",
-    heading: "Members",
-    definition:
-      "A member takes one problem from a first plan to a working tool, with the Lab's tools and help in the room. Any major qualifies, and membership is showing up.",
-    doBlock: {
-      heading: "What you do",
-      items: [
-        {
-          title: "Pick the problem",
-          body: "Bring one from your own life or work, or claim a case. Either counts, and either activates your funded Claude account. Claude is the AI assistant members build with, made by Anthropic.",
-        },
-        {
-          title: "Build until it works",
-          body: "Write a short plan of action first, and an officer helps with your first one. Then build, week after week, until someone else can use what you made.",
-        },
-      ],
-    },
-    ladderHeading: "The ladder",
-    ladderLede: "Involvement is a ladder with published gates. Meet the bar and you climb.",
-    getBlock: {
-      heading: "What you get",
-      body: "You leave with a working tool, the story of how you built it, and a faculty rating that says what it holds. The boat can have holes in it. It has to float, and you learn why it floats.",
-    },
-    asks: {
-      heading: "What the role asks",
-      body: "Showing up is the whole cost. Staying on the ladder takes an active project and 60% attendance at the weekly meetings, and membership is free.",
-    },
-    protections: [
-      "The solution you build is yours. It appears in the Partner's view and at the showcase under your name, and a Partner who wants to use it makes an agreement with you.",
-      "A rating always comes with written feedback and a thirty-minute debrief, and more than one faculty member can rate the same work.",
-    ],
-    ask: { label: "Leave your name", href: "/join" },
-  },
-
-  faculty: {
-    id: "for-faculty",
-    label: "For faculty",
-    heading: "Representatives",
-    definition:
-      "A Representative reviews finished member work in their own field and connects the Lab to organizations they know. The role is smaller than it sounds, and any college, department, or club at Weber State can hold one.",
-    doBlock: {
-      heading: "What you do",
-      intro: "The role has two parts, and the second is the larger one.",
-      items: [
-        {
-          title: "Package a case",
-          body: "Work with an organization in your field to write up a problem they bring. You capture the situation, the constraints, and what a solution has to achieve, and any solution of theirs is sealed until review.",
-        },
-        {
-          title: "Review finished work",
-          body: "Rate finished casework from 1 to 5 on four criteria and write the feedback that goes with the rating. You then meet the student in person for thirty minutes and compare their approach with the organization's.",
-        },
-        {
-          title: "Later, live projects",
-          planned: true,
-          body: "Once live projects open, Representatives also review plans of action, hold monthly check-ins, and act as liaison between Partner and Member. Joining that half stays your choice.",
-        },
-      ],
-    },
-    rubricHeading: "The four criteria",
-    numbers: {
-      heading: "The semester, in numbers",
-      // [VERIFY] Kylar to set N reviews, hours, and landing weeks; until
-      // then this states the mechanism honestly without inventing figures.
-      body: "The first semester's numbers are being set with the first Representatives. You name your own cap in the form, reviews batch into blocks you schedule, and past your cap the Lab recruits a second Representative.",
-      links: [
-        { label: "See the case package that lands on your desk", href: "/cases/example-seasonal-budget" },
-      ],
-    },
-    getBlock: {
-      heading: "What you get",
-      body: "You see what students in your field produce when handed an open problem and AI tools. What you observe feeds directly into what you teach.",
-    },
-    protections: [
-      "Your review load stays fixed, batched into blocks you schedule.",
-      "If your field produces more work than one person can review, the Lab recruits a second Representative.",
-    ],
-    ask: { label: "Tell us your field", href: "/join?as=faculty" },
-    start: {
-      kicker: "Next step",
-      heading: "Tell us your field",
-      kind: "representative",
-      mailSubject: "Representative interest",
-      formIntro:
-        "Tell us your field and roughly what you could take on. We reply within {days} business days.",
-      fields: {
-        org: {
-          label: "Department, college, or program",
-          help: "Where you sit at Weber State.",
-        },
-        contact: { label: "Your name" },
-        email: { label: "Email", help: "Where the reply goes. We don't share it." },
-        problem: {
-          label: "What could you take on?",
-          help: "Reviewing casework, packaging a case with an organization you know, or both. Rough is fine.",
-        },
-      },
-      submit: "Send",
-      successHeading: "Got it",
-      successBody:
-        "We reply within {days} business days. If email is easier, write to ailab@weber.edu.",
-    },
-  },
-
-  partners: {
-    id: "for-organizations",
-    label: "For organizations",
-    heading: "Partners",
-    definition:
-      "A Partner brings the Lab one problem, solved or still open. Members work it from scratch, beside your business and never inside it, and any solution you hold stays sealed until the review.",
-    heroNote: "The Lab is new. Fall 2026 is the first semester, and early partners shape how it runs.",
-    give: {
-      heading: "What you give",
-      body: "The ask is one problem, described once. We capture the situation, the constraints, and what a solution has to achieve, and any solution of your own is sealed at intake.",
-      timeLine:
-        "One conversation starts it. Sensitive detail comes out before the case enters the library, and after that there is no fee and no contract. Expect an occasional question from the member working your case, and little else.",
-    },
-    steps: [
-      { title: "Tell us the problem", note: "The form takes about five minutes." },
-      { title: "We talk", note: "Half an hour on what can be shared and what comes out." },
-      { title: "We package and seal", note: "A Representative writes it up. Your solution is sealed." },
-      { title: "Students work it", note: "From scratch, through the semester." },
-      { title: "You see what came back", note: "Rated work, and the end-of-semester showcase if you'd like to come." },
-    ],
-    youAreHere: "start here",
-    info: {
-      heading: "What happens to your information",
-      lines: [
-        "Sensitive detail comes out before the case enters the library, not after, and you decide what can be shared in the packaging conversation.",
-        "After redaction, the case write-up is working material that members build against with AI tools. Your sealed solution never touches those tools.",
-        "Your solution sits in the drawer the whole time, and it comes out once, in person, at the review, after the member has committed to an approach.",
-        "Until the portal exists, the sealed file lives in a drive folder only your Representative can open.",
-        "The sealed solution remains your property. Your Representative shows it once, in person, at the faculty review, and it is never shared beyond that meeting or processed by AI.",
-      ],
-    },
-    getBlock: {
-      heading: "What you get",
-      body: "You see how students approach a problem you know well, and you meet the ones whose work stands out. What comes back is evidence of what students can do with AI in your domain, on a problem you set.",
-      ownLine:
-        "The student's solution remains theirs in the same way. It appears in your view and at the showcase under their name, and using it starts with an agreement between you and the member.",
-      agreementLine:
-        "That agreement can be as small as a conversation, and the Lab sits in when you want it there.",
-    },
-    checker: {
-      heading: "Is it a case?",
-      intro: "Three questions.",
-      questions: [
-        "Does it cost you real time or money?",
-        "Can it be described without giving away secrets?",
-        "Could someone outside your walls work on it beside you?",
-      ],
-      yes: "Yes",
-      no: "No",
-      allYes: "That's a case. Send it.",
-      someNo: "Send it anyway, and the conversation will sort it out.",
-      idle: "Answer all three.",
-    },
-    ask: { label: "Send us the problem", href: "/join?as=organization" },
-    start: {
-      kicker: "Next step",
-      heading: "Send us the problem",
-      kind: "casework",
-      mailSubject: "Partner inquiry",
-      formIntro: "We reply within {days} business days.",
-      fields: {
-        org: {
-          label: "Organization",
-          help: "Business, nonprofit, university entity, or another club.",
-        },
-        contact: { label: "Your name" },
-        email: { label: "Email", help: "Where the reply goes. We don't share it." },
-        problem: {
-          label: "What's the problem?",
-          help: "Plain words are perfect. What breaks, what does it cost, and what have you tried?",
-        },
-      },
-      submit: "Send",
-      successHeading: "Got it",
-      successBody:
-        "We reply within {days} business days. If email is easier, write to ailab@weber.edu.",
-    },
-  },
-
-  footer: {
-    contactHeading: "Talk to us",
-    email: "ailab@weber.edu",
-    accommodations:
-      "Contact the Applied AI Lab at ailab@weber.edu to request accommodations in relation to a disability.",
-    // [VERIFY disclaimer] exact required wording pending from Student Involvement
-    orgLine: "Applied AI Lab at Weber State, a student organization.",
-    linksHeading: "The Lab",
-    links: [
-      { label: "For students", href: "/#for-students" },
-      { label: "For faculty", href: "/#for-faculty" },
-      { label: "For organizations", href: "/#for-organizations" },
-      { label: "How it works", href: "/handbook" },
-      { label: "The work", href: "/work" },
-      { label: "Purpose", href: "/#purpose" },
-    ],
-  },
-
-  forms: {
-    requiredError: "This one's required.",
-    emailError: "That email doesn't look complete.",
-    rateLimited: "Too many submissions from this connection. Try again in an hour, or email ailab@weber.edu.",
-    genericError: "Something broke on our end. Email us at ailab@weber.edu instead.",
-    emailFallbackNote: "Form storage isn't live yet, so the button opens a ready-to-send email instead.",
-    sending: "Sending...",
+    thinking: "Thinking",
+    footnote: "Answers are written by AI and can be wrong. For anything that matters, email ailab@weber.edu.",
+    offline: "The assistant isn't connected on this version of the site yet. Email ailab@weber.edu and we'll answer there.",
+    error: "The assistant couldn't answer just now. Email ailab@weber.edu and we'll answer there.",
+    reset: "New chat",
   },
 
   notFound: {
     line: "There's nothing at this address.",
     cta: "Back to the Lab",
   },
-
 
   // Accounts (2026-09-11). Open to Weber State addresses, by Google or by
   // email and password. Microcopy throughout, so fragments are fine; the
@@ -1247,7 +762,6 @@ export const copy = {
     logout: "Log out",
     toggle: "Toggle sidebar",
   },
-
 } as const;
 
 export type Copy = typeof copy;

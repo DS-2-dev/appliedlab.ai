@@ -13,6 +13,7 @@
     "check": "tsc --noEmit && eslint && node scripts/copy-lint.mjs && node --test \"scripts/*.test.mjs\""
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.126.0",
     "@base-ui/react": "^1.8.0",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.112.1",

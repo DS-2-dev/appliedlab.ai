@@ -26,7 +26,7 @@ const SERVER_ONLY = [
   "src/app/reset-password",
 ];
 
-const SKIP = new Set([".git", "package-lock.json", ".next", ".pages-build", "node_modules", "out", "pages-static"]);
+const SKIP = new Set([".git", "package-lock.json", ".next", ".pages-build", "node_modules", "out", "pages-static", "worker"]);
 
 fs.rmSync(stage, { recursive: true, force: true });
 for (const entry of fs.readdirSync(root)) {
