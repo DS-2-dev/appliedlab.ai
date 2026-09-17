@@ -261,7 +261,7 @@ export function SiteHeader() {
                 aria-hidden={!open}
                 initial={false}
                 animate={swap(open, 0.1)}
-                className="absolute inset-y-0 left-1 flex items-center text-sm whitespace-nowrap"
+                className="pointer-events-none absolute inset-y-0 left-1 flex items-center text-sm whitespace-nowrap"
               >
                 {copy.nav.wordmark}
               </motion.span>
