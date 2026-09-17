@@ -1,8 +1,14 @@
-// Ask the Lab for the static site. GitHub Pages serves files only, so the
-// chat's questions come here instead of to /api/ask, with the same
-// validation, instructions and facts (src/lib/ask.ts).
+// The static site's server side. GitHub Pages serves files only, so two
+// things come here:
 //
-// Two engines. With an ANTHROPIC_API_KEY secret it asks Claude, exactly as
+// - POST /: Ask the Lab's questions, instead of /api/ask, with the same
+//   validation, instructions and facts (src/lib/ask.ts).
+// - POST /interest: the Join the Lab form, instead of /api/interest, checked
+//   with the same rules (src/lib/interest.ts) and kept in the INTEREST KV
+//   namespace. worker/README.md shows how to read them.
+//
+// For the chat there are
+// two engines. With an ANTHROPIC_API_KEY secret it asks Claude, exactly as
 // the route does. Without one it uses Cloudflare Workers AI (Llama 3.3
 // 70B), which is free up to Cloudflare's daily allowance (about 70
 // questions a day at this prompt's size); past that, requests fail and the
@@ -23,6 +29,7 @@ import {
   textStream,
   type Turn,
 } from "@/lib/ask";
+import { checkInterest } from "@/lib/interest";
 import { DEFAULT_SETTINGS, type LabEvent, type Settings } from "@/lib/types";
 import events from "../../data/events.json";
 import settings from "../../data/settings.json";
@@ -33,6 +40,8 @@ interface Env {
   ANTHROPIC_API_KEY?: string;
   ALLOWED_ORIGINS: string;
   ASK_LIMITER: RateLimit;
+  JOIN_LIMITER: RateLimit;
+  INTEREST: KVNamespace;
   AI: Ai;
 }
 
@@ -87,15 +96,39 @@ function streamFree(env: Env, turns: Turn[], schedule: string): ReadableStream<U
   });
 }
 
+// Join the Lab. Each submission is one KV entry, keyed by time so a listing
+// reads oldest first, with the role, name and email as metadata so the
+// listing alone shows who joined. No IP address is kept.
+async function saveInterest(req: Request, env: Env, ip: string, headers: Record<string, string>): Promise<Response> {
+  const { success } = await env.JOIN_LIMITER.limit({ key: ip });
+  if (!success) return new Response(null, { status: 429, headers });
+
+  const body = (await req.json().catch(() => null)) as Record<string, unknown> | null;
+  // The bot trap: accept quietly, keep nothing.
+  if (body?.website) return new Response(null, { status: 204, headers });
+
+  const checked = checkInterest(body);
+  if ("errors" in checked) return Response.json(checked, { status: 400, headers });
+
+  const { role, name, email } = checked.value;
+  const at = new Date().toISOString();
+  await env.INTEREST.put(`${at}_${crypto.randomUUID()}`, JSON.stringify({ ...checked.value, at }), {
+    metadata: { role, name, email },
+  });
+  return new Response(null, { status: 204, headers });
+}
+
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     const headers = cors(req.headers.get("origin"), env);
-    // Only the Lab's own pages may ask.
+    // Only the Lab's own pages may call.
     if (!headers["access-control-allow-origin"]) return text("Forbidden.", 403, {});
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
     if (req.method !== "POST") return text("Method not allowed.", 405, headers);
 
     const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+    if (new URL(req.url).pathname === "/interest") return saveInterest(req, env, ip, headers);
+
     const { success } = await env.ASK_LIMITER.limit({ key: ip });
     if (!success) return text(LIMITED_TEXT, 429, headers);
 

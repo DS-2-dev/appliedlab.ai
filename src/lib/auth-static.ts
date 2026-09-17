@@ -14,7 +14,6 @@ const unavailable = async (_: AuthState, data: FormData): Promise<AuthState> => 
 
 export const staticActions = {
   loginAction: unavailable,
-  signupAction: unavailable,
   forgotAction: unavailable,
   resetAction: unavailable,
 };

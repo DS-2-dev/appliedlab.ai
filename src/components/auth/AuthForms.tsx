@@ -1,6 +1,6 @@
 "use client";
 
-// The four account forms. Each posts to its server action through
+// The three account forms. Each posts to its server action through
 // useActionState, so errors come back into the same form without a page
 // load, and the form still submits normally if JavaScript has not loaded.
 //
@@ -23,16 +23,16 @@ import { PasswordInput } from "./PasswordInput";
 import { SubmitButton } from "./SubmitButton";
 
 // The static site has no server, so its forms answer from auth-static.
-const { forgotAction, loginAction, resetAction, signupAction } = STATIC_SITE ? staticActions : serverActions;
+const { forgotAction, loginAction, resetAction } = STATIC_SITE ? staticActions : serverActions;
 
 const A = copy.auth;
 const F = A.fields;
 
 
-function EmailField({ state, withHelp }: { state: AuthState; withHelp?: boolean }) {
+function EmailField({ state }: { state: AuthState }) {
   const error = state.errors?.email;
   return (
-    <Field id="email" label={F.email.label} help={withHelp ? F.email.help : undefined} error={error}>
+    <Field id="email" label={F.email.label} error={error}>
       <input
         id="email"
         name="email"
@@ -45,7 +45,7 @@ function EmailField({ state, withHelp }: { state: AuthState; withHelp?: boolean 
         defaultValue={state.values?.email}
         className={inputClass}
         aria-invalid={error ? true : undefined}
-        aria-describedby={[withHelp && "email-help", error && "email-error"].filter(Boolean).join(" ") || undefined}
+        aria-describedby={error ? "email-error" : undefined}
       />
     </Field>
   );
@@ -102,50 +102,6 @@ export function LoginForm({ next, initialError }: { next: string; initialError?:
       </div>
 
       <SubmitButton label={A.login.submit} pendingLabel={A.login.pending} />
-    </form>
-  );
-}
-
-// --- Sign up ----------------------------------------------------------------
-
-export function SignupForm() {
-  const [state, action] = useActionState<AuthState, FormData>(signupAction, {});
-  const e = state.errors ?? {};
-
-  if (state.sent) {
-    return (
-      <Sent
-        heading={A.signup.checkHeading}
-        body={A.signup.checkBody.replace("{email}", state.sent.email)}
-      />
-    );
-  }
-
-  return (
-    <form action={action} noValidate className="space-y-4">
-      <AuthAlert message={e.form} />
-      <Field id="name" label={F.name.label} error={e.name}>
-        <input
-          id="name"
-          name="name"
-          autoComplete="name"
-          required
-          defaultValue={state.values?.name}
-          className={inputClass}
-          aria-invalid={e.name ? true : undefined}
-          aria-describedby={e.name ? "name-error" : undefined}
-        />
-      </Field>
-      <EmailField state={state} withHelp />
-      <Field id="password" label={F.password.label} help={F.newPassword.help} error={e.password}>
-        <PasswordInput
-          id="password"
-          autoComplete="new-password"
-          invalid={Boolean(e.password)}
-          describedBy={["password-help", e.password && "password-error"].filter(Boolean).join(" ")}
-        />
-      </Field>
-      <SubmitButton label={A.signup.submit} pendingLabel={A.signup.pending} />
     </form>
   );
 }

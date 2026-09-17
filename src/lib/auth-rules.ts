@@ -8,27 +8,10 @@
 
 import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 
-export const WEBER_DOMAINS = ["weber.edu", "mail.weber.edu"] as const;
-
-export function normalizeEmail(email: string): string {
-  return email.trim().toLowerCase();
-}
-
-// Exactly one @, a non-empty local part, and a domain that is one of the two
-// exactly. Suffix matching is the classic hole here ("notweber.edu",
-// "weber.edu.evil.com", "evil.weber.edu"), so the comparison is equality.
-export function isWeberEmail(email: string): boolean {
-  const e = normalizeEmail(email);
-  const parts = e.split("@");
-  if (parts.length !== 2) return false;
-  const [local, domain] = parts;
-  if (!local) return false;
-  return (WEBER_DOMAINS as readonly string[]).includes(domain);
-}
-
-export function looksLikeEmail(email: string): boolean {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email));
-}
+// The email checks live in email-rules.ts, which has no node:crypto, so the
+// browser and the Worker can use them too. A relative path with its
+// extension, so the tests can load this file straight into Node.
+export { WEBER_DOMAINS, isWeberEmail, looksLikeEmail, normalizeEmail } from "./email-rules.ts";
 
 // 8 characters minimum. 72 bytes maximum, because Supabase stores passwords
 // with bcrypt, which silently ignores everything past the 72nd byte: a longer

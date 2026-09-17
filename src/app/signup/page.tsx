@@ -1,27 +1,24 @@
+// Sign up is Join the Lab: a form, not an account. Students, faculty and
+// organizations each leave their details, and the Lab follows up by email.
+// Accounts come with the platform launch.
+
 import type { Metadata } from "next";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 import { copy } from "@/content/copy";
-import { getSessionUser } from "@/lib/auth";
-import { hasSupabase } from "@/lib/data/supabase";
-import { AuthDivider, AuthShell, DemoLink, authLink } from "@/components/auth/AuthShell";
-import { GoogleButton } from "@/components/auth/GoogleButton";
-import { SignupForm } from "@/components/auth/AuthForms";
+import { AuthShell, DemoLink, authLink } from "@/components/auth/AuthShell";
+import { JoinForm } from "@/components/auth/JoinForm";
 import { STATIC_SITE } from "@/lib/site";
 
-export const dynamic = "force-dynamic";
-
 export const metadata: Metadata = {
-  title: `${copy.auth.signup.title} | ${copy.meta.title}`,
+  title: `${copy.join.title} | ${copy.meta.title}`,
 };
 
-export default async function SignupPage() {
-  if (!STATIC_SITE && (await getSessionUser())) redirect("/projectum");
-
+export default function SignupPage() {
   return (
     <AuthShell
-      heading={copy.auth.signup.heading}
-      body={copy.auth.signup.body}
+      wide
+      heading={copy.join.heading}
+      body={copy.join.body}
       footer={
         <>
           {copy.auth.signup.switchPrompt}{" "}
@@ -31,15 +28,7 @@ export default async function SignupPage() {
         </>
       }
     >
-      {/* Google creates the account on first sign-in, so the same button
-          serves both pages. */}
-      <GoogleButton
-        next="/projectum"
-        enabled={!STATIC_SITE && hasSupabase()}
-        note={STATIC_SITE ? copy.auth.staticGoogle : undefined}
-      />
-      <AuthDivider />
-      <SignupForm />
+      <JoinForm />
       {STATIC_SITE && <DemoLink />}
     </AuthShell>
   );

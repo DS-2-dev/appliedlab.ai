@@ -18,8 +18,10 @@ export function AuthShell({
   body,
   children,
   footer,
+  wide,
 }: {
   heading: string;
+  wide?: boolean;
   body?: string;
   children: ReactNode;
   footer?: ReactNode;
@@ -34,7 +36,7 @@ export function AuthShell({
       </header>
 
       <main id="main" className="flex flex-1 justify-center px-5 pt-8 pb-20 md:items-center md:pt-0 md:pb-28">
-        <div className="w-full max-w-[380px] animate-in fade-in-0 slide-in-from-bottom-2 duration-500 motion-reduce:animate-none">
+        <div className={`w-full ${wide ? "max-w-[440px]" : "max-w-[380px]"} animate-in fade-in-0 slide-in-from-bottom-2 duration-500 motion-reduce:animate-none`}>
           <Star className="mx-auto w-14" />
           <h1 className="mt-6 text-center text-3xl font-light tracking-tight text-balance">{heading}</h1>
           {body && <p className="mt-3 text-center text-[15px] leading-relaxed font-light text-black/55">{body}</p>}

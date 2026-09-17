@@ -1,7 +1,12 @@
 # appliedlab-ask
 
-The Cloudflare Worker that answers Ask the Lab on the GitHub Pages site.
-Pages serves files only, so the chat sends its questions here. It uses the
+The Cloudflare Worker behind the GitHub Pages site, which serves files only.
+It answers Ask the Lab (`POST /`) and keeps Join the Lab forms
+(`POST /interest`).
+
+## Ask the Lab
+
+The chat sends its questions here. It uses the
 same instructions and facts as the Next.js route (`src/lib/ask.ts`), allows
 only the Lab's own origins, and limits each visitor to 6 questions a minute.
 
@@ -13,6 +18,23 @@ It has two engines:
   free plan never bills.
 - **Claude:** set the `ANTHROPIC_API_KEY` secret and the Worker asks Claude
   instead, exactly as `/api/ask` does. Delete the secret to go back to free.
+
+## Join the Lab
+
+The Sign up page's form posts to `/interest`. The Worker checks it with the
+site's rules (`src/lib/interest.ts`), allows 3 a minute per visitor, and
+keeps each one in the `INTEREST` KV namespace, keyed by time, with the role,
+name and email as metadata. No IP address is kept. To read them, from
+`worker/`:
+
+```bash
+npx wrangler kv key list --binding INTEREST --remote          # who joined
+npx wrangler kv key get --binding INTEREST --remote "<key>"   # one form, in full
+npx wrangler kv key delete --binding INTEREST --remote "<key>"
+```
+
+They are also under Storage & Databases > Workers KV > INTEREST in the
+Cloudflare dashboard.
 
 ## First deploy
 

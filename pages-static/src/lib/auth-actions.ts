@@ -13,7 +13,7 @@ export interface AuthState {
   sent?: { email: string; devLink?: string };
 }
 
-export const { loginAction, signupAction, forgotAction, resetAction } = staticActions;
+export const { loginAction, forgotAction, resetAction } = staticActions;
 
 export async function logoutAction(): Promise<void> {}
 export async function projectumDemoAction(): Promise<void> {}

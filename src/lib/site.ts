@@ -9,7 +9,12 @@ export const STATIC_SITE = process.env.NEXT_PUBLIC_STATIC_SITE === "1";
 export const JOIN_HREF = "/signup";
 export const LOGIN_HREF = "/login";
 
-// Where Ask the Lab sends questions: the Worker on the static site, the
-// local route otherwise.
-export const ASK_URL =
-  process.env.NEXT_PUBLIC_ASK_URL || (STATIC_SITE ? "https://appliedlab-ask.now-playing.workers.dev" : "/api/ask");
+// The Worker (worker/), which the static site calls for the chat and the
+// join form. NEXT_PUBLIC_ASK_URL points any build at another copy of it,
+// such as `wrangler dev`.
+const WORKER_URL = (process.env.NEXT_PUBLIC_ASK_URL || "https://appliedlab-ask.now-playing.workers.dev").replace(/\/$/, "");
+const USE_WORKER = STATIC_SITE || Boolean(process.env.NEXT_PUBLIC_ASK_URL);
+
+// Where Ask the Lab sends questions, and where Join the Lab sends the form.
+export const ASK_URL = USE_WORKER ? WORKER_URL : "/api/ask";
+export const INTEREST_URL = USE_WORKER ? `${WORKER_URL}/interest` : "/api/interest";

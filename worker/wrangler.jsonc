@@ -16,8 +16,16 @@
       "name": "ASK_LIMITER",
       "namespace_id": "4101",
       "simple": { "limit": 6, "period": 60 }
+    },
+    // At most 3 join forms a minute per visitor.
+    {
+      "name": "JOIN_LIMITER",
+      "namespace_id": "4102",
+      "simple": { "limit": 3, "period": 60 }
     }
   ],
+  // Join the Lab submissions, one entry each.
+  "kv_namespaces": [{ "binding": "INTEREST", "id": "cdf5f7859e4c48a9a9be62b354fcd45f" }],
   // Cloudflare Workers AI, the free engine when no Claude key is set.
   "ai": { "binding": "AI" },
   "observability": { "enabled": true }
