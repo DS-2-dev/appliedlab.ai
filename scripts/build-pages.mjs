@@ -15,8 +15,9 @@ import path from "node:path";
 const root = path.resolve(import.meta.dirname, "..");
 const stage = path.join(root, ".pages-build");
 
-// Routes and files that need a server. Everything that links to them is
-// either among them or switches on NEXT_PUBLIC_STATIC_SITE.
+// Routes and files that need a server. pages-static/ puts back stand-ins
+// for Log in, Sign up and the password reset request; anything else that
+// links to them switches on NEXT_PUBLIC_STATIC_SITE.
 const SERVER_ONLY = [
   "src/proxy.ts",
   "src/app/api",

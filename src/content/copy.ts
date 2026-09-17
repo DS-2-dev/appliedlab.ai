@@ -18,8 +18,6 @@ export const copy = {
     wordmark: "Applied AI Lab",
     login: "Log in",
     signup: "Sign up",
-    // In place of Log in on the static site, which has no accounts.
-    demo: "Try Projectum",
   },
 
   // The landing hero (2026-09-16), written for students of every major and
@@ -336,6 +334,11 @@ export const copy = {
       "Google sign-in turns on once the Lab's Supabase project is connected. Email and password work in this preview.",
     divider: "or",
     projectumDemo: "Projectum demo",
+    // The GitHub Pages site, which runs no server, so accounts wait for the
+    // platform launch.
+    staticGoogle: "Google sign-in opens with the platform launch.",
+    staticForm: "Accounts open with the platform launch. The Projectum demo is open now.",
+    staticDemo: "Try the Projectum demo",
     errors: {
       emailRequired: "Enter your email.",
       emailInvalid: "Enter a valid email address.",

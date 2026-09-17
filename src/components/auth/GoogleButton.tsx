@@ -23,7 +23,7 @@ function GoogleMark() {
   );
 }
 
-export function GoogleButton({ next, enabled }: { next: string; enabled: boolean }) {
+export function GoogleButton({ next, enabled, note }: { next: string; enabled: boolean; note?: string }) {
   if (!enabled) {
     return (
       <div>
@@ -31,7 +31,7 @@ export function GoogleButton({ next, enabled }: { next: string; enabled: boolean
           <GoogleMark />
           {copy.auth.google}
         </span>
-        <p className="mt-2 text-xs leading-snug text-ink-faint">{copy.auth.googleUnavailable}</p>
+        <p className="mt-2 text-xs leading-snug text-ink-faint">{note ?? copy.auth.googleUnavailable}</p>
       </div>
     );
   }

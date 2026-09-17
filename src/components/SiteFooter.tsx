@@ -8,7 +8,6 @@ import type { ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { CopyText } from "@/components/CopyText";
 import { copy } from "@/content/copy";
-import { LOGIN_HREF } from "@/lib/site";
 
 const F = copy.footer;
 const LAB = copy.how.steps.map((s) => ({ label: s.label, href: `/#${s.id}` }));
@@ -77,7 +76,7 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link href={LOGIN_HREF} className={LINK}>
+              <Link href="/projectum" className={LINK}>
                 {F.projectum}
               </Link>
             </li>

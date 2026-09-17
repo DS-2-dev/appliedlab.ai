@@ -19,16 +19,14 @@
     Lab's name, and the rest opens underneath. A link, Escape, a click
     outside, or scrolling back to the top closes it.
 
-  The links follow the advisory board deck's sections. On the static GitHub
-  Pages build there are no accounts, so Log in becomes the Projectum demo
-  and Sign up is left out.
+  The links follow the advisory board deck's sections.
 */
 
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MotionConfig, motion } from "framer-motion";
 import { copy } from "@/content/copy";
-import { JOIN_HREF, LOGIN_HREF, LOGIN_LABEL, SHOW_SIGNUP } from "@/lib/site";
+import { JOIN_HREF, LOGIN_HREF } from "@/lib/site";
 
 // The links are How it works' steps, so the two lists cannot drift.
 const NAV = copy.how.steps.map((s) => ({ id: s.id, label: s.label, href: `/#${s.id}` }));
@@ -48,17 +46,15 @@ function AccountLinks({ size, onClick }: { size: "bar" | "panel"; onClick?: () =
           size === "bar" ? "text-gray-700 hover:text-gray-900 md:ml-2" : ""
         }`}
       >
-        {LOGIN_LABEL}
+        {copy.nav.login}
       </Link>
-      {SHOW_SIGNUP && (
-        <Link
-          href={JOIN_HREF}
-          onClick={onClick}
-          className={`flex items-center rounded-full bg-black text-sm text-white transition hover:bg-black/80 ${shape}`}
-        >
-          {copy.nav.signup}
-        </Link>
-      )}
+      <Link
+        href={JOIN_HREF}
+        onClick={onClick}
+        className={`flex items-center rounded-full bg-black text-sm text-white transition hover:bg-black/80 ${shape}`}
+      >
+        {copy.nav.signup}
+      </Link>
     </>
   );
 }
