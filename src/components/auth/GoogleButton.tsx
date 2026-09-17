@@ -8,6 +8,8 @@
 // under it, rather than as a link that fails after the click.
 
 import { copy } from "@/content/copy";
+import { hasSupabase } from "@/lib/data/supabase";
+import { STATIC_SITE } from "@/lib/site";
 import { authButton } from "./AuthShell";
 
 const BUTTON = `${authButton} border border-black/10 bg-white text-ink`;
@@ -23,15 +25,17 @@ function GoogleMark() {
   );
 }
 
-export function GoogleButton({ next, enabled, note }: { next: string; enabled: boolean; note?: string }) {
-  if (!enabled) {
+// Off on the static site, where accounts are not open, and on a server
+// with no Supabase project.
+export function GoogleButton({ next }: { next: string }) {
+  if (STATIC_SITE || !hasSupabase()) {
     return (
       <div>
         <span aria-disabled="true" className={`${BUTTON} cursor-not-allowed opacity-50`}>
           <GoogleMark />
           {copy.auth.google}
         </span>
-        <p className="mt-2 text-center text-xs leading-snug text-black/45">{note ?? copy.auth.googleUnavailable}</p>
+        <p className="mt-2 text-center text-xs leading-snug text-black/45">{STATIC_SITE ? copy.auth.staticGoogle : copy.auth.googleUnavailable}</p>
       </div>
     );
   }

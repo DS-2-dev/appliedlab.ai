@@ -25,11 +25,11 @@
 import Link from "next/link";
 import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { MotionConfig, motion } from "framer-motion";
+import type { CSSProperties, ReactNode } from "react";
 import { copy } from "@/content/copy";
-import { JOIN_HREF, LOGIN_HREF } from "@/lib/site";
+import { StarMark } from "@/components/StarMark";
+import { JOIN_HREF, LOGIN_HREF, NAV } from "@/lib/site";
 
-// The links are How it works' steps, so the two lists cannot drift.
-const NAV = copy.how.steps.map((s) => ({ id: s.id, label: s.label, href: `/#${s.id}` }));
 // The pill's short list.
 const PILL_IDS = ["about", "pipeline", "partners"];
 const PILL_LINKS = NAV.filter((item) => PILL_IDS.includes(item.id));
@@ -67,12 +67,33 @@ const BAR = 60; // the full bar's height
 const EDGE = 6; // the island's inner padding
 const BUTTON = 32;
 
-// Crossfade with a light blur, for content that swaps in place.
-const swap = (on: boolean, delay = 0) => ({
-  opacity: on ? 1 : 0,
-  filter: on ? "blur(0px)" : "blur(4px)",
-  transition: { duration: on ? 0.22 : 0.12, delay: on ? delay : 0 },
-});
+// A layer that crossfades in place. While hidden it is also inert, so an
+// invisible layer never takes a click, focus or a screen reader's attention.
+function Swap({
+  on,
+  delay = 0,
+  className,
+  style,
+  children,
+}: {
+  on: boolean;
+  delay?: number;
+  className?: string;
+  style?: CSSProperties;
+  children: ReactNode;
+}) {
+  return (
+    <motion.div
+      initial={false}
+      animate={{ opacity: on ? 1 : 0, transition: { duration: on ? 0.22 : 0.12, delay: on ? delay : 0 } }}
+      inert={!on}
+      className={className}
+      style={style}
+    >
+      {children}
+    </motion.div>
+  );
+}
 
 // The menu button's icon: two lines that turn into an X.
 function MenuIcon({ open }: { open: boolean }) {
@@ -85,12 +106,6 @@ function MenuIcon({ open }: { open: boolean }) {
   );
 }
 
-// The star as the logo until the logo exists.
-function LogoMark({ className }: { className?: string }) {
-  // eslint-disable-next-line @next/next/no-img-element -- a static SVG needs no optimizing
-  return <img src="/star.svg" alt="" aria-hidden className={className} />;
-}
-
 // Glass: a white tint over a blur of whatever scrolls beneath, with a thin
 // light edge. The blur is animated with the tint, so the bar does not snap
 // to frosted.
@@ -100,7 +115,9 @@ const GLASS_EDGE =
 export function SiteHeader() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
-  const [size, setSize] = useState({ vw: 0, links: 0, body: 0 });
+  const [vw, setVw] = useState(0);
+  const [linksW, setLinksW] = useState(0);
+  const [bodyH, setBodyH] = useState(0);
   const shell = useRef<HTMLDivElement>(null);
   const linksRef = useRef<HTMLElement>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
@@ -121,26 +138,18 @@ export function SiteHeader() {
   }, []);
 
   // The shell animates real widths and heights (a scale would stretch the
-  // text), so it measures the page, the pill's links and the panel's body.
+  // text), so one observer measures the page, the pill's links and the
+  // panel's body. React skips the render when a number is unchanged.
   useLayoutEffect(() => {
-    const measure = () =>
-      setSize((prev) => {
-        const next = {
-          vw: document.documentElement.clientWidth,
-          links: linksRef.current?.offsetWidth ?? 0,
-          body: bodyRef.current?.offsetHeight ?? 0,
-        };
-        return next.vw === prev.vw && next.links === prev.links && next.body === prev.body ? prev : next;
-      });
+    const measure = () => {
+      setVw(document.documentElement.clientWidth);
+      setLinksW(linksRef.current?.offsetWidth ?? 0);
+      setBodyH(bodyRef.current?.offsetHeight ?? 0);
+    };
     measure();
     const ro = new ResizeObserver(measure);
-    if (linksRef.current) ro.observe(linksRef.current);
-    if (bodyRef.current) ro.observe(bodyRef.current);
-    window.addEventListener("resize", measure);
-    return () => {
-      ro.disconnect();
-      window.removeEventListener("resize", measure);
-    };
+    for (const el of [document.documentElement, linksRef.current, bodyRef.current]) if (el) ro.observe(el);
+    return () => ro.disconnect();
   }, []);
 
   useEffect(() => {
@@ -163,13 +172,14 @@ export function SiteHeader() {
   const close = () => setOpen(false);
   const island = shape !== "bar";
 
-  const { vw } = size;
-  const panelW = Math.min(352, vw - 32);
+  // Before the first measure, the bar and panel fall back to CSS widths.
+  const barW = vw || "100%";
+  const panelW = vw ? Math.min(352, vw - 32) : undefined;
   // The pill hugs its links; on phones, where they hide, it keeps the
   // island's own width.
-  const pillW = Math.max(126, EDGE * 2 + BUTTON * 2 + 8 + size.links);
-  const width = shape === "bar" ? vw || "100%" : shape === "pill" ? pillW : panelW;
-  const height = shape === "bar" ? BAR : shape === "pill" ? ROW : ROW + size.body;
+  const pillW = Math.max(126, EDGE * 2 + BUTTON * 2 + 8 + linksW);
+  const width = shape === "bar" ? barW : shape === "pill" ? pillW : panelW;
+  const height = shape === "bar" ? BAR : shape === "pill" ? ROW : ROW + bodyH;
 
   return (
     <MotionConfig reducedMotion="user">
@@ -186,17 +196,16 @@ export function SiteHeader() {
             backdropFilter: island ? "blur(20px) saturate(180%)" : "blur(0px) saturate(100%)",
             transition: { default: SPRING, backgroundColor: TWEEN, backdropFilter: TWEEN, borderRadius: TWEEN },
           }}
-          className={`pointer-events-auto relative overflow-hidden border text-ink ${
+          className={`pointer-events-auto relative overflow-hidden border text-ink contain-layout ${
             island ? GLASS_EDGE : "border-transparent"
           }`}
         >
           {/* The full bar, the page's width, centred so it clips evenly as
               the shell narrows. */}
-          <motion.div
-            initial={false}
-            animate={swap(!island, 0.08)}
-            inert={island}
-            style={{ width: vw || "100%" }}
+          <Swap
+            on={!island}
+            delay={0.08}
+            style={{ width: barW }}
             className="absolute top-0 left-1/2 flex h-[60px] -translate-x-1/2 items-center gap-2 px-4.5"
           >
             <Link href="/" className="flex h-8 shrink-0 items-center text-[15px] font-medium tracking-tight">
@@ -215,14 +224,13 @@ export function SiteHeader() {
               ))}
               <AccountLinks size="bar" />
             </nav>
-          </motion.div>
+          </Swap>
 
           {/* The island's top row: the logo rides the left edge and the menu
               button the right, while the short links give way to the name. */}
-          <motion.div
-            initial={false}
-            animate={swap(island, 0.1)}
-            inert={!island}
+          <Swap
+            on={island}
+            delay={0.1}
             className="absolute inset-x-0 top-0 flex items-center justify-between"
             style={{ height: ROW, paddingInline: EDGE }}
           >
@@ -232,35 +240,25 @@ export function SiteHeader() {
               aria-label={copy.nav.wordmark}
               className="grid size-8 shrink-0 place-items-center rounded-full"
             >
-              <LogoMark className="w-5" />
+              <StarMark className="w-5" />
             </Link>
             <div className="relative h-full min-w-0 flex-1">
-              <motion.nav
-                ref={linksRef}
-                aria-label="Site"
-                initial={false}
-                animate={swap(!open, 0.12)}
-                inert={open}
-                className="absolute top-1/2 left-1/2 hidden w-max -translate-x-1/2 -translate-y-1/2 items-center sm:flex"
-              >
-                {PILL_LINKS.map((item) => (
-                  <Link
-                    key={item.href}
-                    href={item.href}
-                    className="rounded-full px-3 py-1 text-[13px] whitespace-nowrap text-black/65 transition hover:bg-black/5 hover:text-black"
-                  >
-                    {item.label}
-                  </Link>
-                ))}
-              </motion.nav>
-              <motion.span
-                aria-hidden={!open}
-                initial={false}
-                animate={swap(open, 0.1)}
-                className="pointer-events-none absolute inset-y-0 left-1 flex items-center text-sm whitespace-nowrap"
-              >
+              <Swap on={!open} delay={0.12} className="absolute inset-0 grid place-items-center">
+                <nav ref={linksRef} aria-label="Site" className="hidden w-max items-center sm:flex">
+                  {PILL_LINKS.map((item) => (
+                    <Link
+                      key={item.href}
+                      href={item.href}
+                      className="rounded-full px-3 py-1 text-[13px] whitespace-nowrap text-black/65 transition hover:bg-black/5 hover:text-black"
+                    >
+                      {item.label}
+                    </Link>
+                  ))}
+                </nav>
+              </Swap>
+              <Swap on={open} delay={0.1} className="absolute inset-y-0 left-1 flex items-center text-sm whitespace-nowrap">
                 {copy.nav.wordmark}
-              </motion.span>
+              </Swap>
             </div>
             <button
               type="button"
@@ -271,7 +269,7 @@ export function SiteHeader() {
             >
               <MenuIcon open={open} />
             </button>
-          </motion.div>
+          </Swap>
 
           {/* The rest of the panel, laid out at the panel's width and uncovered
               as the shell grows. */}
@@ -285,7 +283,7 @@ export function SiteHeader() {
             }}
             inert={!open}
             className="absolute left-0 flex flex-col"
-            style={{ top: ROW, width: panelW > 0 ? panelW : undefined, padding: `0 ${EDGE}px ${EDGE}px` }}
+            style={{ top: ROW, width: panelW, padding: `0 ${EDGE}px ${EDGE}px` }}
           >
             <nav aria-label="Site" className="flex flex-col pt-1">
               {NAV.map((item, i) => (

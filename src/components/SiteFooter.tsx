@@ -7,10 +7,12 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { ArrowUpRight } from "lucide-react";
 import { CopyText } from "@/components/CopyText";
+import { StarMark } from "@/components/StarMark";
 import { copy } from "@/content/copy";
+import { NAV } from "@/lib/site";
 
 const F = copy.footer;
-const LAB = copy.how.steps.map((s) => ({ label: s.label, href: `/#${s.id}` }));
+const NAME = copy.nav.wordmark;
 
 // LinkedIn's "in" mark (lucide dropped brand icons).
 function LinkedInMark() {
@@ -38,9 +40,8 @@ export function SiteFooter() {
       <div className="grid gap-12 pt-14 pb-10 md:grid-cols-12 md:gap-8 md:pt-20">
         <div className="md:col-span-5">
           <Link href="/" className="inline-flex items-center gap-2.5">
-            {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG needs no optimizing */}
-            <img src="/star.svg" alt="" aria-hidden className="w-6" />
-            <span className="text-[15px] font-medium tracking-tight">{F.name}</span>
+            <StarMark className="w-6" />
+            <span className="text-[15px] font-medium tracking-tight">{NAME}</span>
           </Link>
           <p className="mt-4 max-w-xs text-lg leading-snug font-light tracking-tight text-black/60">
             {copy.home.heading}
@@ -49,7 +50,7 @@ export function SiteFooter() {
 
         <nav aria-label="Footer" className="grid grid-cols-2 gap-8 sm:grid-cols-3 md:col-span-7">
           <Column label={F.labLabel}>
-            {LAB.map((l) => (
+            {NAV.map((l) => (
               <li key={l.href}>
                 <Link href={l.href} className={LINK}>
                   {l.label}
@@ -86,7 +87,7 @@ export function SiteFooter() {
 
       <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-1 border-t border-black/[0.06] py-5 text-xs text-black/40">
         <p>
-          © {new Date().getFullYear()} {F.name}, {F.school}
+          © {new Date().getFullYear()} {NAME}, {F.school}
         </p>
         <p>{F.place}</p>
       </div>
@@ -96,7 +97,7 @@ export function SiteFooter() {
         aria-hidden
         className="-mb-[0.22em] text-center text-[15.5vw] leading-none font-medium tracking-[-0.05em] whitespace-nowrap text-ink select-none"
       >
-        {F.name}
+        {NAME}
       </p>
     </footer>
   );

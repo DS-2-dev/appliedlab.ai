@@ -1,10 +1,10 @@
 // Builds the static copy of the site that GitHub Pages serves, into out/.
 //
-// Pages serves plain files: no server, so no sign-in, API routes, server
-// actions or proxy. This copies the project into .pages-build/, takes those
-// out, lays pages-static/ over the top (its README lists what each file
-// replaces), marks the remaining pages static, and runs `next build` there
-// with GITHUB_PAGES=1 (see next.config.ts). The source tree is not touched.
+// Pages serves plain files: no server, so no API routes, server actions or
+// proxy. This copies the project into .pages-build/, takes those out, marks
+// the remaining pages static, and runs `next build` there with
+// GITHUB_PAGES=1, which also swaps the server actions for auth-static.ts
+// (see next.config.ts). The source tree is not touched.
 //
 //   npm run build:pages
 
@@ -16,10 +16,10 @@ const root = path.resolve(import.meta.dirname, "..");
 const stage = path.join(root, ".pages-build");
 
 // Routes and files that need a server. The pages that stay (Log in, Sign
-// up, Projectum) switch on NEXT_PUBLIC_STATIC_SITE themselves.
+// up, Projectum) switch on STATIC_SITE themselves.
 const SERVER_ONLY = ["src/proxy.ts", "src/app/api", "src/app/reset-password"];
 
-const SKIP = new Set([".git", "package-lock.json", ".next", ".pages-build", "node_modules", "out", "pages-static", "worker"]);
+const SKIP = new Set([".git", "package-lock.json", ".next", ".pages-build", "node_modules", "out", "worker"]);
 
 fs.rmSync(stage, { recursive: true, force: true });
 for (const entry of fs.readdirSync(root)) {
@@ -28,7 +28,6 @@ for (const entry of fs.readdirSync(root)) {
 fs.symlinkSync(path.join(root, "node_modules"), path.join(stage, "node_modules"), "dir");
 
 for (const p of SERVER_ONLY) fs.rmSync(path.join(stage, p), { recursive: true, force: true });
-fs.cpSync(path.join(root, "pages-static/src"), path.join(stage, "src"), { recursive: true });
 
 // Pages are built once, so "render on every request" becomes "render now".
 for (const file of fs.readdirSync(path.join(stage, "src/app"), { recursive: true })) {

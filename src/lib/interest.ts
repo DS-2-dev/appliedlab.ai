@@ -1,20 +1,19 @@
 // The Join the Lab form's rules, shared by the form, the local route
 // (/api/interest) and the Worker, so all three check a submission the same
-// way. Dependency-free apart from the copy, and imported by relative path
-// with extensions so scripts/interest.test.mjs can load it straight into
-// Node.
+// way. Its only import besides the email checks is the form's own copy
+// (join.ts), so the Worker bundles no more than it needs.
 //
 // Three kinds of people join: students and faculty with a Weber State email,
 // and organizations with any email. Each kind gives its own details, and a
 // note is optional for all three.
 
-import { copy } from "../content/copy.ts";
-import { isWeberEmail, looksLikeEmail, normalizeEmail } from "./email-rules.ts";
+import { join } from "@/content/join";
+import { isWeberEmail, looksLikeEmail, normalizeEmail } from "@/lib/email-rules";
 
 export const ROLES = ["student", "faculty", "organization"] as const;
 export type Role = (typeof ROLES)[number];
 
-export const YEARS = copy.join.years;
+export const YEARS: readonly string[] = join.years;
 
 export const SHORT_MAX = 120;
 export const NOTE_MAX = 1500;
@@ -41,23 +40,10 @@ export const ROLE_FIELDS: Record<Role, readonly InterestField[]> = {
   organization: ["organization", "title"],
 };
 
-// Fields a kind of person must fill in. The note and an organization's
-// title are optional.
-const REQUIRED: Record<Role, readonly InterestField[]> = {
-  student: ["name", "email", "major", "year"],
-  faculty: ["name", "email", "department"],
-  organization: ["name", "email", "organization"],
-};
-
-const E = copy.join.errors;
-const MISSING: Partial<Record<InterestField, string>> = {
-  name: E.name,
-  email: E.email,
-  major: E.major,
-  year: E.year,
-  department: E.department,
-  organization: E.organization,
-};
+// The note and an organization's title are optional; every other field of
+// a role is required, and each has an error of its own name.
+const OPTIONAL: readonly InterestField[] = ["note", "title"];
+const E = join.errors;
 
 const str = (v: unknown) => (typeof v === "string" ? v.trim() : "");
 
@@ -77,7 +63,7 @@ export function checkInterest(input: unknown): { value: Interest } | { errors: I
     const v = str(raw[field]);
     const max = field === "note" ? NOTE_MAX : SHORT_MAX;
     if (v.length > max) errors[field] = E.tooLong.replace("{n}", String(max));
-    else if (!v && REQUIRED[role].includes(field)) errors[field] = MISSING[field];
+    else if (!v && !OPTIONAL.includes(field)) errors[field] = E[field as keyof typeof E];
     if (v) value[field] = v;
   }
 
@@ -86,7 +72,7 @@ export function checkInterest(input: unknown): { value: Interest } | { errors: I
     if (!looksLikeEmail(value.email)) errors.email = E.email;
     else if (role !== "organization" && !isWeberEmail(value.email)) errors.email = E.weber;
   }
-  if (value.year && !(YEARS as readonly string[]).includes(value.year)) errors.year = E.year;
+  if (value.year && !YEARS.includes(value.year)) errors.year = E.year;
 
   return Object.keys(errors).length ? { errors } : { value };
 }

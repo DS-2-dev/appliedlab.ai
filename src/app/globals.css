@@ -1,5 +1,4 @@
-/* Typekit kit: basic-sans (the sign-in screens' controls), Goudy
-   Bookletter 1911 (their headings) and TT Paplane (the Projectum name).
+/* Typekit kit: TT Paplane, the Projectum name.
    Must stay the first line: `@import "tailwindcss"` expands in place, so
    anything after it lands below Tailwind's rules and CSS rejects it. */
 @import url("https://use.typekit.net/yrs7pes.css");
@@ -12,28 +11,15 @@
 /* Screens too short for every detail on a landing card; they drop some. */
 @custom-variant short (@media (max-height: 820px));
 
-/* Neutral grounds and ink. The purple survives only on the sign-in screens. */
+/* The site's ink, and the body face. */
 :root {
-  /* Coss-style neutral ground and border ramp. */
-  --ground: #ffffff;
-  --ground-raised: #fafafa;
-  --ground-sunken: #f4f4f5;
-  --line: #e4e4e7;
-  --line-strong: #d4d4d8;
-
   /* The body face, behind --font-sans. A variable rather than a literal so
      a surface can swap it: .projectum-ui repoints it to Geist, shadcn's face,
      and every font-sans inside follows. */
   --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
-  /* Neutral charcoal ink scale. --ink is the landing's text colour. */
+  /* The landing's text colour. */
   --ink: #1a1a1a;
-  --ink-soft: #52525b;
-  --ink-faint: #71717a;
-
-  --brand: #6d43a1;
-  --brand-deep: #492365;
-  --brand-wash: #f4eff8;
 
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
@@ -78,24 +64,9 @@
 }
 
 @theme inline {
-  --color-ground: var(--ground);
-  --color-ground-raised: var(--ground-raised);
-  --color-ground-sunken: var(--ground-sunken);
-  --color-line: var(--line);
-  --color-line-strong: var(--line-strong);
   --color-ink: var(--ink);
-  --color-ink-soft: var(--ink-soft);
-  --color-ink-faint: var(--ink-faint);
-  --color-brand: var(--brand);
-  --color-brand-deep: var(--brand-deep);
-  --color-brand-wash: var(--brand-wash);
 
   --font-sans: var(--font-body);
-  /* basic-sans, for the sign-in screens' wordmark and controls. */
-  --font-ui: "basic-sans", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  /* Goudy Bookletter ships one weight and one style: never bold or italicize
-     it, or the browser fakes one. The serif fallback keeps the swap quiet. */
-  --font-display: "goudy-bookletter-1911", var(--font-source-serif), ui-serif, Georgia, serif;
   /* The landing's face (next/font, layout.tsx). */
   --font-archivo: var(--font-archivo-face), ui-sans-serif, system-ui, sans-serif;
   /* The Projectum name beside its logo. TT Paplane ships 400 only. */
@@ -146,7 +117,7 @@
    deep links from other pages land instantly. */
 
 body {
-  background: var(--ground);
+  background: #ffffff;
   color: var(--ink);
   font-family: var(--font-body);
   font-size: 1rem;
@@ -155,19 +126,8 @@ body {
 }
 
 ::selection {
-  background: var(--brand-wash);
+  background: rgb(0 0 0 / 0.1);
   color: var(--ink);
-}
-
-/* Goudy is a single-face display role: keep it at its native 400/normal so
-   the browser never synthesizes heavier or italic outlines. */
-.display {
-  font-family: var(--font-display);
-  font-weight: 400;
-  font-style: normal;
-  line-height: 1.08;
-  letter-spacing: -0.005em;
-  text-wrap: balance;
 }
 
 /* Visible focus, in the base layer so a component's own focus style wins.

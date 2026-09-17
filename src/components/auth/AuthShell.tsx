@@ -6,12 +6,8 @@
 
 import Link from "next/link";
 import type { ReactNode } from "react";
+import { StarMark } from "@/components/StarMark";
 import { copy } from "@/content/copy";
-
-function Star({ className }: { className: string }) {
-  // eslint-disable-next-line @next/next/no-img-element -- a static SVG needs no optimizing
-  return <img src="/star.svg" alt="" aria-hidden className={className} />;
-}
 
 export function AuthShell({
   heading,
@@ -30,14 +26,14 @@ export function AuthShell({
     <div className="font-archivo flex min-h-svh flex-col bg-white text-ink">
       <header className="flex h-16 items-center px-5 lg:px-15">
         <Link href="/" className="flex items-center gap-2.5 whitespace-nowrap">
-          <Star className="w-5" />
+          <StarMark className="w-5" />
           <span className="text-[15px] font-medium tracking-tight">{copy.nav.wordmark}</span>
         </Link>
       </header>
 
       <main id="main" className="flex flex-1 justify-center px-5 pt-8 pb-20 md:items-center md:pt-0 md:pb-28">
         <div className={`w-full ${wide ? "max-w-[440px]" : "max-w-[380px]"} animate-in fade-in-0 slide-in-from-bottom-2 duration-500 motion-reduce:animate-none`}>
-          <Star className="mx-auto w-14" />
+          <StarMark className="mx-auto w-14" />
           <h1 className="mt-6 text-center text-3xl font-light tracking-tight text-balance">{heading}</h1>
           {body && <p className="mt-3 text-center text-[15px] leading-relaxed font-light text-black/55">{body}</p>}
           <div className="mt-9">{children}</div>
@@ -69,6 +65,18 @@ export function AuthAlert({ message }: { message?: string }) {
     >
       {message}
     </p>
+  );
+}
+
+// Shown in place of a form once it has done its job: an email sent, or a
+// Join the Lab form received.
+export function Sent({ heading, body, children }: { heading: string; body: string; children?: ReactNode }) {
+  return (
+    <div role="status" className="rounded-3xl border border-black/10 p-7 text-center animate-in fade-in-0 zoom-in-95 duration-300">
+      <h2 className="text-2xl font-light tracking-tight">{heading}</h2>
+      <p className="mt-2 text-[15px] leading-relaxed font-light text-black/55">{body}</p>
+      {children}
+    </div>
   );
 }
 

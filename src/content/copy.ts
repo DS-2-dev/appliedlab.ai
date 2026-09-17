@@ -7,6 +7,8 @@
   is the mechanical arm. Write to the skill, then run the lint.
 */
 
+import { join } from "./join";
+
 export const copy = {
   meta: {
     title: "Applied AI Lab at Weber State",
@@ -253,7 +255,6 @@ export const copy = {
 
   // The landing's footer (2026-09-16). Microcopy.
   footer: {
-    name: "Applied AI Lab",
     school: "Weber State University",
     labLabel: "The Lab",
     contactLabel: "Contact",
@@ -274,57 +275,8 @@ export const copy = {
     cta: "Back to the Lab",
   },
 
-  // Join the Lab (2026-09-17): the Sign up page, a form rather than an
-  // account. Students, faculty and organizations each give a few details and
-  // the Lab follows up by email. Microcopy throughout. PROVISIONAL, pending
-  // Kylar.
-  join: {
-    title: "Join the Lab",
-    heading: "Join the Lab",
-    body: "Tell us who you are, and the Lab follows up by email.",
-    roleLabel: "I'm joining as",
-    roles: {
-      student: { label: "Student", hint: "Any major. No experience needed." },
-      faculty: { label: "Faculty", hint: "Review student work as a Rep." },
-      organization: { label: "Organization", hint: "Bring a problem for members to solve." },
-    },
-    fields: {
-      name: "Full name",
-      email: "Email",
-      weberHelp: "Your @weber.edu or @mail.weber.edu address.",
-      workEmail: "Work email",
-      major: "Major",
-      year: "Year",
-      yearPlaceholder: "Choose one",
-      department: "Department",
-      organization: "Organization",
-      title: "Your role there",
-      optional: "Optional",
-    },
-    years: ["First year", "Second year", "Third year", "Fourth year", "Graduate student"],
-    notes: {
-      student: "What would you like to build?",
-      faculty: "How would you like to help?",
-      organization: "What problem would you bring?",
-    },
-    submit: "Send",
-    pending: "Sending",
-    sentHeading: "Thanks, {name}",
-    sentBody: "The Lab will follow up at {email}.",
-    another: "Send another",
-    errors: {
-      name: "Enter your name.",
-      email: "Enter a valid email address.",
-      weber: "Use your Weber State email, ending in @weber.edu or @mail.weber.edu.",
-      major: "Enter your major.",
-      year: "Choose your year.",
-      department: "Enter your department.",
-      organization: "Enter your organization's name.",
-      tooLong: "Keep this under {n} characters.",
-      failed: "That didn't send. Try again, or email ailab@weber.edu.",
-      limited: "Too many tries at once. Wait a minute and send again.",
-    },
-  },
+  // Join the Lab (2026-09-17), in its own file (join.ts).
+  join,
 
   // Accounts (2026-09-11). Open to Weber State addresses, by Google or by
   // email and password. Microcopy throughout, so fragments are fine; the
@@ -338,18 +290,12 @@ export const copy = {
       pending: "Logging in",
       forgot: "Forgot your password?",
       switchPrompt: "New to the Lab?",
-      switchCta: "Create an account",
+      switchCta: "Join the Lab",
     },
+    // Under Join the Lab, the way back to Log in.
     signup: {
-      title: "Create an account",
-      heading: "Create your Lab account",
-      body: "Accounts are open to Weber State students, faculty and staff with a university email.",
-      submit: "Create account",
-      pending: "Creating your account",
       switchPrompt: "Already have an account?",
       switchCta: "Log in",
-      checkHeading: "Check your inbox",
-      checkBody: "We sent a confirmation link to {email}. Open it to finish creating your account.",
     },
     forgot: {
       title: "Reset your password",
@@ -374,8 +320,7 @@ export const copy = {
       requestNew: "Request a new link",
     },
     fields: {
-      name: { label: "Full name" },
-      email: { label: "Email", help: "Your @weber.edu or @mail.weber.edu address." },
+      email: { label: "Email" },
       password: { label: "Password" },
       newPassword: { label: "New password", help: "At least 8 characters." },
       show: "Show password",
@@ -398,10 +343,8 @@ export const copy = {
       passwordRequired: "Enter your password.",
       passwordShort: "Use at least 8 characters.",
       passwordLong: "Use 72 characters or fewer.",
-      nameRequired: "Enter your name.",
       badCredentials: "That email and password don't match an account.",
       unconfirmed: "Confirm your email first. The link is in your inbox.",
-      exists: "An account already uses that email. Log in instead.",
       rateLimited: "Too many attempts. Wait a few minutes and try again.",
       generic: "Something went wrong on our end. Try again in a moment.",
       googleDomain: "Google sign-in is for Weber State accounts. Choose your university account and try again.",

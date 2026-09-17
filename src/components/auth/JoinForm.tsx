@@ -11,9 +11,9 @@
 // quietly dropped on the other end.
 
 import { useState } from "react";
-import { BookOpen, Building2, ChevronDown, GraduationCap, Loader2 } from "lucide-react";
+import { BookOpen, Building2, ChevronDown, GraduationCap } from "lucide-react";
 import { copy } from "@/content/copy";
-import { Field, inputClass } from "@/components/ui/Field";
+import { Field, describedBy, inputClass, labelClass } from "@/components/ui/Field";
 import {
   NOTE_MAX,
   ROLE_FIELDS,
@@ -21,42 +21,42 @@ import {
   SHORT_MAX,
   YEARS,
   checkInterest,
+  type Interest,
   type InterestErrors,
   type InterestField,
   type Role,
 } from "@/lib/interest";
 import { INTEREST_URL } from "@/lib/site";
 import { cn } from "@/lib/utils";
-import { AuthAlert, authButton, authLink } from "./AuthShell";
+import { AuthAlert, Sent, authLink } from "./AuthShell";
+import { SubmitButton } from "./SubmitButton";
 
 const J = copy.join;
+const F = J.fields;
 const ICONS = { student: GraduationCap, faculty: BookOpen, organization: Building2 } satisfies Record<Role, unknown>;
+const AUTOCOMPLETE: Partial<Record<InterestField, string>> = {
+  name: "name",
+  email: "email",
+  organization: "organization",
+  title: "organization-title",
+};
 
-type Values = Partial<Record<InterestField, string>>;
+const optional = (label: string) => `${label} (${F.optional.toLowerCase()})`;
 
-// Label and help for the fields that depend on the role.
+// A field's label, and its help where it has one, for the chosen role.
 function fieldText(role: Role, field: InterestField): { label: string; help?: string } {
-  const F = J.fields;
-  switch (field) {
-    case "name":
-      return { label: F.name };
-    case "email":
-      return role === "organization" ? { label: F.workEmail } : { label: F.email, help: F.weberHelp };
-    case "note":
-      return { label: `${J.notes[role]} (${F.optional.toLowerCase()})` };
-    case "title":
-      return { label: `${F.title} (${F.optional.toLowerCase()})` };
-    default:
-      return { label: F[field] };
-  }
+  if (field === "note") return { label: optional(J.notes[role]) };
+  if (field === "title") return { label: optional(F.title) };
+  if (field !== "email") return { label: F[field] };
+  return role === "organization" ? { label: F.workEmail } : { label: F.email, help: F.weberHelp };
 }
 
 export function JoinForm() {
   const [role, setRole] = useState<Role>("student");
-  const [values, setValues] = useState<Values>({});
+  const [values, setValues] = useState<Partial<Record<InterestField, string>>>({});
   const [errors, setErrors] = useState<InterestErrors>({});
-  const [status, setStatus] = useState<"idle" | "sending" | "sent">("idle");
-  const [sentTo, setSentTo] = useState({ name: "", email: "" });
+  const [sending, setSending] = useState(false);
+  const [sent, setSent] = useState<Interest | null>(null);
 
   const set = (field: InterestField) => (e: { target: { value: string } }) => {
     setValues((v) => ({ ...v, [field]: e.target.value }));
@@ -69,43 +69,42 @@ export function JoinForm() {
     const checked = checkInterest({ role, ...values });
     if ("errors" in checked) {
       setErrors(checked.errors);
-      const first = Object.keys(checked.errors)[0];
-      document.getElementById(`join-${first}`)?.focus();
+      document.getElementById(`join-${Object.keys(checked.errors)[0]}`)?.focus();
       return;
     }
     setErrors({});
-    setStatus("sending");
+    setSending(true);
     try {
       const res = await fetch(INTEREST_URL, {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ ...checked.value, website: honeypot }),
       });
-      if (!res.ok) throw new Error(res.status === 429 ? J.errors.limited : J.errors.failed);
-      setSentTo({ name: checked.value.name.split(" ")[0], email: checked.value.email });
-      setStatus("sent");
-    } catch (err) {
-      setErrors({ form: err instanceof Error && err.message === J.errors.limited ? J.errors.limited : J.errors.failed });
-      setStatus("idle");
+      if (res.ok) setSent(checked.value);
+      else setErrors({ form: res.status === 429 ? J.errors.limited : J.errors.failed });
+    } catch {
+      setErrors({ form: J.errors.failed });
     }
+    setSending(false);
   };
 
-  if (status === "sent") {
+  if (sent) {
     return (
-      <div role="status" className="rounded-3xl border border-black/10 p-8 text-center animate-in fade-in-0 zoom-in-95 duration-300">
-        <h2 className="text-2xl font-light tracking-tight">{J.sentHeading.replace("{name}", sentTo.name)}</h2>
-        <p className="mt-2 text-[15px] font-light text-black/55">{J.sentBody.replace("{email}", sentTo.email)}</p>
+      <Sent
+        heading={J.sentHeading.replace("{name}", sent.name.split(" ")[0])}
+        body={J.sentBody.replace("{email}", sent.email)}
+      >
         <button
           type="button"
           onClick={() => {
             setValues({});
-            setStatus("idle");
+            setSent(null);
           }}
           className={`mt-6 cursor-pointer text-sm ${authLink}`}
         >
           {J.another}
         </button>
-      </div>
+      </Sent>
     );
   }
 
@@ -114,17 +113,18 @@ export function JoinForm() {
   return (
     <form onSubmit={submit} noValidate className="space-y-4">
       <fieldset>
-        <legend className="mb-2 block px-5 text-[13px] leading-none font-medium text-black/70">{J.roleLabel}</legend>
-        <div role="radiogroup" className="grid grid-cols-3 gap-2">
+        <legend className={cn(labelClass, "mb-2")}>{J.roleLabel}</legend>
+        <div className="grid grid-cols-3 gap-2">
           {ROLES.map((r) => {
             const Icon = ICONS[r];
             const on = r === role;
             return (
               <label
                 key={r}
-                className={`flex cursor-pointer flex-col items-center gap-2 rounded-2xl border px-2 py-4 text-sm transition has-focus-visible:ring-2 has-focus-visible:ring-black ${
-                  on ? "border-black bg-black text-white" : "border-black/10 text-black/70 hover:border-black/25 hover:text-black"
-                }`}
+                className={cn(
+                  "flex cursor-pointer flex-col items-center gap-2 rounded-2xl border px-2 py-4 text-sm transition has-focus-visible:ring-2 has-focus-visible:ring-black",
+                  on ? "border-black bg-black text-white" : "border-black/10 text-black/70 hover:border-black/25 hover:text-black",
+                )}
               >
                 <input
                   type="radio"
@@ -155,22 +155,22 @@ export function JoinForm() {
           const id = `join-${field}`;
           const { label, help } = fieldText(role, field);
           const error = errors[field];
-          const described = [help && !error && `${id}-help`, error && `${id}-error`].filter(Boolean).join(" ") || undefined;
           const common = {
             id,
             name: field,
             value: values[field] ?? "",
             onChange: set(field),
             "aria-invalid": error ? true : undefined,
-            "aria-describedby": described,
+            "aria-describedby": describedBy(id, help, error),
           };
+          const isEmail = field === "email";
           return (
             <Field key={field} id={id} label={label} help={help} error={error}>
               {field === "year" ? (
                 <div className="relative">
                   <select {...common} className={cn(inputClass, "cursor-pointer appearance-none pr-12", !values.year && "text-black/35")}>
                     <option value="" disabled>
-                      {J.fields.yearPlaceholder}
+                      {F.yearPlaceholder}
                     </option>
                     {YEARS.map((y) => (
                       <option key={y} value={y} className="text-ink">
@@ -194,13 +194,11 @@ export function JoinForm() {
               ) : (
                 <input
                   {...common}
-                  type={field === "email" ? "email" : "text"}
-                  inputMode={field === "email" ? "email" : undefined}
-                  autoComplete={
-                    field === "name" ? "name" : field === "email" ? "email" : field === "organization" ? "organization" : field === "title" ? "organization-title" : "off"
-                  }
-                  autoCapitalize={field === "email" ? "none" : undefined}
-                  spellCheck={field === "email" ? false : undefined}
+                  type={isEmail ? "email" : "text"}
+                  inputMode={isEmail ? "email" : undefined}
+                  autoCapitalize={isEmail ? "none" : undefined}
+                  spellCheck={isEmail ? false : undefined}
+                  autoComplete={AUTOCOMPLETE[field] ?? "off"}
                   maxLength={SHORT_MAX}
                   className={inputClass}
                 />
@@ -213,20 +211,7 @@ export function JoinForm() {
       {/* For bots only: hidden from people and from screen readers. */}
       <input type="text" name="website" tabIndex={-1} autoComplete="off" aria-hidden className="hidden" />
 
-      <button
-        type="submit"
-        disabled={status === "sending"}
-        className={`${authButton} bg-black text-white hover:bg-black/80 disabled:cursor-wait disabled:opacity-70`}
-      >
-        {status === "sending" ? (
-          <>
-            <Loader2 aria-hidden className="size-4 animate-spin" />
-            {J.pending}
-          </>
-        ) : (
-          J.submit
-        )}
-      </button>
+      <SubmitButton label={J.submit} pendingLabel={J.pending} pending={sending} />
     </form>
   );
 }

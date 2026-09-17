@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Archivo, Inter, Source_Serif_4, JetBrains_Mono, Geist } from "next/font/google";
+import { Archivo, Inter, JetBrains_Mono, Geist } from "next/font/google";
 import { copy } from "@/content/copy";
 import "./globals.css";
 import { cn } from "@/lib/utils";
@@ -8,20 +8,12 @@ import { cn } from "@/lib/utils";
 // globals.css. The rest of the site keeps Inter.
 const geist = Geist({ subsets: ["latin"], variable: "--font-geist" });
 
-// The redesign's display face (design/STYLE.md), on the header for now.
+// The site's face (design/STYLE.md), set with the font-archivo class.
 const archivo = Archivo({ subsets: ["latin"], variable: "--font-archivo-face" });
 
-
-/* Body face. Stands in for cursor.com's proprietary CursorGothic. The UI and
-   display faces (basic-sans, Goudy Bookletter 1911) come from the Typekit kit
-   imported at the top of globals.css. */
+// The base body face, under font-archivo and outside Projectum.
 const inter = Inter({
   variable: "--font-inter",
-  subsets: ["latin"],
-});
-
-const sourceSerif = Source_Serif_4({
-  variable: "--font-source-serif",
   subsets: ["latin"],
 });
 
@@ -41,7 +33,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       suppressHydrationWarning
-      className={cn("h-full antialiased", inter.variable, sourceSerif.variable, jetbrains.variable, geist.variable, archivo.variable)}
+      className={cn("h-full antialiased", inter.variable, jetbrains.variable, geist.variable, archivo.variable)}
     >
       <body className="min-h-full flex flex-col">{children}</body>
     </html>

@@ -30,9 +30,9 @@ jobs:
       - run: npm ci
       - run: npm run build:pages
         env:
-          # The Ask the Lab Worker (worker/README.md). The repo variable
-          # ASK_URL overrides the deployed address.
-          NEXT_PUBLIC_ASK_URL: ${{ vars.ASK_URL || 'https://appliedlab-ask.now-playing.workers.dev' }}
+          # The Worker (worker/README.md). Empty uses the address in
+          # src/lib/site.ts; the repo variable ASK_URL overrides it.
+          NEXT_PUBLIC_ASK_URL: ${{ vars.ASK_URL }}
       - uses: actions/upload-pages-artifact@v4
         with:
           path: out

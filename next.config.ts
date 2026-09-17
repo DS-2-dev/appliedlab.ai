@@ -3,8 +3,13 @@ import type { NextConfig } from "next";
 // GITHUB_PAGES=1 is the static build GitHub Pages serves, run through
 // scripts/build-pages.mjs. Pages has no server, so that build has no
 // redirects and no image optimizer, and NEXT_PUBLIC_STATIC_SITE tells the
-// client code which build it is in.
+// code which build it is in.
 const pages = process.env.GITHUB_PAGES === "1";
+
+// The static mode, on the Pages build and on `npm run dev`. With no server
+// there are no server actions, so the account forms' actions come from
+// auth-static.ts instead.
+const staticSite = pages || process.env.NEXT_PUBLIC_STATIC_SITE === "1";
 
 const nextConfig: NextConfig = {
   ...(pages && {
@@ -12,6 +17,10 @@ const nextConfig: NextConfig = {
     trailingSlash: true,
     images: { unoptimized: true },
     env: { NEXT_PUBLIC_STATIC_SITE: "1" },
+  }),
+
+  ...(staticSite && {
+    turbopack: { resolveAlias: { "@/lib/auth-actions": "./src/lib/auth-static.ts" } },
   }),
 
   // The dev-only overlay badge in the corner. Off so it stays out of the way

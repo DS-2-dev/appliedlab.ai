@@ -45,7 +45,7 @@ next-env.d.ts
 # Development only, and never committed.
 /data/users.json
 /data/.session-secret
-/data/interest.json
+/data/interest.jsonl
 
 # GitHub Pages build staging (scripts/build-pages.mjs)
 /.pages-build/

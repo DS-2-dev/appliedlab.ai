@@ -8,6 +8,7 @@ import { AskTheLab } from "@/components/AskTheLab";
 import { HowItWorks } from "@/components/HowItWorks";
 import { Reveal } from "@/components/Reveal";
 import { SiteFooter } from "@/components/SiteFooter";
+import { StarMark } from "@/components/StarMark";
 import { ScrollLink } from "@/components/ScrollLink";
 import { SiteHeader } from "@/components/SiteHeader";
 import { JOIN_HREF } from "@/lib/site";
@@ -25,8 +26,7 @@ export default function Home() {
         <section className="min-h-svh">
           <Reveal className="flex min-h-svh flex-col gap-10 px-5 pt-24 pb-10 lg:px-15 lg:pb-12">
             <div className="flex min-h-[14rem] flex-1 items-center justify-center">
-              {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG needs no optimizing */}
-              <img src="/star.svg" alt="" className="max-h-[46svh] w-[min(80vw,56rem)] object-contain" />
+              <StarMark className="max-h-[46svh] w-[min(80vw,56rem)] object-contain" />
             </div>
 
             {/* From lg the right column stretches to the heading block's

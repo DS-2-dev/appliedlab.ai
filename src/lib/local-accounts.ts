@@ -1,5 +1,5 @@
 // Local-preview accounts: the development stand-in for Supabase Auth, so the
-// log in, sign up and reset flows can be built and tried before the club's
+// log in and reset flows can be built and tried before the club's
 // Supabase project exists.
 //
 // Only ever reached through devAuthAllowed() (NODE_ENV development AND no
@@ -10,7 +10,7 @@
 
 import { promises as fs } from "fs";
 import path from "path";
-import { randomBytes, randomUUID } from "crypto";
+import { randomBytes } from "crypto";
 import {
   hashPassword,
   normalizeEmail,
@@ -52,26 +52,6 @@ async function writeUsers(users: LocalUser[]): Promise<void> {
 
 export async function findLocalUserById(id: string): Promise<LocalUser | null> {
   return (await readUsers()).find((u) => u.id === id) ?? null;
-}
-
-export async function createLocalUser(input: {
-  email: string;
-  full_name: string;
-  password: string;
-}): Promise<LocalUser | "exists"> {
-  const users = await readUsers();
-  const email = normalizeEmail(input.email);
-  if (users.some((u) => u.email === email)) return "exists";
-  const user: LocalUser = {
-    id: randomUUID(),
-    email,
-    full_name: input.full_name.trim() || null,
-    password_hash: await hashPassword(input.password),
-    created_at: new Date().toISOString(),
-  };
-  users.push(user);
-  await writeUsers(users);
-  return user;
 }
 
 // Hashes against a throwaway value when the email is unknown, so a missing

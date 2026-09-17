@@ -13,17 +13,11 @@
 import Link from "next/link";
 import { useActionState } from "react";
 import { copy } from "@/content/copy";
-import { Field, errorClass, inputClass, labelClass } from "@/components/ui/Field";
-import * as serverActions from "@/lib/auth-actions";
-import type { AuthState } from "@/lib/auth-actions";
-import { staticActions } from "@/lib/auth-static";
-import { STATIC_SITE } from "@/lib/site";
-import { AuthAlert, authLink } from "./AuthShell";
+import { Field, describedBy, errorClass, inputClass, labelClass } from "@/components/ui/Field";
+import { forgotAction, loginAction, resetAction, type AuthState } from "@/lib/auth-actions";
+import { AuthAlert, Sent, authLink } from "./AuthShell";
 import { PasswordInput } from "./PasswordInput";
 import { SubmitButton } from "./SubmitButton";
-
-// The static site has no server, so its forms answer from auth-static.
-const { forgotAction, loginAction, resetAction } = STATIC_SITE ? staticActions : serverActions;
 
 const A = copy.auth;
 const F = A.fields;
@@ -45,20 +39,9 @@ function EmailField({ state }: { state: AuthState }) {
         defaultValue={state.values?.email}
         className={inputClass}
         aria-invalid={error ? true : undefined}
-        aria-describedby={error ? "email-error" : undefined}
+        aria-describedby={describedBy("email", undefined, error)}
       />
     </Field>
-  );
-}
-
-// Shown in place of a form once an email has gone out.
-function Sent({ heading, body, children }: { heading: string; body: string; children?: React.ReactNode }) {
-  return (
-    <div role="status" className="rounded-3xl border border-black/10 p-6 text-center">
-      <h2 className="text-xl font-light tracking-tight">{heading}</h2>
-      <p className="mt-2 text-[15px] leading-relaxed font-light text-black/55">{body}</p>
-      {children}
-    </div>
   );
 }
 
@@ -91,7 +74,7 @@ export function LoginForm({ next, initialError }: { next: string; initialError?:
             id="password"
             autoComplete="current-password"
             invalid={Boolean(e.password)}
-            describedBy={e.password ? "password-error" : undefined}
+            describedBy={describedBy("password", undefined, e.password)}
           />
         </div>
         {e.password && (
@@ -160,7 +143,7 @@ export function ResetForm({ token }: { token?: string }) {
           id="password"
           autoComplete="new-password"
           invalid={Boolean(e.password)}
-          describedBy={["password-help", e.password && "password-error"].filter(Boolean).join(" ")}
+          describedBy={describedBy("password", F.newPassword.help, e.password)}
         />
       </Field>
       <SubmitButton label={A.reset.submit} pendingLabel={A.reset.pending} />

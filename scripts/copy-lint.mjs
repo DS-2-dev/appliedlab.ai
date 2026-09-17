@@ -11,6 +11,7 @@ import path from "path";
 
 const FILES = [
   "src/content/copy.ts",
+  "src/content/join.ts",
   "data/settings.json",
   "data/events.json",
 ];

@@ -35,13 +35,15 @@ npm run build:pages   # writes out/
 ```
 
 `scripts/build-pages.mjs` builds the same static mode `npm run dev` shows. It
-leaves out what needs a server (API routes, the password reset, proxy) and
-swaps in `pages-static/` for the server actions. `.github/workflows/pages.yml` runs it and deploys on
+leaves out what needs a server (API routes, the password reset, proxy), and
+`next.config.ts` points the server actions at `src/lib/auth-static.ts`.
+`.github/workflows/pages.yml` runs it and deploys on
 every push to main.
 
-Ask the Lab needs a server, which Pages lacks, so on the static site it
-calls a Cloudflare Worker (`worker/`, deploy steps in `worker/README.md`).
-The workflow passes the Worker's address in as `NEXT_PUBLIC_ASK_URL`.
+Ask the Lab and Join the Lab need a server, which Pages lacks, so on the
+static site they call a Cloudflare Worker (`worker/`, deploy steps in
+`worker/README.md`). Its address is in `src/lib/site.ts`, and the repo
+variable `ASK_URL` overrides it.
 
 ## Copy
 

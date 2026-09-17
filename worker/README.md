@@ -50,8 +50,8 @@ npx wrangler secret put ANTHROPIC_API_KEY   # optional: switch to Claude
 ```
 
 The Worker is deployed at `https://appliedlab-ask.now-playing.workers.dev`,
-and the Pages workflow builds the site against that address. If it ever
-moves, set the repo variable `ASK_URL` (Settings > Secrets and variables >
+and `src/lib/site.ts` points the static site at that address. If it ever
+moves, update it there, or set the repo variable `ASK_URL` (Settings > Secrets and variables >
 Actions > Variables) to the new address and re-run the workflow.
 
 ## After that

@@ -5,7 +5,6 @@ import { copy } from "@/content/copy";
 import { devAuthAllowed, getSessionUser } from "@/lib/auth";
 import { projectumDemoAction } from "@/lib/auth-actions";
 import { safeNext } from "@/lib/auth-rules";
-import { hasSupabase } from "@/lib/data/supabase";
 import { AuthDivider, AuthShell, DemoLink, authLink } from "@/components/auth/AuthShell";
 import { GoogleButton } from "@/components/auth/GoogleButton";
 import { LoginForm } from "@/components/auth/AuthForms";
@@ -29,18 +28,8 @@ const URL_ERRORS: Record<string, string> = {
   removed: E.removed,
 };
 
-export default async function LoginPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ next?: string; error?: string }>;
-}) {
-  // The static site is built once, with no session and no query string.
-  const params: { next?: string; error?: string } = STATIC_SITE ? {} : await searchParams;
-  const next = safeNext(params.next);
-  if (!STATIC_SITE && (await getSessionUser())) redirect(next);
-
-  const signupHref = next === "/projectum" ? "/signup" : `/signup?next=${encodeURIComponent(next)}`;
-
+// The frame both versions of the page share, around what differs.
+function LoginShell({ children }: { children: React.ReactNode }) {
   return (
     <AuthShell
       heading={copy.auth.login.heading}
@@ -48,33 +37,54 @@ export default async function LoginPage({
       footer={
         <>
           {copy.auth.login.switchPrompt}{" "}
-          <Link href={signupHref} className={authLink}>
+          <Link href="/signup" className={authLink}>
             {copy.auth.login.switchCta}
           </Link>
         </>
       }
     >
-      <GoogleButton
-        next={next}
-        enabled={!STATIC_SITE && hasSupabase()}
-        note={STATIC_SITE ? copy.auth.staticGoogle : undefined}
-      />
+      {children}
+    </AuthShell>
+  );
+}
+
+export default async function LoginPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ next?: string; error?: string }>;
+}) {
+  // The static site is built once, with no session or query string, and
+  // opens the Projectum demo in place of an account.
+  if (STATIC_SITE) {
+    return (
+      <LoginShell>
+        <GoogleButton next="/projectum" />
+        <AuthDivider />
+        <LoginForm next="/projectum" />
+        <DemoLink />
+      </LoginShell>
+    );
+  }
+
+  const params = await searchParams;
+  const next = safeNext(params.next);
+  if (await getSessionUser()) redirect(next);
+
+  return (
+    <LoginShell>
+      <GoogleButton next={next} />
       <AuthDivider />
       <LoginForm next={next} initialError={params.error ? URL_ERRORS[params.error] : undefined} />
 
-      {/* The static site, and the local server preview, open the Projectum
-          demo without an account. */}
-      {STATIC_SITE ? (
-        <DemoLink />
-      ) : (
-        devAuthAllowed() && (
-          <form action={projectumDemoAction} className="mt-5 text-center">
-            <button type="submit" className={`cursor-pointer text-sm ${authLink}`}>
-              {copy.auth.projectumDemo}
-            </button>
-          </form>
-        )
+      {/* Local preview only: straight into /projectum as a demo account, for
+          working on that page without making one. */}
+      {devAuthAllowed() && (
+        <form action={projectumDemoAction} className="mt-5 text-center">
+          <button type="submit" className={`cursor-pointer text-sm ${authLink}`}>
+            {copy.auth.projectumDemo}
+          </button>
+        </form>
       )}
-    </AuthShell>
+    </LoginShell>
   );
 }

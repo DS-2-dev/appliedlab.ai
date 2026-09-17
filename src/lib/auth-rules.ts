@@ -9,9 +9,8 @@
 import { createHmac, randomBytes, scrypt, timingSafeEqual } from "node:crypto";
 
 // The email checks live in email-rules.ts, which has no node:crypto, so the
-// browser and the Worker can use them too. A relative path with its
-// extension, so the tests can load this file straight into Node.
-export { WEBER_DOMAINS, isWeberEmail, looksLikeEmail, normalizeEmail } from "./email-rules.ts";
+// browser and the Worker can use them too.
+export { WEBER_DOMAINS, isWeberEmail, looksLikeEmail, normalizeEmail } from "@/lib/email-rules";
 
 // 8 characters minimum. 72 bytes maximum, because Supabase stores passwords
 // with bcrypt, which silently ignores everything past the 72nd byte: a longer

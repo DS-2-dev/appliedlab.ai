@@ -36,6 +36,13 @@ export function Field({
   );
 }
 
+// The ids a control points at with aria-describedby, matching what Field
+// shows: the help, or the error in its place.
+export function describedBy(id: string, help?: string, error?: string): string | undefined {
+  if (error) return `${id}-error`;
+  return help ? `${id}-help` : undefined;
+}
+
 export const labelClass = "block px-5 text-[13px] leading-none font-medium text-black/70";
 export const errorClass = "mt-1.5 px-5 text-xs leading-snug text-red-600";
 

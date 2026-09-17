@@ -23,7 +23,6 @@ import {
 import {
   LOCAL_SESSION_COOKIE,
   checkLocalPassword,
-  createLocalUser,
   findLocalUserByEmail,
   issueLocalSession,
   issueResetToken,
@@ -32,11 +31,11 @@ import {
 } from "@/lib/local-accounts";
 import { ipFromHeaders, rateLimited } from "@/lib/rate-limit";
 
-export type AuthField = "name" | "email" | "password" | "form";
+export type AuthField = "email" | "password" | "form";
 
 export interface AuthState {
   errors?: Partial<Record<AuthField, string>>;
-  values?: { email?: string; name?: string };
+  values?: { email?: string };
   // Set once a confirmation or reset email has gone out.
   sent?: { email: string; devLink?: string };
 }
@@ -132,60 +131,6 @@ export async function loginAction(_prev: AuthState, form: FormData): Promise<Aut
   if (!user) return { errors: { form: E.badCredentials }, values };
   await startLocalSession(user.id);
   redirect(next);
-}
-
-// --- Sign up ----------------------------------------------------------------
-
-export async function signupAction(_prev: AuthState, form: FormData): Promise<AuthState> {
-  const name = String(form.get("name") ?? "").trim().slice(0, 100);
-  const email = normalizeEmail(String(form.get("email") ?? ""));
-  const password = String(form.get("password") ?? "");
-  const values = { email, name };
-
-  const errors: AuthState["errors"] = {};
-  if (!name) errors.name = E.nameRequired;
-  const eErr = emailError(email);
-  if (eErr) errors.email = eErr;
-  const pErr = newPasswordError(password);
-  if (pErr) errors.password = pErr;
-  if (has(errors)) return { errors, values };
-
-  if (await limited("signup", 5, 60 * MINUTE)) return { errors: { form: E.rateLimited }, values };
-
-  if (hasSupabase()) {
-    const client = await sessionClient();
-    const { data, error } = await client.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: name },
-        emailRedirectTo: `${await siteOrigin()}/api/auth/callback?flow=email&next=/projectum`,
-      },
-    });
-    if (error) {
-      if (error.code === "user_already_exists") return { errors: { email: E.exists }, values };
-      if (error.code === "weak_password") return { errors: { password: E.passwordShort }, values };
-      if (error.status === 429) return { errors: { form: E.rateLimited }, values };
-      // The domain trigger surfaces as a generic database error from the auth
-      // API. The form already checked the domain, so reaching this means the
-      // request skipped the form, and the plain domain message still fits.
-      if (/database error saving new user/i.test(error.message)) {
-        return { errors: { email: E.emailDomain }, values };
-      }
-      return { errors: { form: E.generic }, values };
-    }
-    // With "Confirm email" on there is no session yet. Supabase also answers
-    // an already-registered address this way, deliberately, so the form does
-    // not reveal which emails have accounts.
-    if (data.session) redirect("/projectum");
-    return { sent: { email } };
-  }
-
-  if (!devAuthAllowed()) return { errors: { form: E.generic }, values };
-  const created = await createLocalUser({ email, full_name: name, password });
-  if (created === "exists") return { errors: { email: E.exists }, values };
-  await startLocalSession(created.id);
-  redirect("/projectum");
 }
 
 // --- Forgot password --------------------------------------------------------

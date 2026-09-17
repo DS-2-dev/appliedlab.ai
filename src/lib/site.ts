@@ -4,7 +4,13 @@
 // as the demo), and the chat calls the Cloudflare Worker (worker/).
 // `npm run dev:server` runs the full version with accounts and /api.
 
+import { copy } from "@/content/copy";
+
 export const STATIC_SITE = process.env.NEXT_PUBLIC_STATIC_SITE === "1";
+
+// The site's section links, for the header and footer. They are How it
+// works' steps, so the lists cannot drift.
+export const NAV = copy.how.steps.map((s) => ({ id: s.id, label: s.label, href: `/#${s.id}` }));
 
 export const JOIN_HREF = "/signup";
 export const LOGIN_HREF = "/login";

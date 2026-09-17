@@ -7,9 +7,9 @@
   src/content/lab-knowledge.ts).
 
   Where the questions go depends on the build (ASK_URL, src/lib/site.ts):
-  the static site sends them to the Cloudflare Worker in worker/, and with
-  nowhere to send them the chat answers with the offline note and the Lab's
-  email.
+  the static site sends them to the Cloudflare Worker in worker/. A server
+  with no Claude key answers 503, and the chat shows the offline note and
+  the Lab's email.
 */
 
 import { useEffect, useRef, useState } from "react";
@@ -49,11 +49,6 @@ export function AskTheLab() {
     const history: Turn[] = [...turns, { role: "user", content: q }];
     setTurns([...history, { role: "assistant", content: "" }]);
     setDraft("");
-
-    if (!ASK_URL) {
-      reply(A.offline);
-      return;
-    }
 
     setBusy(true);
     const ctrl = new AbortController();
@@ -108,8 +103,7 @@ export function AskTheLab() {
       {/* Laid out like the ChatGPT and Claude home screens: a centred
           heading over one large composer, with the suggestions under it.
           Once a conversation starts, it runs in a centred column above the
-          composer. The whole block sits in the middle of the screen, so
-          scrolling to the end of the page centres it. */}
+          composer. The whole block sits in the middle of its own screen. */}
       <Reveal leave={false} className="mx-auto flex w-full max-w-3xl flex-col items-center">
         <p className="kicker mb-3 opacity-35">{A.kicker}</p>
         <h2 className="text-center text-3xl font-light tracking-tight md:text-4xl">{A.heading}</h2>
