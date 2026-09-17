@@ -118,7 +118,7 @@ export function HowItWorks() {
 
           {/* The card */}
           <div className="md:col-span-9 lg:col-span-10">
-            <div className="relative flex min-h-[26rem] flex-col overflow-hidden bg-black p-7 text-white md:min-h-[min(38rem,74svh)] md:p-12 lg:p-14">
+            <div className="relative flex min-h-[26rem] flex-col overflow-hidden rounded-3xl bg-black p-7 text-white md:min-h-[min(38rem,74svh)] md:p-12 lg:p-14">
               <div
                 key={step.id}
                 className="flex flex-1 flex-col animate-in duration-500 ease-out fade-in-0 slide-in-from-bottom-3 motion-reduce:animate-none"

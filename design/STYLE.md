@@ -71,7 +71,8 @@ Light is the default. Dark mode swaps the values.
 
 - **Buttons are round** (`rounded-full`, ChatGPT-style): the header's Log in
   and Sign up (32px tall), the hero's primary button (44px), the nav link
-  pills and the logo. A badge is 0.25rem. Everything else is square.
+  pills, the logo, and the How it works cards (24px). A badge is 0.25rem.
+  Everything else is square.
 - **No shadows.**
 - **Primary button:** black fill, white text, round, 14px text, 44px tall with 24px side padding, at least 192px wide.
   - The label sits at the left and an arrow at the right (`justify-between`).
