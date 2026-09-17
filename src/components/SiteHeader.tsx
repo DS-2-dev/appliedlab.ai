@@ -24,13 +24,40 @@ import { useEffect, useRef, useState } from "react";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
 import { Menu, X } from "lucide-react";
 import { copy } from "@/content/copy";
+import { JOIN_HREF, LOGIN_HREF, LOGIN_LABEL, SHOW_SIGNUP } from "@/lib/site";
 
-const STATIC_SITE = process.env.NEXT_PUBLIC_STATIC_SITE === "1";
-const LOGIN_HREF = STATIC_SITE ? "/projectum" : "/login";
-const LOGIN_LABEL = STATIC_SITE ? copy.nav.demo : copy.nav.login;
+// The links are How it works' steps, so the two lists cannot drift.
+const NAV = copy.how.steps.map((s) => ({ id: s.id, label: s.label, href: `/#${s.id}` }));
+// The pill's short list.
+const PILL_IDS = ["about", "pipeline", "partners"];
+const PILL_LINKS = NAV.filter((item) => PILL_IDS.includes(item.id));
 
-// The pill's short list: the first, second and last sections.
-const PILL_LINKS = [copy.nav.items[0], copy.nav.items[1], copy.nav.items[4]];
+// Log in and Sign up, in the bar's size or the open panel's.
+function AccountLinks({ size, onClick }: { size: "bar" | "panel"; onClick?: () => void }) {
+  const shape = size === "bar" ? "h-8 shrink-0 px-3.5 whitespace-nowrap" : "h-10 flex-1 justify-center";
+  return (
+    <>
+      <Link
+        href={LOGIN_HREF}
+        onClick={onClick}
+        className={`flex items-center rounded-full bg-black/5 text-sm transition hover:bg-black/10 ${shape} ${
+          size === "bar" ? "text-gray-700 hover:text-gray-900 md:ml-2" : ""
+        }`}
+      >
+        {LOGIN_LABEL}
+      </Link>
+      {SHOW_SIGNUP && (
+        <Link
+          href={JOIN_HREF}
+          onClick={onClick}
+          className={`flex items-center rounded-full bg-black text-sm text-white transition hover:bg-black/80 ${shape}`}
+        >
+          {copy.nav.signup}
+        </Link>
+      )}
+    </>
+  );
+}
 
 const SPRING = { type: "spring", stiffness: 420, damping: 36, mass: 0.9 } as const;
 const FADE = {
@@ -58,8 +85,12 @@ export function SiteHeader() {
   const shell = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
+    // Only a change of state reaches React, not every scroll event.
+    let last: boolean | null = null;
     const onScroll = () => {
       const s = window.scrollY > 0;
+      if (s === last) return;
+      last = s;
       setScrolled(s);
       if (!s) setOpen(false);
     };
@@ -117,7 +148,7 @@ export function SiteHeader() {
                 </Link>
                 <div className="min-w-0 flex-1" />
                 <nav aria-label="Site" className="flex shrink-0 items-center gap-1 sm:gap-1.5">
-                  {copy.nav.items.map((item) => (
+                  {NAV.map((item) => (
                     <Link
                       key={item.href}
                       href={item.href}
@@ -126,20 +157,7 @@ export function SiteHeader() {
                       {item.label}
                     </Link>
                   ))}
-                  <Link
-                    href={LOGIN_HREF}
-                    className="flex h-8 shrink-0 items-center rounded-full bg-black/5 px-3.5 text-sm whitespace-nowrap text-gray-700 transition hover:bg-black/10 hover:text-gray-900 md:ml-2"
-                  >
-                    {LOGIN_LABEL}
-                  </Link>
-                  {!STATIC_SITE && (
-                    <Link
-                      href="/signup"
-                      className="flex h-8 shrink-0 items-center rounded-full bg-black px-3.5 text-sm whitespace-nowrap text-white transition hover:bg-black/80"
-                    >
-                      {copy.nav.signup}
-                    </Link>
-                  )}
+                  <AccountLinks size="bar" />
                 </nav>
               </motion.div>
             )}
@@ -190,7 +208,7 @@ export function SiteHeader() {
                   </button>
                 </div>
                 <nav aria-label="Site" className="flex flex-col">
-                  {copy.nav.items.map((item, i) => (
+                  {NAV.map((item, i) => (
                     <motion.div
                       key={item.href}
                       initial={{ opacity: 0, y: 6 }}
@@ -208,22 +226,7 @@ export function SiteHeader() {
                   ))}
                 </nav>
                 <div className="mt-3 flex gap-2">
-                  <Link
-                    href={LOGIN_HREF}
-                    onClick={close}
-                    className="flex h-10 flex-1 items-center justify-center rounded-full bg-black/5 text-sm transition hover:bg-black/10"
-                  >
-                    {LOGIN_LABEL}
-                  </Link>
-                  {!STATIC_SITE && (
-                    <Link
-                      href="/signup"
-                      onClick={close}
-                      className="flex h-10 flex-1 items-center justify-center rounded-full bg-black text-sm text-white transition hover:bg-black/80"
-                    >
-                      {copy.nav.signup}
-                    </Link>
-                  )}
+                  <AccountLinks size="panel" onClick={close} />
                 </div>
               </motion.div>
             )}

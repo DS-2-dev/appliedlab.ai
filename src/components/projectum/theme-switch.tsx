@@ -14,6 +14,7 @@
 
 import * as React from "react";
 import { flushSync } from "react-dom";
+import { prefersReducedMotion } from "@/lib/motion";
 import { cn } from "@/lib/utils";
 import { THEME_COOKIE } from "@/components/projectum/theme";
 import { Switch } from "@/components/ui/switch";
@@ -50,7 +51,7 @@ export function DarkModeSwitch({
       flushSync(() => setOn(checked));
       applyDark(checked);
     };
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = prefersReducedMotion();
     if (!("startViewTransition" in document) || reduce) {
       commit();
       return;

@@ -6,21 +6,20 @@
   answer streams in from /api/ask (Claude, grounded in
   src/content/lab-knowledge.ts).
 
-  The static GitHub Pages build has no /api/ask. There the chat calls
-  NEXT_PUBLIC_ASK_URL, the Cloudflare Worker in worker/, and without one
-  answers with the offline note and the Lab's email.
+  Where the questions go depends on the build (ASK_URL, src/lib/site.ts):
+  the static site sends them to the Cloudflare Worker in worker/, and with
+  nowhere to send them the chat answers with the offline note and the Lab's
+  email.
 */
 
 import { useEffect, useRef, useState } from "react";
 import { ArrowUp, RotateCcw } from "lucide-react";
 import { copy } from "@/content/copy";
+import { MAX_CHARS, type Turn } from "@/lib/ask-limits";
+import { ASK_URL } from "@/lib/site";
 import { Reveal } from "@/components/Reveal";
 
 const A = copy.ask;
-const STATIC_SITE = process.env.NEXT_PUBLIC_STATIC_SITE === "1";
-const ASK_URL = process.env.NEXT_PUBLIC_ASK_URL || (STATIC_SITE ? null : "/api/ask");
-
-type Turn = { role: "user" | "assistant"; content: string };
 
 export function AskTheLab() {
   const [turns, setTurns] = useState<Turn[]>([]);
@@ -70,16 +69,25 @@ export function AskTheLab() {
         reply(res.status === 503 ? A.offline : res.status === 429 ? await res.text() : A.error);
         return;
       }
+      // Pieces arrive faster than the screen redraws, so the answer is
+      // painted at most once a frame.
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let text = "";
+      let frame = 0;
       for (;;) {
         const { done, value } = await reader.read();
         if (done) break;
         text += decoder.decode(value, { stream: true });
-        reply(text);
+        if (!frame) {
+          frame = requestAnimationFrame(() => {
+            frame = 0;
+            reply(text);
+          });
+        }
       }
-      if (!text) reply(A.error);
+      cancelAnimationFrame(frame);
+      reply(text || A.error);
     } catch (err) {
       if ((err as Error).name !== "AbortError") reply(A.error);
     } finally {
@@ -96,13 +104,13 @@ export function AskTheLab() {
   const started = turns.length > 0;
 
   return (
-    <section id="ask" className="font-archivo flex min-h-svh flex-col px-5 pt-20 pb-24 text-[#1a1a1a] lg:px-15">
+    <section id="ask" className="flex min-h-svh flex-col px-5 pt-20 pb-24 text-ink lg:px-15">
       {/* Laid out like the ChatGPT and Claude home screens: a centred
           heading over one large composer, with the suggestions under it.
           Once a conversation starts, it runs in a centred column above the
           composer. */}
       <Reveal className="mx-auto flex w-full max-w-3xl flex-1 flex-col items-center">
-        <p className="mb-3 text-[11px] font-medium tracking-[0.18em] uppercase opacity-35">{A.kicker}</p>
+        <p className="kicker mb-3 opacity-35">{A.kicker}</p>
         <h2 className="text-center text-3xl font-light tracking-tight md:text-4xl">{A.heading}</h2>
 
         {started && (
@@ -155,7 +163,7 @@ export function AskTheLab() {
               }
             }}
             rows={2}
-            maxLength={1000}
+            maxLength={MAX_CHARS}
             placeholder={A.placeholder}
             className="field-sizing-content max-h-40 min-h-12 w-full resize-none bg-transparent px-2 pt-1 text-[15px] leading-relaxed outline-none placeholder:text-black/40"
           />

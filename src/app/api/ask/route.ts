@@ -8,27 +8,51 @@
 // Cloudflare Worker (worker/) through NEXT_PUBLIC_ASK_URL instead.
 
 import Anthropic from "@anthropic-ai/sdk";
-import { ASK_LIMIT, LIMITED_TEXT, parseTurns, scheduleNote, streamAnswer } from "@/lib/ask";
+import {
+  ASK_LIMIT,
+  BAD_REQUEST_TEXT,
+  LIMITED_TEXT,
+  NOT_SET_UP_TEXT,
+  TEXT_HEADERS,
+  parseTurns,
+  scheduleNote,
+  streamAnswer,
+} from "@/lib/ask";
 import { getEvents, getSettings } from "@/lib/data";
 import { ipFrom, rateLimited } from "@/lib/rate-limit";
+import type { LabEvent, Settings } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
+// The schedule changes rarely, so it is read at most once a minute. The
+// note itself is rebuilt each time, since "upcoming" depends on the clock.
+const SCHEDULE_TTL = 60_000;
+let cached: { at: number; data: Promise<[Settings, LabEvent[]]> } | null = null;
+
+async function loadSchedule(): Promise<string> {
+  if (!cached || Date.now() - cached.at > SCHEDULE_TTL) {
+    const data = Promise.all([getSettings(), getEvents()]);
+    // A failed read is retried on the next question instead of cached.
+    data.catch(() => {
+      cached = null;
+    });
+    cached = { at: Date.now(), data };
+  }
+  const [settings, events] = await cached.data;
+  return scheduleNote(settings, events);
+}
+
 export async function POST(req: Request) {
   if (rateLimited(ipFrom(req), "ask", { max: ASK_LIMIT })) {
-    return new Response(LIMITED_TEXT, { status: 429 });
+    return new Response(LIMITED_TEXT, { status: 429, headers: TEXT_HEADERS });
   }
 
+  // The schedule loads while the body is read.
+  const schedule = loadSchedule();
   const turns = parseTurns(await req.json().catch(() => null));
-  if (!turns) return new Response("Bad request.", { status: 400 });
+  if (!turns) return new Response(BAD_REQUEST_TEXT, { status: 400, headers: TEXT_HEADERS });
+  if (!process.env.ANTHROPIC_API_KEY) return new Response(NOT_SET_UP_TEXT, { status: 503, headers: TEXT_HEADERS });
 
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return new Response("The assistant is not set up yet.", { status: 503 });
-  }
-
-  const [settings, events] = await Promise.all([getSettings(), getEvents()]);
-  const body = streamAnswer(new Anthropic(), turns, scheduleNote(settings, events));
-  return new Response(body, {
-    headers: { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
-  });
+  const body = streamAnswer(new Anthropic(), turns, await schedule);
+  return new Response(body, { headers: TEXT_HEADERS });
 }

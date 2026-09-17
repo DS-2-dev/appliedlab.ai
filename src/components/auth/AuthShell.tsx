@@ -20,7 +20,7 @@ export function AuthShell({
   footer?: ReactNode;
 }) {
   return (
-    <div className="flex min-h-screen flex-col bg-ground">
+    <div className="auth-shell flex min-h-screen flex-col bg-ground">
       <header className="flex h-[var(--site-header-height)] items-center px-edge">
         <Link href="/" className="flex items-center gap-2 whitespace-nowrap font-ui">
           <AsteriskMark size={15} className="shrink-0 text-brand-deep" />

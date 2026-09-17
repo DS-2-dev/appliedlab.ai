@@ -15,6 +15,7 @@
 
 import { useState } from "react";
 import { ArrowLeft, ArrowRight } from "lucide-react";
+import { pad2 as pad } from "@/lib/utils";
 
 export type PipelineData = {
   lanes: readonly string[];
@@ -26,8 +27,6 @@ export type PipelineData = {
   of: string;
   whoLabel: string;
 };
-
-const pad = (n: number) => String(n).padStart(2, "0");
 
 export function PipelineDiagram({ data }: { data: PipelineData }) {
   const { lanes, phases, steps } = data;
@@ -51,7 +50,7 @@ export function PipelineDiagram({ data }: { data: PipelineData }) {
   const cols = { gridTemplateColumns: `5.5rem repeat(${steps.length}, minmax(0, 1fr))` };
 
   return (
-    <div className="mt-8 [@media(max-height:820px)]:mt-5" onKeyDown={onKey}>
+    <div className="mt-8 short:mt-5" onKeyDown={onKey}>
       {/* The diagram, from sm */}
       <div className="hidden sm:block" role="group" aria-label={data.stepWord}>
         {/* Phase headers */}
@@ -65,7 +64,7 @@ export function PipelineDiagram({ data }: { data: PipelineData }) {
               }`}
               style={{ gridColumn: `${p.from + 2} / ${p.to + 3}` }}
             >
-              <span className="font-medium tracking-[0.14em] uppercase opacity-70">{p.label}</span>
+              <span className="kicker text-[11px] tracking-[0.14em] opacity-70">{p.label}</span>
               {p !== gate && <span className="ml-2 hidden opacity-40 lg:inline">{p.name}</span>}
             </div>
           ))}
@@ -74,7 +73,7 @@ export function PipelineDiagram({ data }: { data: PipelineData }) {
         {/* Lanes */}
         <div className="relative mt-2">
           {lanes.map((lane) => (
-            <div key={lane} className="grid h-9 items-center [@media(max-height:820px)]:h-7" style={cols}>
+            <div key={lane} className="grid h-9 items-center short:h-7" style={cols}>
               <span className="text-xs opacity-50">{lane}</span>
               {steps.map((s, i) => {
                 const here = s.who.includes(lane);
@@ -142,9 +141,9 @@ export function PipelineDiagram({ data }: { data: PipelineData }) {
       </div>
 
       {/* The chosen step, from sm */}
-      <div className="mt-6 hidden items-end justify-between gap-8 border-t border-white/15 pt-5 sm:flex [@media(max-height:820px)]:mt-4 [@media(max-height:820px)]:pt-4">
+      <div className="mt-6 hidden items-end justify-between gap-8 border-t border-white/15 pt-5 sm:flex short:mt-4 short:pt-4">
         <div key={at} aria-live="polite" className="min-w-0 animate-in fade-in-0 slide-in-from-bottom-1 duration-300 motion-reduce:animate-none">
-          <p className="text-[11px] tracking-[0.18em] uppercase opacity-40">
+          <p className="kicker font-normal opacity-40">
             {data.stepWord} {pad(at + 1)} {data.of} {pad(steps.length)}
           </p>
           <p className="mt-1 text-xl font-light">{step.title}</p>

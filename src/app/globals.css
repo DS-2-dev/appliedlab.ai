@@ -1,5 +1,5 @@
-/* Typekit kit: basic-sans (UI/buttons), Goudy Bookletter 1911 (display),
-   and Magistral (hero facts). Their available weights are set explicitly.
+/* Typekit kit: basic-sans (the sign-in screens' controls), Goudy
+   Bookletter 1911 (their headings) and TT Paplane (the Projectum name).
    Must stay the first line: `@import "tailwindcss"` expands in place, so
    anything after it lands below Tailwind's rules and CSS rejects it. */
 @import url("https://use.typekit.net/yrs7pes.css");
@@ -9,7 +9,10 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Neutral grounds and ink with a restrained Weber purple emphasis layer. */
+/* Screens too short for every detail on a landing card; they drop some. */
+@custom-variant short (@media (max-height: 820px));
+
+/* Neutral grounds and ink. The purple survives only on the sign-in screens. */
 :root {
   /* Coss-style neutral ground and border ramp. */
   --ground: #ffffff;
@@ -23,73 +26,31 @@
      and every font-sans inside follows. */
   --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
 
-  /* Neutral charcoal ink scale. */
-  --ink: #18181b;
+  /* Neutral charcoal ink scale. --ink is the landing's text colour. */
+  --ink: #1a1a1a;
   --ink-soft: #52525b;
   --ink-faint: #71717a;
 
-  /* Brand purple returns only through existing emphasis roles. Grounds,
-     borders, and body ink remain neutral so the colour never becomes the
-     page atmosphere. */
   --brand: #6d43a1;
   --brand-deep: #492365;
   --brand-wash: #f4eff8;
 
-  /* Inverted surfaces use the same neutral ramp. */
-  --ground-inverse: #18181b;
-  --ink-inverse: #ffffff;
-  --ink-inverse-soft: #d4d4d8;
-  --ink-inverse-faint: #a1a1aa;
-  --line-inverse: #3f3f46;
-  --brand-inverse: #d2afe8;
-
-  /* secondary: deep green (diagram "running" state, dataviz) */
-  --green: #3e6b4f;
-  --green-deep: #2c523a;
-  --green-wash: #dfe9dc;
-
   /* semantic */
   --error: #96372a;
   --error-wash: #f6e0da;
-  --ok: #2c523a;
-  --ok-wash: #dfe9dc;
 
   /* Images stay softer than application controls. */
   --radius-control: 10px;
   --radius-image: 16px;
 
-  /* Button padding, lifted from cursor.com/home's own tokens
-     (--button-padding-default / --button-padding-sm). em against
-     line-height 1, so a button sizes off its own type rather than a fixed
-     height, and both step down at 900px exactly as theirs do. */
+  /* Button padding (.btn), in em against line-height 1, so a button sizes
+     off its own type; it steps down at 900px. */
   --button-padding-default: 0.89em 1.45em 0.91em;
-  --button-padding-sm: 0.45em 0.8em 0.46em;
 
-  /* Fluid page gutter, used by the header bar and the hero panel. */
+  /* Fluid page gutter and header height, for the sign-in screens' bar. */
   --space-edge: clamp(1rem, calc(0.82394rem + 0.75117vw), 1.5rem);
-
-  /* Header height, matching cursor.com's 52/56. The hero measures itself
-     against this, so the two never drift apart. */
   --site-header-height: 52px;
 
-  /* Hero text placement. The block is inset from the corner rather than
-     pinned to it, and its top lines up with the top of the oval: the oval is
-     vertically centred with a radius of 0.36 x the hero's height, so its top
-     edge sits 14% down. Aligning to that is what makes the text read as
-     related to the orb instead of stuck to the page edge. */
-  --hero-text-inset: max(var(--space-edge), 3.5vw);
-  --hero-text-top: calc((100svh - var(--site-header-height)) * 0.14);
-
-  /* How wide the hero's text column can be before it runs into the oval.
-     The oval is centred, and its half-width works out to 0.3421 x the hero's
-     height (heightRatio 0.72 / 2, x aspect 0.88, x the 1.08 wobble reach).
-     So the text may run from the gutter to the middle of the screen, less
-     that half-width and a 2rem gap. Derived rather than guessed, so the two
-     cannot collide at any viewport — retune it if the oval's proportions
-     change. */
-  --hero-text-max: calc(
-    50vw - 0.3421 * (100svh - var(--site-header-height)) - var(--hero-text-inset) - 2rem
-  );
   --background: oklch(1 0 0);
   --foreground: oklch(0.145 0 0);
   --card: oklch(1 0 0);
@@ -130,17 +91,22 @@
   }
 }
 
-/* cursor.com's button breakpoint. 900, not one of ours — it is their number,
-   and the whole point is that the control matches theirs. */
 @media (min-width: 900px) {
   :root {
     --button-padding-default: 0.78em 1.35em 0.8em;
-    --button-padding-sm: 0.4em 0.75em 0.42em;
   }
 }
 
 @utility px-edge {
   padding-inline: var(--space-edge);
+}
+
+/* The landing's small uppercase labels. Opacity stays per use. */
+@utility kicker {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
 }
 
 @theme inline {
@@ -155,42 +121,19 @@
   --color-brand: var(--brand);
   --color-brand-deep: var(--brand-deep);
   --color-brand-wash: var(--brand-wash);
-  --color-ground-inverse: var(--ground-inverse);
-  --color-ink-inverse: var(--ink-inverse);
-  --color-ink-inverse-soft: var(--ink-inverse-soft);
-  --color-ink-inverse-faint: var(--ink-inverse-faint);
-  --color-line-inverse: var(--line-inverse);
-  --color-brand-inverse: var(--brand-inverse);
-  --color-green: var(--green);
-  --color-green-deep: var(--green-deep);
-  --color-green-wash: var(--green-wash);
   --color-error: var(--error);
   --color-error-wash: var(--error-wash);
-  --color-ok: var(--ok);
-  --color-ok-wash: var(--ok-wash);
 
-  /* Body. cursor.com/home runs CursorGothic, a proprietary self-hosted face
-     we cannot license — Inter is the nearest neo-grotesk substitute. */
   --font-sans: var(--font-body);
-  /* Chrome: header text and nav. Buttons moved to --font-sans on 2026-09-01,
-     matching cursor.com, whose .btn sets no family and inherits the body. */
+  /* basic-sans, for the sign-in screens' wordmark and controls. */
   --font-ui: "basic-sans", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  /* Big headings and the hero headline. Goudy Bookletter 1911, from the same
-     kit, replaces t26-carbon and automate. The kit serves it at fvd=n4:
-     one weight, one style, no italic and no bold. Never set a weight on it,
-     the way Magistral is never bolded, or the browser fakes one by smearing
-     the outlines. The serif fallback is deliberate: falling back to Inter
-     would swap an old-style serif for a grotesque mid-load. */
+  /* Goudy Bookletter ships one weight and one style: never bold or italicize
+     it, or the browser fakes one. The serif fallback keeps the swap quiet. */
   --font-display: "goudy-bookletter-1911", var(--font-source-serif), ui-serif, Georgia, serif;
-  --font-goudy: "goudy-bookletter-1911", var(--font-source-serif), ui-serif, Georgia, serif;
-  /* The hero facts strip. Magistral ships 400 and nothing else — never set a
-     bold on it, or the browser fakes one by smearing the outlines. */
-  --font-magistral: "magistral", var(--font-inter), ui-sans-serif, system-ui, sans-serif;
-  /* The Projectum name beside its logo, and nothing else. TT Paplane, from
-     the same kit, ships 400 only, so never bold it either. */
+  /* The landing's face (next/font, layout.tsx). */
   --font-archivo: var(--font-archivo-face), ui-sans-serif, system-ui, sans-serif;
+  /* The Projectum name beside its logo. TT Paplane ships 400 only. */
   --font-paplane: "tt-paplane", var(--font-geist), ui-sans-serif, system-ui, sans-serif;
-  --font-serif: var(--font-source-serif), ui-serif, Georgia, serif;
   --font-mono: var(--font-jetbrains), ui-monospace, monospace;
   --font-heading: var(--font-body);
   --color-sidebar-ring: var(--sidebar-ring);
@@ -233,17 +176,8 @@
   --radius-4xl: calc(var(--radius) * 2.6);
 }
 
-/* Movement rules (2026-08-19): no global smooth scroll. In-page CTAs scroll
-   via ScrollLink (smooth, no URL residue); cross-page reference deep-links
-   land instantly. The landing's sections fill the screen and land flush
-   with its top, under the see-through header, so there is no scroll
-   padding. */
-html {
-  /* The rubber-band stays (2026-09-02). Suppressing it to keep the sticky
-     header off the bounce cost more than it bought: on a trackpad a page
-     that refuses to overscroll reads as fighting the gesture. Native
-     behaviour wins. */
-}
+/* No global smooth scroll: in-page links glide through ScrollLink, and
+   deep links from other pages land instantly. */
 
 body {
   background: var(--ground);
@@ -270,47 +204,14 @@ body {
   text-wrap: balance;
 }
 
-/* Every real control takes the UI face. Links styled as buttons carry
-   `font-ui` explicitly. */
-button,
-input,
-select,
-textarea {
+/* The sign-in screens' controls take the UI face. Everywhere else a control
+   inherits its surface's face, as Tailwind's preflight sets. */
+.auth-shell :is(button, input, select, textarea) {
   font-family: var(--font-ui);
 }
 
-/* The redesigned landing sets Archivo on its sections; controls inside
-   them take that face too instead of the old UI face. */
-.font-archivo :is(button, input, select, textarea) {
-  font-family: inherit;
-}
-
-/* Text boxes there mark focus on their own frame (the chat composer's
-   border), so the old purple outline stays off them. */
-.font-archivo :is(input, textarea):focus-visible {
-  outline: none;
-}
-
-/* Buttons: cursor.com/home's `.btn`, copied off their stylesheet rather than
-   eyeballed. Their rule is display:inline-flex, centred, cursor:pointer,
-   font-size --text-base (1rem), font-weight --font-weight-normal (400),
-   line-height 1, padding --button-padding-default, a 1px border, and a pill
-   radius (they write Tailwind's max float; 9999px renders identically).
-   `.btn-sm` is their `.btn--sm`: --text-sm (0.875rem) and the sm padding.
-
-   Three things theirs does NOT have, so ours doesn't either: no transition
-   (their hover snaps), no transform on :active, and no white-space:nowrap —
-   a long label wraps inside the pill instead of running past its column.
-
-   The one deliberate difference is the family. Theirs is inherited from the
-   document, where a class repoints --font-sans to CursorGothic, a face
-   commissioned for them and not licensable. Buttons here take our own
-   --font-sans (Inter), which is the nearest widely available neo-grotesk and
-   already carries the hero. Revisit if a closer face lands in the Typekit
-   kit.
-
-   In @layer components so Tailwind's utilities still win: variants set
-   background, text, and border colour with ordinary classes. */
+/* .btn, the sign-in screens' buttons. In @layer components so Tailwind's
+   utilities still win when a variant sets colours with ordinary classes. */
 @layer components {
   .btn {
     display: inline-flex;
@@ -325,18 +226,16 @@ textarea {
     border: 1px solid transparent;
     border-radius: var(--radius-control);
   }
-
-  .btn-sm {
-    font-size: 0.875rem;
-    padding: var(--button-padding-sm);
-  }
 }
 
-/* Visible focus everywhere (brand spec §4.3) */
-:focus-visible {
-  outline: 2px solid var(--brand-deep);
-  outline-offset: 3px;
-  border-radius: 2px;
+/* Visible focus, in the base layer so a component's own focus style wins.
+   Projectum's components carry their own rings, so it stays off there. */
+@layer base {
+  :root:not(:has(.projectum-ui)) :focus-visible {
+    outline: 2px solid var(--brand-deep);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
 }
 
 /* Field's controls. A surface can set the --form-* variables to recolour
@@ -369,7 +268,6 @@ textarea {
   border-color: var(--form-focus, var(--ink));
   box-shadow: 0 0 0 3px var(--form-focus-ring, var(--ground-sunken));
 }
-
 
 .dark {
   color-scheme: dark;
@@ -574,19 +472,4 @@ html.theme-fade::view-transition-new(theme-switch) {
 :root:has(.projectum-ui) body {
   background: var(--background);
   color: var(--foreground);
-}
-/* The site gives every control its UI face (basic-sans) in an unlayered
-   rule, which beats shadcn's classes. Projectum's controls take Geist like
-   the rest of the app, dialogs and menus included. */
-:root:has(.projectum-ui) :is(button, input, select, textarea) {
-  font-family: var(--font-body);
-}
-/* The site's purple focus outline above is unlayered, so it beats every
-   shadcn focus utility. Projectum hands focus back to the components' own
-   neutral rings, and to their own corners, which the site's 2px radius
-   would otherwise square off on focus. */
-:root:has(.projectum-ui) :focus-visible {
-  outline: revert-layer;
-  outline-offset: revert-layer;
-  border-radius: revert-layer;
 }

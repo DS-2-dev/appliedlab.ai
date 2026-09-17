@@ -9,19 +9,19 @@ import { HowItWorks } from "@/components/HowItWorks";
 import { Reveal } from "@/components/Reveal";
 import { ScrollLink } from "@/components/ScrollLink";
 import { SiteHeader } from "@/components/SiteHeader";
+import { JOIN_HREF } from "@/lib/site";
 
 const H = copy.home;
-const STATIC_SITE = process.env.NEXT_PUBLIC_STATIC_SITE === "1";
 
 export default function Home() {
   return (
     <>
       <SiteHeader />
-      <main id="main" className="bg-white text-[#1a1a1a]">
+      <main id="main" className="font-archivo bg-white text-ink">
         {/* The hero: the star in a box across the top of the first
             screen, then one row beneath it, the large heading at the left
             and the rest of the copy with the buttons at the right. */}
-        <section className="font-archivo min-h-svh">
+        <section className="min-h-svh">
           <Reveal className="flex min-h-svh flex-col gap-10 px-5 pt-24 pb-10 lg:px-15 lg:pb-12">
             <div className="flex min-h-[14rem] flex-1 items-center justify-center">
               {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG needs no optimizing */}
@@ -33,7 +33,7 @@ export default function Home() {
                 button row ends level with the heading's last line. */}
             <div className="grid gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-12">
               <div className="lg:col-span-8">
-                <p className="mb-4 text-[11px] font-medium tracking-[0.18em] uppercase opacity-35">{H.kicker}</p>
+                <p className="kicker mb-4 opacity-35">{H.kicker}</p>
                 <h1 className="max-w-4xl text-[2rem] leading-[1.02] font-light tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl">
                   {H.heading.split(H.headingTilt).map((part, i) =>
                     i === 0 ? (
@@ -51,16 +51,15 @@ export default function Home() {
               <div className="flex flex-col justify-between gap-6 lg:col-span-4">
                 <p className="max-w-md text-sm leading-relaxed font-light opacity-60 lg:text-[15px]">{H.lede}</p>
                 <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-                  {/* The static site has no accounts, so joining opens the demo. */}
                   <Link
-                    href={STATIC_SITE ? "/projectum" : "/signup"}
+                    href={JOIN_HREF}
                     className="group inline-flex h-10 items-center gap-2 rounded-full bg-black px-5 text-sm text-white transition hover:bg-black/80"
                   >
                     {H.join}
                     <ArrowRight aria-hidden className="size-4 transition group-hover:translate-x-0.5" strokeWidth={1.5} />
                   </Link>
                   <ScrollLink
-                    href={H.howHref}
+                    href={`#${copy.how.steps[0].id}`}
                     className="group inline-flex items-center gap-1.5 text-sm opacity-60 transition hover:opacity-100"
                   >
                     {H.how}

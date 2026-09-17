@@ -2,12 +2,14 @@
 // the sidebar (app-sidebar.tsx). Each section is made here, on the server,
 // and settings-tabs.tsx lays them out, a nav at the left and the chosen one
 // at the right. The profile picture can be uploaded (profile-photo.tsx), and
-// Log out is a plain form so it works before JavaScript loads.
+// Log out is a plain form so it works before JavaScript loads. The static
+// site's demo has no account to leave, so it skips Account.
 
 import { Bot, CalendarCheck, KeyRound, LogOut, SlidersHorizontal, UserRound } from "lucide-react";
 import { copy } from "@/content/copy";
 import { getSettings } from "@/lib/data";
 import { logoutAction } from "@/lib/auth-actions";
+import { STATIC_SITE } from "@/lib/site";
 import { AttendanceGraph } from "@/components/projectum/attendance-graph";
 import { CONNECTOR_LOGOS } from "@/components/projectum/connector-logos";
 import { ProfilePhoto } from "@/components/projectum/profile-photo";
@@ -19,6 +21,24 @@ import { Label } from "@/components/ui/label";
 
 const S = copy.projectum;
 const P = copy.projectum.settingsPage;
+
+// Log out, for real accounts only.
+function account(): SettingsSection {
+  return {
+    id: "account",
+    title: P.accountTitle,
+    description: P.accountDescription,
+    icon: <KeyRound />,
+    content: (
+      <form action={logoutAction}>
+        <Button type="submit" variant="outline">
+          <LogOut />
+          {S.logout}
+        </Button>
+      </form>
+    ),
+  };
+}
 
 // Headed like the project card's fields.
 function Field({ heading, value }: { heading: string; value: string }) {
@@ -107,21 +127,8 @@ export async function SettingsPanel({ name, email, dark }: { name: string; email
       icon: <CalendarCheck />,
       content: <AttendanceGraph schedule={schedule} />,
     },
-    {
-      id: "account",
-      title: P.accountTitle,
-      description: P.accountDescription,
-      icon: <KeyRound />,
-      content: (
-        <form action={logoutAction}>
-          <Button type="submit" variant="outline">
-            <LogOut />
-            {S.logout}
-          </Button>
-        </form>
-      ),
-    },
   ];
+  if (!STATIC_SITE) sections.push(account());
 
   return <SettingsTabs sections={sections} />;
 }

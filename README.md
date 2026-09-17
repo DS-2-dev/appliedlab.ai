@@ -1,7 +1,7 @@
 # Applied AI Lab website
 
-Built from `website/spec-v2.md`. One-scroll landing, /rsvp (the printed-QR
-target), partner-interest form, database-driven calendar, officer admin.
+The Lab's site: the landing (a star hero, How it works, and the Ask the Lab
+chat), Projectum (the project workspace) and the sign-in screens.
 
 ## Running it
 
@@ -10,26 +10,20 @@ npm install
 npm run dev
 ```
 
-With no env vars the site uses the local JSON store in `data/` and the admin
-area offers a dev-preview sign-in (development builds only). This is the
-full experience minus Google auth.
+With no env vars the site uses the local JSON store in `data/` (events,
+settings, local accounts) and offers a dev-preview Projectum sign-in
+(development builds only). Add `ANTHROPIC_API_KEY` to `.env.local` for Ask
+the Lab to answer through `/api/ask` (see `.env.example`).
 
-## Going live
+## Accounts
 
-1. Buy the domain (registrar account owned by ailab@weber.edu).
-2. Create the club Supabase project (same ownership), run
-   `supabase/migration.sql`, enable Google auth, seed the first officer row
-   (instructions at the bottom of the migration file).
-3. Copy `.env.example` to `.env.local` (locally) or set the two env vars in
-   Vercel. The data layer and auth switch to Supabase automatically.
-4. Deploy to Vercel from this directory. Set the same env vars there.
-5. Generate the flier/banner QR pointing at `https://<domain>/rsvp` only
-   after a phone scan of a test QR reaches the form and a row lands in the
-   table (spec-v2 Phase A acceptance).
+Create the club Supabase project (owned by ailab@weber.edu), run the SQL in
+`supabase/`, enable Google auth, and set the two Supabase env vars. The data
+layer and sign-in switch to Supabase automatically.
 
 ## GitHub Pages
 
-The public site is a static build served by GitHub Pages:
+The public site is a static build served by GitHub Pages at appliedlab.ai:
 
 ```bash
 npm run build:pages   # writes out/
@@ -37,34 +31,31 @@ npm run build:pages   # writes out/
 
 `scripts/build-pages.mjs` leaves out everything that needs a server (sign-in,
 API routes, server actions, proxy) and swaps in `pages-static/`, so Projectum
-opens as its demo.
-`.github/workflows/pages.yml` runs it and deploys on every push to main.
+opens as its demo. `.github/workflows/pages.yml` runs it and deploys on
+every push to main.
 
-The Ask the Lab chat needs a server, which Pages lacks, so on the static
-site it calls a Cloudflare Worker (`worker/`, deploy steps in
-`worker/README.md`) whose URL the workflow passes in as
-`NEXT_PUBLIC_ASK_URL` from the repo variable `ASK_URL`. Locally it uses
-`/api/ask` with `ANTHROPIC_API_KEY` in `.env.local`.
+Ask the Lab needs a server, which Pages lacks, so on the static site it
+calls a Cloudflare Worker (`worker/`, deploy steps in `worker/README.md`).
+The workflow passes the Worker's address in as `NEXT_PUBLIC_ASK_URL`.
 
 ## Copy
 
 Every public string lives in `src/content/copy.ts` and is PROVISIONAL until
-Kylar's markup pass. Check voice compliance any time with:
+Kylar's markup pass. The chat's facts live in `src/content/lab-knowledge.ts`.
+Check voice compliance with:
 
 ```bash
 node scripts/copy-lint.mjs
 ```
 
-Officer-editable strings (tagline, schedule line, follow-up days, offseason
-line) live in settings, editable at /admin/settings.
-
 ## Layout of things
 
 - `src/content/copy.ts`: all public copy, one file.
+- `src/lib/site.ts`: what differs between the full and static builds.
+- `src/lib/ask.ts`: the Ask the Lab request, shared by the route and the Worker.
 - `src/lib/data/`: the data seam. `local.ts` (JSON in `data/`) or
   `supabase.ts`, chosen by env vars in `index.ts`.
-- `src/lib/auth.ts`: officer gate used by every admin page and API route.
-- `design/`: the style rules (`STYLE.md`) and tokens for the redesign.
-- `supabase/migration.sql`: schema + RLS, matches spec-v2 §5.1.
-- `src/app/globals.css`: provisional brand tokens (one-file swap when the
-  final tokens land).
+- `src/lib/auth.ts`: who is signed in, for Projectum and the sign-in pages.
+- `design/`: the style rules (`STYLE.md`) and reference tokens.
+- `src/app/globals.css`: tokens, the `kicker` and `short` helpers, and
+  Projectum's surface.

@@ -5,6 +5,7 @@
 // lives here, and reduced motion gets the plain jump.
 
 import type { ComponentProps, MouseEvent } from "react";
+import { prefersReducedMotion } from "@/lib/motion";
 
 export function ScrollLink({ href, onClick, ...props }: ComponentProps<"a"> & { href: `#${string}` }) {
   const glide = (e: MouseEvent<HTMLAnchorElement>) => {
@@ -12,7 +13,7 @@ export function ScrollLink({ href, onClick, ...props }: ComponentProps<"a"> & { 
     const target = document.getElementById(href.slice(1));
     if (!target || e.defaultPrevented) return;
     e.preventDefault();
-    const reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const reduce = prefersReducedMotion();
     target.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
   };
   return <a href={href} onClick={glide} {...props} />;

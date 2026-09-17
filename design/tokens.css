@@ -1,7 +1,8 @@
-/* Site style tokens for the redesign (rules in design/STYLE.md), after
-   openwebui.com. Black, white and grays; no accent. Not imported yet: pull
-   it into src/app/globals.css when the public pages are rebuilt, and load
-   Archivo with next/font/google as --font-archivo. */
+/* Reference values for design/STYLE.md, after openwebui.com: black, white
+   and grays, no accent. Not imported: the landing sets these through
+   Tailwind utilities in its components, with the ink colour as --ink and the
+   eyebrow label as the `kicker` utility in src/app/globals.css, and Archivo
+   loaded in layout.tsx as --font-archivo-face. */
 
 :root {
   --page: #ffffff;

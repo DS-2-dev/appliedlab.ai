@@ -1,8 +1,7 @@
 // The GitHub Pages build's stand-in for src/lib/auth-actions.ts. Pages runs
-// no server, so there are no server actions; the header still imports
-// logoutAction, but only shows it to a signed-in visitor, and nobody is
-// signed in here. The sign-in pages that use the rest are left out of this
-// build.
+// no server, so there are no server actions. Projectum's Settings still
+// imports logoutAction but skips its Account section on the static site,
+// and the sign-in pages that use the rest are left out of this build.
 
 export type AuthField = "name" | "email" | "password" | "form";
 

@@ -1,7 +1,6 @@
 /*
-  All site copy lives here. The public site was cleared for a redesign on
-  2026-09-16; what remains is the page title, the sign-in screens and
-  Projectum.
+  All site copy lives here: the landing (the hero, How it works and Ask the
+  Lab), the sign-in screens and Projectum.
 
   VOICE + CONTENT RULES: canonical in the lab-voice skill
   (.claude/skills/lab-voice/SKILL.md). copy-lint (scripts/copy-lint.mjs)
@@ -17,15 +16,6 @@ export const copy = {
 
   nav: {
     wordmark: "Applied AI Lab",
-    // The header's links, after the advisory board deck's sections. The
-    // pages behind them are not built yet.
-    items: [
-      { label: "About", href: "/#about" },
-      { label: "The Pipeline", href: "/#pipeline" },
-      { label: "Platform", href: "/#platform" },
-      { label: "Student Roles", href: "/#roles" },
-      { label: "Partners", href: "/#partners" },
-    ],
     login: "Log in",
     signup: "Sign up",
     // In place of Log in on the static site, which has no accounts.
@@ -43,7 +33,6 @@ export const copy = {
     join: "Join the Lab",
     // Scrolls to the first step of How it works, below the hero.
     how: "See how it works",
-    howHref: "#about" as const,
   },
 
   // How it works (2026-09-16): the landing's scroll-driven section, one step
@@ -55,10 +44,8 @@ export const copy = {
       {
         id: "about",
         label: "About",
-        caption: "What the Lab is",
         title: "A student-led lab for applied AI",
         body: "Students from any major take on industry challenges and solve them with AI. Meetings are free, and no experience is needed.",
-        chips: [],
         purposeLabel: "Our purpose",
         purpose: "To bring people together, ask hard questions, and elevate everyone involved.",
         aims: [
@@ -80,10 +67,10 @@ export const copy = {
       {
         id: "pipeline",
         label: "The Pipeline",
-        caption: "How a project runs",
         title: "From a posted problem to an internship",
+        // Its step detail tells the story, so the card drops the intro where space is short.
+        compact: true,
         body: "Partners and members work side by side until a review gate, where a partner who moves to implement can hire the member as an intern.",
-        chips: [],
         // The deck's pipeline, step by step. `who` lists the lanes a step
         // touches, lead first.
         pipeline: {
@@ -141,11 +128,9 @@ export const copy = {
       {
         id: "platform",
         label: "Platform",
-        caption: "Where the work lives",
         title: "A notice board and a project tracker",
         status: "Launching next",
         body: "Partners post problems to the notice board, members claim them with an action plan, and every milestone is tracked where partners and reps can follow it.",
-        chips: [],
         cta: { label: "Try the Projectum demo", href: "/projectum" },
         // A preview of the notice board, with sample problems from the
         // advisory board deck. The platform is not live yet.
@@ -183,11 +168,9 @@ export const copy = {
       {
         id: "roles",
         label: "Student Roles",
-        caption: "How students grow",
         title: "Three levels, each one earned",
         body: "Every student starts as an Affiliate. An approved project earns funding, and implementing it with a partner can lead to an internship.",
-        chips: [],
-        cta: { label: "Start as an Affiliate", href: "/signup" },
+        cta: { label: "Start as an Affiliate", href: "join" },
         earnLabel: "What you earn",
         earn: [
           { when: "At Sponsored", what: "A Lab-funded Claude account" },
@@ -215,10 +198,8 @@ export const copy = {
       {
         id: "partners",
         label: "Partners",
-        caption: "What organizations bring",
         title: "Bring the problems your team runs into",
         body: "Organizations post as many problems as they like, and members from any discipline build the solutions.",
-        chips: [],
         cta: { label: "Bring a problem", href: "mailto:ailab@weber.edu" },
         // A preview of the partner portal, drawn with the sample projects
         // from the advisory board deck. The platform is not live yet.

@@ -13,7 +13,6 @@ const FILES = [
   "src/content/copy.ts",
   "data/settings.json",
   "data/events.json",
-  "data/showcase.json",
 ];
 
 // §3.2 + §3.6 banned vocabulary (single words / short phrases, case-insensitive)

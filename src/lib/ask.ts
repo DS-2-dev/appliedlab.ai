@@ -6,10 +6,10 @@
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { LAB_KNOWLEDGE } from "@/content/lab-knowledge";
+import { MAX_CHARS, MAX_TURNS, type Turn } from "@/lib/ask-limits";
 import type { LabEvent, Settings } from "@/lib/types";
 
-export const MAX_TURNS = 12;
-export const MAX_CHARS = 1000;
+export type { Turn };
 
 // Stable, so it caches: the rules, then the knowledge.
 const INSTRUCTIONS = `You are the assistant on the Applied AI Lab's website, answering visitors' questions about the Lab: students of any major, faculty, and organizations thinking about bringing a problem.
@@ -20,7 +20,7 @@ Write like a clear graduate student explaining the Lab to someone new: short com
 
 Latency-sensitive; begin your visible answer immediately.`;
 
-export type Turn = { role: "user" | "assistant"; content: string };
+const STABLE_PROMPT = `${INSTRUCTIONS}\n\n${LAB_KNOWLEDGE}`;
 
 export function parseTurns(body: unknown): Turn[] | null {
   const raw = (body as { messages?: unknown })?.messages;
@@ -35,7 +35,7 @@ export function parseTurns(body: unknown): Turn[] | null {
     turns.length > 0 &&
     turns.every((t, i) => t.content && t.role === (i % 2 === 0 ? "user" : "assistant")) &&
     turns[turns.length - 1].role === "user";
-  return valid ? (turns as Turn[]) : null;
+  return valid ? turns : null;
 }
 
 // The schedule changes, so it goes after the cached block.
@@ -66,7 +66,7 @@ export function scheduleNote(settings: Settings, events: LabEvent[]): string {
 // The whole system prompt as one string, for hosts that take it that way
 // (the Worker's Cloudflare Workers AI path).
 export function systemPrompt(schedule: string): string {
-  return `${INSTRUCTIONS}\n\n${LAB_KNOWLEDGE}\n\n${schedule}`;
+  return `${STABLE_PROMPT}\n\n${schedule}`;
 }
 
 // Rate limit: questions per visitor per window.
@@ -75,7 +75,7 @@ export const ASK_LIMIT = 30;
 // The same request from both hosts. Short conversational answers from a
 // fixed set of facts, so effort is low; a declined request is re-run on
 // Anthropic's recommended fallback model.
-export function askParams(turns: Turn[], schedule: string) {
+function askParams(turns: Turn[], schedule: string) {
   return {
     model: "claude-opus-5",
     max_tokens: 4096,
@@ -83,46 +83,71 @@ export function askParams(turns: Turn[], schedule: string) {
     fallbacks: "default",
     output_config: { effort: "low" },
     system: [
-      { type: "text", text: `${INSTRUCTIONS}\n\n${LAB_KNOWLEDGE}`, cache_control: { type: "ephemeral" } },
+      { type: "text", text: STABLE_PROMPT, cache_control: { type: "ephemeral" } },
       { type: "text", text: schedule },
     ],
     messages: turns,
   } satisfies Anthropic.Beta.Messages.MessageCreateParamsNonStreaming;
 }
 
-export const REFUSAL_TEXT = "I can't help with that one. For anything about the Lab, email ailab@weber.edu.";
-export const BUSY_TEXT = "The assistant is busy right now. Try again in a moment.";
+const REFUSAL_TEXT = "I can't help with that one. For anything about the Lab, email ailab@weber.edu.";
+const BUSY_TEXT = "The assistant is busy right now. Try again in a moment.";
 export const FAILED_TEXT = "Something went wrong on our side. Email ailab@weber.edu and we'll answer there.";
 export const LIMITED_TEXT = "Too many questions for now. Try again in a little while.";
+export const BAD_REQUEST_TEXT = "Bad request.";
+export const NOT_SET_UP_TEXT = "The assistant is not set up yet.";
 
-// Streams the answer as plain text, whichever host runs it.
-export function streamAnswer(client: Anthropic, turns: Turn[], schedule: string): ReadableStream<Uint8Array> {
-  const stream = client.beta.messages.stream(askParams(turns, schedule));
+// Every answer, and every refusal to answer, is plain text, never cached.
+export const TEXT_HEADERS = { "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" };
+
+// A plain-text stream fed by `produce`, whichever engine writes it. Anything
+// `produce` throws ends the answer with FAILED_TEXT, or with `onError`'s own
+// text when it returns one.
+export function textStream(
+  produce: (emit: (text: string) => void) => Promise<void>,
+  { onError, onCancel }: { onError?: (err: unknown) => string | undefined; onCancel?: () => void } = {},
+): ReadableStream<Uint8Array> {
   const encoder = new TextEncoder();
   return new ReadableStream<Uint8Array>({
     async start(controller) {
+      let sent = false;
+      const emit = (text: string) => {
+        if (!text) return;
+        controller.enqueue(encoder.encode(text));
+        sent = true;
+      };
       try {
-        for await (const event of stream) {
-          if (event.type === "content_block_delta" && event.delta.type === "text_delta") {
-            controller.enqueue(encoder.encode(event.delta.text));
-          }
-        }
-        const final = await stream.finalMessage();
-        if (final.stop_reason === "refusal") controller.enqueue(encoder.encode(REFUSAL_TEXT));
+        await produce(emit);
+        if (!sent) emit(FAILED_TEXT);
       } catch (err) {
-        const status = (err as { status?: number }).status;
-        if (status === 429) {
-          controller.enqueue(encoder.encode(BUSY_TEXT));
-        } else {
-          console.error("ask:", status ?? "", err instanceof Error ? err.message : err);
-          controller.enqueue(encoder.encode(FAILED_TEXT));
+        const text = onError?.(err);
+        if (text) emit(text);
+        else {
+          console.error("ask:", err instanceof Error ? err.message : err);
+          if (!sent) emit(FAILED_TEXT);
         }
       } finally {
         controller.close();
       }
     },
-    cancel() {
-      stream.abort();
-    },
+    cancel: onCancel,
   });
+}
+
+// Claude's answer as plain text.
+export function streamAnswer(client: Anthropic, turns: Turn[], schedule: string): ReadableStream<Uint8Array> {
+  const stream = client.beta.messages.stream(askParams(turns, schedule));
+  return textStream(
+    async (emit) => {
+      for await (const event of stream) {
+        if (event.type === "content_block_delta" && event.delta.type === "text_delta") emit(event.delta.text);
+      }
+      const final = await stream.finalMessage();
+      if (final.stop_reason === "refusal") emit(REFUSAL_TEXT);
+    },
+    {
+      onError: (err) => ((err as { status?: number }).status === 429 ? BUSY_TEXT : undefined),
+      onCancel: () => stream.abort(),
+    },
+  );
 }

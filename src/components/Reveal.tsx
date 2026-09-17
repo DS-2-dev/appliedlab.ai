@@ -12,6 +12,7 @@
 // on or off. Visible throughout for anyone who asks for reduced motion.
 
 import { useEffect, useRef, type ReactNode } from "react";
+import { prefersReducedMotion } from "@/lib/motion";
 
 // As fractions of the screen height: the content's top fades in between
 // ENTER_FROM and ENTER_TO, and its bottom fades out between LEAVE_FROM and
@@ -31,9 +32,13 @@ export function Reveal({ children, className }: { children: ReactNode; className
   useEffect(() => {
     const node = el.current;
     if (!node) return;
-    if (window.matchMedia("(prefers-reduced-motion: reduce)").matches) return;
+    if (prefersReducedMotion()) return;
 
     let frame = 0;
+    // The last values painted, so a frame that changes nothing writes nothing
+    // (the pinned How it works panel sits fully shown for most of its scroll).
+    let lastV = -1;
+    let lastShift = NaN;
     const paint = () => {
       frame = 0;
       const vh = window.innerHeight;
@@ -41,9 +46,15 @@ export function Reveal({ children, className }: { children: ReactNode; className
       const enter = clamp((ENTER_FROM * vh - top) / ((ENTER_FROM - ENTER_TO) * vh));
       const leave = clamp((bottom - LEAVE_TO * vh) / ((LEAVE_FROM - LEAVE_TO) * vh));
       const v = Math.min(enter, leave);
+      const shift = (leave - enter) * DRIFT;
+      if (v === lastV && shift === lastShift) return;
+      lastV = v;
+      lastShift = shift;
       node.style.opacity = String(v);
       node.style.filter = v < 1 ? `blur(${(1 - v) * BLUR}px)` : "";
-      node.style.transform = `translate3d(0, ${((1 - enter) - (1 - leave)) * DRIFT}px, 0)`;
+      node.style.transform = shift ? `translate3d(0, ${shift}px, 0)` : "";
+      // Promoted to its own layer only while it is changing.
+      node.style.willChange = v > 0 && v < 1 ? "opacity, transform, filter" : "";
     };
     const onScroll = () => {
       if (!frame) frame = requestAnimationFrame(paint);
@@ -59,7 +70,7 @@ export function Reveal({ children, className }: { children: ReactNode; className
   }, []);
 
   return (
-    <div ref={el} className={`will-change-[opacity,transform,filter] ${className ?? ""}`}>
+    <div ref={el} className={className}>
       {children}
     </div>
   );

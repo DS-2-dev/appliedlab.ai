@@ -1,9 +1,6 @@
-// In-memory rate limit: 5 submissions per IP per hour per form by default
-// (spec-v2 §4/§5.2). Per-instance only, which is fine at club scale; Supabase
-// RLS and the honeypot are the other layers.
-//
-// Sign-in forms pass their own limits: five an hour is right for a contact
-// form and far too tight for someone mistyping a password.
+// In-memory rate limit per IP, per form, per hour. Per-instance only, which
+// is fine at club scale. Callers (the sign-in actions, Ask the Lab) pass
+// their own limits; the default of five an hour suits a one-off form.
 
 const WINDOW_MS = 60 * 60 * 1000;
 const MAX = 5;

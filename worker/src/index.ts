@@ -13,12 +13,14 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import {
-  FAILED_TEXT,
+  BAD_REQUEST_TEXT,
   LIMITED_TEXT,
+  TEXT_HEADERS,
   parseTurns,
   scheduleNote,
   streamAnswer,
   systemPrompt,
+  textStream,
   type Turn,
 } from "@/lib/ask";
 import { DEFAULT_SETTINGS, type LabEvent, type Settings } from "@/lib/types";
@@ -47,54 +49,41 @@ function cors(origin: string | null, env: Env): Record<string, string> {
 }
 
 function text(body: string, status: number, headers: Record<string, string>): Response {
-  return new Response(body, { status, headers: { ...headers, "content-type": "text/plain; charset=utf-8" } });
+  return new Response(body, { status, headers: { ...headers, ...TEXT_HEADERS } });
 }
 
+// The bundled settings, merged over the defaults once.
+const SETTINGS: Settings = { ...DEFAULT_SETTINGS, ...(settings as Partial<Settings>) };
+
 // Workers AI streams server-sent events, `data: {"response": "..."}` per
-// piece and `data: [DONE]` at the end. This turns them into plain text, the
-// same shape the chat reads from Claude.
+// piece and `data: [DONE]` at the end. This turns them into the same plain
+// text the chat reads from Claude.
 function streamFree(env: Env, turns: Turn[], schedule: string): ReadableStream<Uint8Array> {
-  const encoder = new TextEncoder();
-  const decoder = new TextDecoder();
-  return new ReadableStream<Uint8Array>({
-    async start(controller) {
-      let sent = false;
-      try {
-        const events = (await env.AI.run(FREE_MODEL as keyof AiModels, {
-          messages: [{ role: "system", content: systemPrompt(schedule) }, ...turns],
-          max_tokens: 600,
-          stream: true,
-        } as never)) as unknown as ReadableStream<Uint8Array>;
-        const reader = events.getReader();
-        let buffer = "";
-        for (;;) {
-          const { done, value } = await reader.read();
-          if (done) break;
-          buffer += decoder.decode(value, { stream: true });
-          const lines = buffer.split("\n");
-          buffer = lines.pop() ?? "";
-          for (const line of lines) {
-            const data = line.startsWith("data:") ? line.slice(5).trim() : "";
-            if (!data || data === "[DONE]") continue;
-            try {
-              const piece = (JSON.parse(data) as { response?: string }).response;
-              if (piece) {
-                controller.enqueue(encoder.encode(piece));
-                sent = true;
-              }
-            } catch {
-              // A partial or non-JSON line; the next read completes it.
-            }
-          }
+  return textStream(async (emit) => {
+    const events = (await env.AI.run(FREE_MODEL as keyof AiModels, {
+      messages: [{ role: "system", content: systemPrompt(schedule) }, ...turns],
+      max_tokens: 600,
+      stream: true,
+    } as never)) as unknown as ReadableStream<Uint8Array>;
+    const reader = events.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+      for (const line of lines) {
+        const data = line.startsWith("data:") ? line.slice(5).trim() : "";
+        if (!data || data === "[DONE]") continue;
+        try {
+          emit((JSON.parse(data) as { response?: string }).response ?? "");
+        } catch {
+          // A partial or non-JSON line; the next read completes it.
         }
-        if (!sent) controller.enqueue(encoder.encode(FAILED_TEXT));
-      } catch (err) {
-        console.error("ask (workers ai):", err instanceof Error ? err.message : err);
-        if (!sent) controller.enqueue(encoder.encode(FAILED_TEXT));
-      } finally {
-        controller.close();
       }
-    },
+    }
   });
 }
 
@@ -111,17 +100,12 @@ export default {
     if (!success) return text(LIMITED_TEXT, 429, headers);
 
     const turns = parseTurns(await req.json().catch(() => null));
-    if (!turns) return text("Bad request.", 400, headers);
+    if (!turns) return text(BAD_REQUEST_TEXT, 400, headers);
 
-    const schedule = scheduleNote(
-      { ...DEFAULT_SETTINGS, ...(settings as Partial<Settings>) },
-      events as LabEvent[],
-    );
+    const schedule = scheduleNote(SETTINGS, events as LabEvent[]);
     const body = env.ANTHROPIC_API_KEY
       ? streamAnswer(new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), turns, schedule)
       : streamFree(env, turns, schedule);
-    return new Response(body, {
-      headers: { ...headers, "content-type": "text/plain; charset=utf-8", "cache-control": "no-store" },
-    });
+    return new Response(body, { headers: { ...headers, ...TEXT_HEADERS } });
   },
 } satisfies ExportedHandler<Env>;
