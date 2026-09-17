@@ -129,7 +129,7 @@ export function HowItWorks() {
                 </p>
                 {/* About puts the model beside its intro from lg; every other
                     step is the single column. */}
-                <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_17rem] lg:gap-14">
+                <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
                   <div>
                     <h2 className="mt-5 max-w-2xl text-2xl leading-[1.12] font-light tracking-tight md:text-4xl lg:text-5xl">{step.title}</h2>
                     <p className="mt-5 max-w-xl text-sm leading-relaxed font-light opacity-70 md:text-base">{step.body}</p>
@@ -149,21 +149,26 @@ export function HowItWorks() {
                   {"exchange" in step && (
                     <aside className="hidden self-end sm:block">
                       <p className="text-[11px] font-medium tracking-[0.18em] uppercase opacity-40">{step.exchange.label}</p>
-                      <div className="mt-4 space-y-3">
+                      {/* The two questions as a short exchange: the student's
+                          block at the left, the employer's answering from the
+                          right just below it. */}
+                      <div className="mt-4 flex flex-col gap-2.5">
                         {step.exchange.asks.map((ask, i) => (
                           <div
                             key={ask.who}
-                            className="rounded-2xl border border-white/15 px-4 py-3 animate-in fade-in-0 fill-mode-both duration-500"
-                            style={{ animationDelay: `${200 + i * 150}ms` }}
+                            className={`w-[82%] rounded-2xl bg-white px-4 py-3 text-[#1a1a1a] animate-in fade-in-0 slide-in-from-bottom-2 fill-mode-both duration-500 ${
+                              i % 2 === 0 ? "self-start rounded-bl-md" : "self-end rounded-br-md"
+                            }`}
+                            style={{ animationDelay: `${200 + i * 180}ms` }}
                           >
-                            <p className="text-xs opacity-50">{ask.who}</p>
-                            <p className="mt-1 text-[15px]">&ldquo;{ask.question}&rdquo;</p>
+                            <p className="text-xs text-black/50">{ask.who}</p>
+                            <p className="mt-0.5 text-[15px] leading-snug">&ldquo;{ask.question}&rdquo;</p>
                           </div>
                         ))}
                       </div>
                       <p
-                        className="mt-4 text-sm opacity-70 animate-in fade-in-0 fill-mode-both duration-500"
-                        style={{ animationDelay: "520ms" }}
+                        className="mt-4 text-center text-sm opacity-70 animate-in fade-in-0 fill-mode-both duration-500"
+                        style={{ animationDelay: "600ms" }}
                       >
                         {step.exchange.answer}
                       </p>
