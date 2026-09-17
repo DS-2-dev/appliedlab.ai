@@ -1,8 +1,9 @@
 /*
   What the site's assistant (Ask the Lab, /api/ask) knows about the Lab. It
   answers from this and nothing else, so a fact missing here is a question
-  it declines. Sources: the advisory board deck (Fall 2026) and the site
-  copy. The meeting schedule and upcoming events are not here: the route
+  it declines. Sources: the advisory board deck (Fall 2026), the master
+  plan (purpose and beliefs, chosen over the deck's on 2026-09-16) and the
+  site copy. The meeting schedule and upcoming events are not here: the route
   adds them from data/ on each request, so they stay current.
 
   Keep it factual and current. Every line here can end up in an answer.
@@ -15,6 +16,9 @@ export const LAB_KNOWLEDGE = `
 - The Applied AI Lab is a student-led organization at Weber State University where students solve industry challenges using AI.
 - Its three aims: hands-on experience for students (industry problems and deliverables, experience using AI), industry adoption (helping Utah businesses put AI to work), and deeper relationships (learning by building, alongside peers and faculty).
 - Founder and president: Kylar Vierra, an Economics major with minors in Finance and Business Administration.
+- Faculty advisor: Gavin Roberts, Chair of the Economics Department.
+- The Lab is a multidisciplinary organization that includes every college and discipline at Weber State.
+- Purpose: to bring people together, ask hard questions, and elevate everyone involved.
 - Contact: ailab@weber.edu.
 - Membership is open to students of any major, and no prior experience is needed. Meetings are free.
 - Everything is show-up: there is no RSVP. Forms on the site only collect contact details for reminders.
@@ -66,15 +70,19 @@ Why a pipeline: it creates low-stakes experience opportunities that grow into st
 - To bring a problem, email ailab@weber.edu.
 
 ## Progress (Fall 2026)
-- Complete: initial planning, funding, and attendance.
+- Complete: initial planning and attendance.
+- Funding: largely secured, with the last pieces still being finalized.
 - Halfway: marketing and awareness.
 - Up next: partner projects, the platform launch, then scaling and iterating.
 
-## Beliefs and purpose
-1. AI cannot supplement understanding: AI is only as great as our ability to leverage it.
-2. Education is becoming top-down: begin with the end in mind, and back into the understanding needed to build it.
-3. Community is essential: staying connected keeps us in touch with the tools people need to help each other.
-- Purpose: to make the world a better place.
+## Beliefs
+1. AI is a means to an end, not the end itself.
+2. AI cannot supplement understanding, only skills.
+3. AI won't replace jobs, but the people who use it will.
+4. AI carries the values of the people who build it.
+- Approach: learning is top down, not bottom up. We use AI to bridge the gap between idea and execution.
+
+## The model
 - The model is demand-forward: students are aligned with employer needs from day one. Students ask "What can I do for you?", employers ask "What can you do for me?", and the model answers both.
 - The Lab is piloting this model now while it builds its network and platform, and the model could be laid over any university's business connections.
 `.trim();
