@@ -57,8 +57,16 @@ export const copy = {
         label: "About",
         caption: "What the Lab is",
         title: "A student-led lab for applied AI",
-        body: "Members of the Applied AI Lab take on industry challenges and solve them with AI. Students gain hands-on experience, organizations put AI to work, and peers and faculty build together.",
-        chips: ["Any major", "Meetings are free", "Faculty alongside"],
+        body: "Students from any major take on industry challenges and solve them with AI. Meetings are free, and no experience is needed.",
+        chips: [],
+        purposeLabel: "Our purpose",
+        purpose: "To bring people together, ask hard questions, and elevate everyone involved.",
+        aims: [
+          { title: "Hands-on experience", body: "Members work industry problems through to a finished deliverable." },
+          { title: "Industry adoption", body: "Utah organizations put AI to work on the problems they bring." },
+          { title: "Deeper relationships", body: "Students learn by building alongside peers and faculty." },
+        ],
+        people: "Founded by Kylar Vierra and advised by Gavin Roberts, Chair of Economics.",
       },
       {
         id: "pipeline",

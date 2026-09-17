@@ -82,7 +82,7 @@ export function HowItWorks() {
       <div className="sticky top-0 h-svh">
         <Reveal className="flex h-full flex-col justify-center gap-8 px-5 pt-20 pb-10 md:grid md:grid-cols-12 md:items-center md:gap-8 lg:px-15">
           {/* The rail */}
-          <nav aria-label={C.kicker} className="md:col-span-4 lg:col-span-3">
+          <nav aria-label={C.kicker} className="md:col-span-3 lg:col-span-2">
             <p className="mb-6 text-[11px] font-medium tracking-[0.18em] uppercase opacity-35">{C.kicker}</p>
             {/* Tabs after weave2-demo.vercel.app's showcase: each carries a
                 small tick that stretches into a bar on the active step. On
@@ -117,18 +117,44 @@ export function HowItWorks() {
           </nav>
 
           {/* The card */}
-          <div className="md:col-span-8 lg:col-span-8 lg:col-start-5">
-            <div className="relative min-h-[26rem] overflow-hidden bg-black p-7 text-white md:min-h-[28rem] md:p-12">
+          <div className="md:col-span-9 lg:col-span-10">
+            <div className="relative flex min-h-[26rem] flex-col overflow-hidden bg-black p-7 text-white md:min-h-[min(38rem,74svh)] md:p-12 lg:p-14">
               <div
                 key={step.id}
-                className="flex h-full flex-col animate-in duration-500 ease-out fade-in-0 slide-in-from-bottom-3 motion-reduce:animate-none"
+                className="flex flex-1 flex-col animate-in duration-500 ease-out fade-in-0 slide-in-from-bottom-3 motion-reduce:animate-none"
               >
                 <p className="flex gap-3 text-[11px] font-medium tracking-[0.18em] uppercase">
                   <span className="opacity-40">{String(active + 1).padStart(2, "0")}</span>
                   <span className="opacity-70">{step.label}</span>
                 </p>
-                <h2 className="mt-5 max-w-xl text-2xl leading-[1.15] font-light tracking-tight md:text-4xl">{step.title}</h2>
+                <h2 className="mt-5 max-w-2xl text-2xl leading-[1.12] font-light tracking-tight md:text-4xl lg:text-5xl">{step.title}</h2>
                 <p className="mt-5 max-w-xl text-sm leading-relaxed font-light opacity-70 md:text-base">{step.body}</p>
+
+                {/* About's extras: the purpose, the three aims in a row, and
+                    who leads the Lab along the foot of the card. */}
+                {"purpose" in step && (
+                  <p className="mt-8 max-w-xl">
+                    <span className="block text-[11px] font-medium tracking-[0.18em] uppercase opacity-40">
+                      {step.purposeLabel}
+                    </span>
+                    <span className="mt-2 block text-lg leading-snug font-light md:text-xl">{step.purpose}</span>
+                  </p>
+                )}
+                {"aims" in step && (
+                  <ul className="mt-8 grid gap-2 border-t border-white/15 pt-5 sm:mt-10 sm:grid-cols-3 sm:gap-8 sm:pt-6">
+                    {step.aims.map((aim, i) => (
+                      <li
+                        key={aim.title}
+                        className="animate-in fade-in-0 fill-mode-both duration-500"
+                        style={{ animationDelay: `${120 + i * 90}ms` }}
+                      >
+                        <p className="text-sm font-medium">{aim.title}</p>
+                        <p className="mt-1.5 hidden text-sm leading-relaxed font-light opacity-60 sm:block">{aim.body}</p>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {"people" in step && <p className="mt-auto pt-8 pr-24 text-xs opacity-50">{step.people}</p>}
 
                 {"chain" in step && step.chain ? (
                   <ol className="mt-10 flex flex-wrap items-center gap-y-2">
@@ -150,7 +176,7 @@ export function HowItWorks() {
                       </li>
                     ))}
                   </ol>
-                ) : (
+                ) : step.chips.length > 0 ? (
                   <ul className="mt-10 flex flex-wrap gap-2">
                     {step.chips.map((chip, i) => (
                       <li
@@ -162,7 +188,7 @@ export function HowItWorks() {
                       </li>
                     ))}
                   </ul>
-                )}
+                ) : null}
               </div>
 
               {/* Which step, as dots in the corner. */}
