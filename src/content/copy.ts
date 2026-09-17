@@ -66,7 +66,7 @@ export const copy = {
           { title: "Industry adoption", body: "Utah organizations put AI to work on the problems they bring." },
           { title: "Deeper relationships", body: "Students learn by building alongside peers and faculty." },
         ],
-        people: "Founded by Kylar Vierra and advised by Gavin Roberts, Chair of Economics.",
+        footnote: "Founded by Kylar Vierra and advised by Gavin Roberts, Chair of Economics.",
         // The demand-forward model, as the two questions it answers.
         exchange: {
           label: "The model",
@@ -108,8 +108,37 @@ export const copy = {
         label: "Partners",
         caption: "What organizations bring",
         title: "Bring the problems your team runs into",
-        body: "Organizations post as many problems as they like, from pricing models to scheduling tools. Members from any discipline build the solutions, and partners review each submission and meet the students behind it.",
-        chips: ["Finance", "Computer science", "Accounting", "Design"],
+        body: "Organizations post as many problems as they like, and members from any discipline build the solutions.",
+        chips: [],
+        cta: { label: "Bring a problem", href: "mailto:ailab@weber.edu" },
+        // A preview of the partner portal, drawn with the sample projects
+        // from the advisory board deck. The platform is not live yet.
+        portal: {
+          label: "Partner portal",
+          status: "Sample",
+          note: "Arrives with the platform launch",
+          rows: [
+            { name: "Lead-intake CRM", meta: "2 submissions ready" },
+            { name: "Route optimizer", meta: "Members working" },
+            { name: "Fleet forecast", meta: "Open to claim" },
+          ],
+        },
+        helpLabel: "How you can help",
+        help: [
+          { title: "Find the people", body: "The workers, managers and engineers closest to the work." },
+          { title: "Find their problems", body: "The ones that surface at the front line or in the heat of operations." },
+          { title: "Connect them with us", body: "Every connection becomes a project for a member." },
+        ],
+        examplesLabel: "Problems we take on",
+        examples: [
+          { problem: "An annual snow removal pricing model", field: "Finance" },
+          { problem: "A business model", field: "Business management" },
+          { problem: "An accounting structure", field: "Accounting" },
+          { problem: "Document style enforcement", field: "Graphic design" },
+          { problem: "The fastest maintenance routine", field: "Mathematics" },
+          { problem: "Automatic schedule creation", field: "Computer science" },
+        ],
+        footnote: "Partners review each submission, meet the student behind it, and can hire that student as an intern to implement the work.",
       },
     ],
   },

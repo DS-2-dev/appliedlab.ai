@@ -17,6 +17,7 @@
 */
 
 import { useEffect, useRef, useState } from "react";
+import { ArrowRight } from "lucide-react";
 import { copy } from "@/content/copy";
 import { Reveal } from "@/components/Reveal";
 import { ScrollLink } from "@/components/ScrollLink";
@@ -127,12 +128,22 @@ export function HowItWorks() {
                   <span className="opacity-40">{String(active + 1).padStart(2, "0")}</span>
                   <span className="opacity-70">{step.label}</span>
                 </p>
-                {/* About puts the model beside its intro from lg; every other
-                    step is the single column. */}
+                {/* About and Partners put a side panel beside the intro from
+                    lg (the model, the portal preview); other steps are the
+                    single column. */}
                 <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
                   <div>
                     <h2 className="mt-5 max-w-2xl text-2xl leading-[1.12] font-light tracking-tight md:text-4xl lg:text-5xl">{step.title}</h2>
                     <p className="mt-5 max-w-xl text-sm leading-relaxed font-light opacity-70 md:text-base">{step.body}</p>
+                    {"cta" in step && (
+                      <a
+                        href={step.cta.href}
+                        className="group mt-7 inline-flex h-10 items-center gap-2 rounded-full bg-white px-5 text-sm text-black transition hover:bg-white/85"
+                      >
+                        {step.cta.label}
+                        <ArrowRight aria-hidden className="size-4 transition group-hover:translate-x-0.5" strokeWidth={1.5} />
+                      </a>
+                    )}
 
                     {/* About's extras: the purpose, the three aims in a row, and
                         who leads the Lab along the foot of the card. */}
@@ -174,6 +185,28 @@ export function HowItWorks() {
                       </p>
                     </aside>
                   )}
+
+                  {"portal" in step && (
+                    <aside
+                      aria-label={step.portal.label}
+                      className="hidden self-start rounded-2xl bg-white p-4 text-[#1a1a1a] animate-in fade-in-0 slide-in-from-bottom-2 fill-mode-both duration-500 sm:block"
+                      style={{ animationDelay: "200ms" }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">{step.portal.label}</p>
+                        <span className="rounded-full bg-black/5 px-2 py-0.5 text-[11px] text-black/60">{step.portal.status}</span>
+                      </div>
+                      <ul className="mt-3 divide-y divide-black/5">
+                        {step.portal.rows.map((row) => (
+                          <li key={row.name} className="flex items-center justify-between gap-3 py-2 text-sm">
+                            <span>{row.name}</span>
+                            <span className="text-xs whitespace-nowrap text-black/50">{row.meta}</span>
+                          </li>
+                        ))}
+                      </ul>
+                      <p className="mt-2 text-xs text-black/40">{step.portal.note}</p>
+                    </aside>
+                  )}
                 </div>
 
                 {"aims" in step && (
@@ -190,7 +223,40 @@ export function HowItWorks() {
                     ))}
                   </ul>
                 )}
-                {"people" in step && <p className="mt-auto pt-8 pr-24 text-xs opacity-50">{step.people}</p>}
+                {"help" in step && (
+                  <div className="mt-8 grid gap-8 border-t border-white/15 pt-6 lg:grid-cols-12">
+                    <div className="hidden sm:block lg:col-span-5">
+                      <p className="text-[11px] font-medium tracking-[0.18em] uppercase opacity-40">{step.helpLabel}</p>
+                      <ol className="mt-3 space-y-2.5 [@media(max-height:820px)]:space-y-1">
+                        {step.help.map((h, i) => (
+                          <li key={h.title} className="flex gap-3 text-sm">
+                            <span className="opacity-40">{String(i + 1).padStart(2, "0")}</span>
+                            <span>
+                              <span className="font-medium">{h.title}</span>
+                              <span className="block font-light opacity-60 [@media(max-height:820px)]:hidden">{h.body}</span>
+                            </span>
+                          </li>
+                        ))}
+                      </ol>
+                    </div>
+                    <div className="lg:col-span-7">
+                      <p className="text-[11px] font-medium tracking-[0.18em] uppercase opacity-40">{step.examplesLabel}</p>
+                      <ul className="mt-3 grid gap-x-6 gap-y-2.5 sm:grid-cols-2">
+                        {step.examples.map((ex, i) => (
+                          <li
+                            key={ex.problem}
+                            className={`text-sm animate-in fade-in-0 fill-mode-both duration-500 ${i > 2 ? "hidden sm:block" : ""}`}
+                            style={{ animationDelay: `${150 + i * 60}ms` }}
+                          >
+                            <span className="block">{ex.problem}</span>
+                            <span className="block text-xs opacity-45">{ex.field}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                )}
+                {"footnote" in step && <p className="mt-auto pt-8 pr-24 text-xs opacity-50">{step.footnote}</p>}
 
                 {"chain" in step && step.chain ? (
                   <ol className="mt-10 flex flex-wrap items-center gap-y-2">
