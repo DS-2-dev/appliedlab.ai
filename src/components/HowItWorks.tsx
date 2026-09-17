@@ -215,6 +215,7 @@ function StepAside({ step }: { step: Step }) {
         label={step.exchange.label}
         items={step.exchange.asks.map((a) => ({ top: a.who, main: <>&ldquo;{a.question}&rdquo;</> }))}
         caption={step.exchange.answer}
+        image="/gradient1.avif"
       />
     );
   }
@@ -277,10 +278,13 @@ function SquarePair({
   label,
   items,
   caption,
+  image,
 }: {
   label: string;
   items: { top: string; main: ReactNode }[];
   caption?: string;
+  // A dark image behind the squares, which then take white text.
+  image?: string;
 }) {
   return (
     <aside className="hidden self-end sm:block">
@@ -289,12 +293,12 @@ function SquarePair({
         {items.map((item, i) => (
           <div
             key={item.top}
-            className={`flex aspect-square w-[47%] flex-col justify-between rounded-2xl bg-white p-4 text-ink ${RISE} ${
-              i % 2 === 1 ? "mt-16" : ""
-            }`}
-            style={delay(200 + i * 180)}
+            className={`flex aspect-square w-[47%] flex-col justify-between rounded-2xl bg-cover bg-center p-4 ${RISE} ${
+              image ? "text-white ring-1 ring-white/10" : "bg-white text-ink"
+            } ${i % 2 === 1 ? "mt-16" : ""}`}
+            style={{ ...delay(200 + i * 180), backgroundImage: image && `url(${image})` }}
           >
-            <p className="text-xs text-black/50">{item.top}</p>
+            <p className={`text-xs ${image ? "text-white/60" : "text-black/50"}`}>{item.top}</p>
             <p className="text-lg leading-snug">{item.main}</p>
           </div>
         ))}
