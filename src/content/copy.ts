@@ -91,8 +91,42 @@ export const copy = {
         label: "Platform",
         caption: "Where the work lives",
         title: "A notice board and a project tracker",
-        body: "Partners post problems to a notice board, and faculty approve each claim before work begins. Approval unlocks a funded Claude account, and every milestone is logged where partners and reps can follow it.",
-        chips: ["Notice board", "Project tracker", "Launching next"],
+        status: "Launching next",
+        body: "Partners post problems to the notice board, members claim them with an action plan, and every milestone is tracked where partners and reps can follow it.",
+        chips: [],
+        cta: { label: "Try the Projectum demo", href: "/projectum" },
+        // A preview of the notice board, with sample problems from the
+        // advisory board deck. The platform is not live yet.
+        board: {
+          label: "Notice board",
+          status: "Sample",
+          filters: ["All", "Finance", "CS", "Design"],
+          rows: [
+            { name: "Snow-removal pricing model", field: "Finance", state: "Claim" },
+            { name: "Auto schedule builder", field: "CS", state: "Claim" },
+            { name: "Brand style enforcement", field: "Design", state: "Claimed" },
+          ],
+        },
+        flowLabel: "How a claim works",
+        flow: ["Action plan", "Faculty approval", "Claude Teams access"],
+        levels: [
+          {
+            level: "For members",
+            name: "A public profile",
+            points: ["Claimable, active and completed projects", "Milestones and progress log"],
+          },
+          {
+            level: "For partners",
+            name: "Projects and submissions",
+            points: ["Members on each listed project", "Finished submissions to review"],
+          },
+          {
+            level: "For reps",
+            name: "Approvals and help",
+            points: ["Claim and submission approvals", "Requests for help from members"],
+          },
+        ],
+        footnote: "Several members can work one project, together or in parallel.",
       },
       {
         id: "roles",

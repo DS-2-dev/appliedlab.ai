@@ -128,10 +128,16 @@ export function HowItWorks() {
                 <p className="flex gap-3 text-[11px] font-medium tracking-[0.18em] uppercase">
                   <span className="opacity-40">{String(active + 1).padStart(2, "0")}</span>
                   <span className="opacity-70">{step.label}</span>
+                  {"status" in step && (
+                    <span className="-my-0.5 rounded-full border border-white/25 px-2 py-0.5 tracking-normal normal-case opacity-80">
+                      {step.status}
+                    </span>
+                  )}
                 </p>
-                {/* About, Student Roles and Partners put a side panel beside
-                    the intro from lg (the model, what you earn, the portal
-                    preview); the other steps are the single column. */}
+                {/* About, Platform, Student Roles and Partners put a side
+                    panel beside the intro from lg (the model, the notice
+                    board, what you earn, the portal preview); The Pipeline is
+                    the single column. */}
                 <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
                   <div>
                     <h2 className="mt-5 max-w-2xl text-2xl leading-[1.12] font-light tracking-tight md:text-4xl lg:text-5xl">{step.title}</h2>
@@ -229,6 +235,46 @@ export function HowItWorks() {
                       </div>
                     </aside>
                   )}
+
+                  {"board" in step && (
+                    <aside
+                      aria-label={step.board.label}
+                      className="hidden self-start rounded-2xl bg-white p-4 text-[#1a1a1a] animate-in fade-in-0 slide-in-from-bottom-2 fill-mode-both duration-500 sm:block"
+                      style={{ animationDelay: "200ms" }}
+                    >
+                      <div className="flex items-center justify-between">
+                        <p className="text-sm font-medium">{step.board.label}</p>
+                        <span className="rounded-full bg-black/5 px-2 py-0.5 text-[11px] text-black/60">{step.board.status}</span>
+                      </div>
+                      <div aria-hidden className="mt-3 flex gap-1">
+                        {step.board.filters.map((f, i) => (
+                          <span
+                            key={f}
+                            className={`rounded-full px-2.5 py-0.5 text-[11px] ${i === 0 ? "bg-black text-white" : "bg-black/5 text-black/60"}`}
+                          >
+                            {f}
+                          </span>
+                        ))}
+                      </div>
+                      <ul className="mt-2 divide-y divide-black/5">
+                        {step.board.rows.map((row) => (
+                          <li key={row.name} className="flex items-center justify-between gap-3 py-2">
+                            <span>
+                              <span className="block text-sm">{row.name}</span>
+                              <span className="block text-[11px] text-black/45">{row.field}</span>
+                            </span>
+                            <span
+                              className={`rounded-full px-2.5 py-0.5 text-[11px] whitespace-nowrap ${
+                                row.state === "Claim" ? "border border-black/20" : "bg-black/5 text-black/45"
+                              }`}
+                            >
+                              {row.state}
+                            </span>
+                          </li>
+                        ))}
+                      </ul>
+                    </aside>
+                  )}
                 </div>
 
                 {"aims" in step && (
@@ -245,10 +291,34 @@ export function HowItWorks() {
                     ))}
                   </ul>
                 )}
+                {"flow" in step && (
+                  <div className="mt-8 hidden sm:block [@media(max-height:820px)]:mt-5">
+                    <p className="text-[11px] font-medium tracking-[0.18em] uppercase opacity-40">{step.flowLabel}</p>
+                    <ol className="mt-3 flex flex-wrap items-center gap-y-2">
+                      {step.flow.map((f, i) => (
+                        <li key={f} className="flex items-center">
+                          {i > 0 && (
+                            <span
+                              aria-hidden
+                              className="h-px w-4 origin-left bg-white/40 animate-in zoom-in-0 fill-mode-both duration-300 md:w-10"
+                              style={{ animationDelay: `${i * 180}ms` }}
+                            />
+                          )}
+                          <span
+                            className="rounded-full border border-white/25 px-3 py-1 text-xs whitespace-nowrap animate-in fade-in-0 fill-mode-both duration-300 md:text-sm"
+                            style={{ animationDelay: `${i * 180 + 90}ms` }}
+                          >
+                            {f}
+                          </span>
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
                 {"levels" in step && (
                   // The three levels as connected nodes: a rail across the
                   // top of the band with a node over each level.
-                  <ol className="relative mt-10 grid gap-6 pt-7 sm:grid-cols-3 sm:gap-8">
+                  <ol className="relative mt-6 grid gap-3 sm:mt-10 sm:grid-cols-3 sm:gap-8 sm:pt-7 [@media(max-height:820px)]:mt-6">
                     <span aria-hidden className="absolute top-[3px] right-0 left-0 hidden h-px bg-white/15 sm:block" />
                     {step.levels.map((lvl, i) => (
                       <li
@@ -258,8 +328,8 @@ export function HowItWorks() {
                       >
                         <span aria-hidden className="absolute -top-7 left-0 hidden size-[7px] rounded-full bg-white sm:block" />
                         <p className="text-[11px] tracking-[0.18em] uppercase opacity-40">{lvl.level}</p>
-                        <p className="mt-1 text-lg font-light">{lvl.name}</p>
-                        <ul className="mt-2 hidden space-y-1 text-sm font-light opacity-60 sm:block">
+                        <p className="mt-0.5 text-lg font-light sm:mt-1">{lvl.name}</p>
+                        <ul className="mt-2 hidden space-y-1 text-sm font-light opacity-60 sm:block [@media(max-height:820px)]:hidden">
                           {lvl.points.map((pt) => (
                             <li key={pt}>{pt}</li>
                           ))}
