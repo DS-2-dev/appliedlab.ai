@@ -27,7 +27,7 @@ export default function Home() {
           <Reveal className="flex min-h-svh flex-col gap-10 px-5 pt-24 pb-10 lg:px-15 lg:pb-12">
             <div className="flex min-h-[10rem] flex-1 items-center">
               {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG needs no optimizing */}
-              <img src="/better.svg" alt="" className="max-h-[46svh] w-full object-contain" />
+              <img src="/better.svg" alt="" className="h-auto max-h-[62svh] w-full object-contain" />
             </div>
 
             {/* From lg the right column stretches to the heading block's
