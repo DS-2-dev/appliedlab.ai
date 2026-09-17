@@ -23,6 +23,7 @@ import { Reveal } from "@/components/Reveal";
 import { ScrollLink } from "@/components/ScrollLink";
 
 const C = copy.how;
+const STATIC_SITE = process.env.NEXT_PUBLIC_STATIC_SITE === "1";
 const STEPS = C.steps;
 const LAST = STEPS.length - 1;
 
@@ -128,16 +129,17 @@ export function HowItWorks() {
                   <span className="opacity-40">{String(active + 1).padStart(2, "0")}</span>
                   <span className="opacity-70">{step.label}</span>
                 </p>
-                {/* About and Partners put a side panel beside the intro from
-                    lg (the model, the portal preview); other steps are the
-                    single column. */}
+                {/* About, Student Roles and Partners put a side panel beside
+                    the intro from lg (the model, what you earn, the portal
+                    preview); the other steps are the single column. */}
                 <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_20rem] lg:gap-14">
                   <div>
                     <h2 className="mt-5 max-w-2xl text-2xl leading-[1.12] font-light tracking-tight md:text-4xl lg:text-5xl">{step.title}</h2>
                     <p className="mt-5 max-w-xl text-sm leading-relaxed font-light opacity-70 md:text-base">{step.body}</p>
                     {"cta" in step && (
                       <a
-                        href={step.cta.href}
+                        // The static site has no accounts, so joining opens the demo.
+                        href={step.cta.href === "/signup" && STATIC_SITE ? "/projectum" : step.cta.href}
                         className="group mt-7 inline-flex h-10 items-center gap-2 rounded-full bg-white px-5 text-sm text-black transition hover:bg-white/85"
                       >
                         {step.cta.label}
@@ -207,6 +209,26 @@ export function HowItWorks() {
                       <p className="mt-2 text-xs text-black/40">{step.portal.note}</p>
                     </aside>
                   )}
+
+                  {"earn" in step && (
+                    <aside className="hidden self-end sm:block">
+                      <p className="text-[11px] font-medium tracking-[0.18em] uppercase opacity-40">{step.earnLabel}</p>
+                      <div className="mt-4 flex items-start justify-between">
+                        {step.earn.map((e, i) => (
+                          <div
+                            key={e.when}
+                            className={`flex aspect-square w-[47%] flex-col justify-between rounded-2xl bg-white p-4 text-[#1a1a1a] animate-in fade-in-0 slide-in-from-bottom-2 fill-mode-both duration-500 ${
+                              i % 2 === 1 ? "mt-16" : ""
+                            }`}
+                            style={{ animationDelay: `${200 + i * 180}ms` }}
+                          >
+                            <p className="text-xs text-black/50">{e.when}</p>
+                            <p className="text-lg leading-snug">{e.what}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </aside>
+                  )}
                 </div>
 
                 {"aims" in step && (
@@ -222,6 +244,29 @@ export function HowItWorks() {
                       </li>
                     ))}
                   </ul>
+                )}
+                {"levels" in step && (
+                  // The three levels as connected nodes: a rail across the
+                  // top of the band with a node over each level.
+                  <ol className="relative mt-10 grid gap-6 pt-7 sm:grid-cols-3 sm:gap-8">
+                    <span aria-hidden className="absolute top-[3px] right-0 left-0 hidden h-px bg-white/15 sm:block" />
+                    {step.levels.map((lvl, i) => (
+                      <li
+                        key={lvl.name}
+                        className="relative animate-in fade-in-0 fill-mode-both duration-500"
+                        style={{ animationDelay: `${150 + i * 120}ms` }}
+                      >
+                        <span aria-hidden className="absolute -top-7 left-0 hidden size-[7px] rounded-full bg-white sm:block" />
+                        <p className="text-[11px] tracking-[0.18em] uppercase opacity-40">{lvl.level}</p>
+                        <p className="mt-1 text-lg font-light">{lvl.name}</p>
+                        <ul className="mt-2 hidden space-y-1 text-sm font-light opacity-60 sm:block">
+                          {lvl.points.map((pt) => (
+                            <li key={pt}>{pt}</li>
+                          ))}
+                        </ul>
+                      </li>
+                    ))}
+                  </ol>
                 )}
                 {"help" in step && (
                   <div className="mt-8 grid gap-8 border-t border-white/15 pt-6 lg:grid-cols-12">

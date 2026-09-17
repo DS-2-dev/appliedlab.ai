@@ -99,9 +99,32 @@ export const copy = {
         label: "Student Roles",
         caption: "How students grow",
         title: "Three levels, each one earned",
-        body: "Every student starts as an Affiliate who comes to meetings and events. Members on an approved project become Sponsored with a funded Claude account, and a Builder is hired by a partner to implement the work.",
-        chips: ["Affiliate", "Sponsored", "Builder"],
-        chain: true,
+        body: "Every student starts as an Affiliate. An approved project earns funding, and implementing it with a partner can lead to an internship.",
+        chips: [],
+        cta: { label: "Start as an Affiliate", href: "/signup" },
+        earnLabel: "What you earn",
+        earn: [
+          { when: "At Sponsored", what: "A Lab-funded Claude account" },
+          { when: "At Builder", what: "An internship with a partner" },
+        ],
+        levels: [
+          {
+            level: "Level 1",
+            name: "Affiliate",
+            points: ["Registered with the Lab", "Comes to meetings and events", "No responsibilities"],
+          },
+          {
+            level: "Level 2",
+            name: "Sponsored",
+            points: ["Works an approved project", "Attends two meetings a month", "Gets a funded Claude account"],
+          },
+          {
+            level: "Level 3",
+            name: "Builder",
+            points: ["Implements the work with a partner", "Hired as an intern", "Featured on the partner's profile"],
+          },
+        ],
+        footnote: "Every level up is earned and recognized.",
       },
       {
         id: "partners",
