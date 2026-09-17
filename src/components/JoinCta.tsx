@@ -16,10 +16,10 @@ export function JoinCta() {
       <div className="relative overflow-hidden rounded-[2rem] bg-black px-7 py-14 text-white md:px-14 md:py-20">
         {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG needs no optimizing */}
         <img
-          src="/ww.svg"
+          src="/better.svg"
           alt=""
           aria-hidden
-          className="pointer-events-none absolute -right-20 -bottom-40 w-[34rem] max-w-[90%] opacity-[0.07] invert"
+          className="pointer-events-none absolute -right-16 -bottom-24 w-[34rem] max-w-[90%] opacity-[0.07] invert"
         />
         <div className="relative grid gap-10 lg:grid-cols-12 lg:items-end">
           <div className="lg:col-span-7">

@@ -20,14 +20,14 @@ export default function Home() {
     <>
       <SiteHeader />
       <main id="main" className="font-archivo bg-white text-ink">
-        {/* The hero: the shape (ww.svg, for now) in a box across the top of the first
+        {/* The hero: the shape (better.svg, for now) in a box across the top of the first
             screen, then one row beneath it, the large heading at the left
             and the rest of the copy with the buttons at the right. */}
         <section className="min-h-svh">
           <Reveal className="flex min-h-svh flex-col gap-10 px-5 pt-24 pb-10 lg:px-15 lg:pb-12">
             <div className="flex min-h-[10rem] flex-1 items-center">
               {/* eslint-disable-next-line @next/next/no-img-element -- a static SVG needs no optimizing */}
-              <img src="/ww.svg" alt="" className="max-h-[46svh] w-full object-contain" />
+              <img src="/better.svg" alt="" className="max-h-[46svh] w-full object-contain" />
             </div>
 
             {/* From lg the right column stretches to the heading block's
