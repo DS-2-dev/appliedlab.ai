@@ -1,5 +1,6 @@
 /* Landing page, rebuilt from 2026-09-16 (design/STYLE.md): the header, then
-   a hero led by the star (public/star.svg) with the copy beside it. */
+   a hero led by the chrome mark (ChromeMark, public/better.svg) with the copy
+   beneath it. */
 
 import Link from "next/link";
 import { ArrowDown, ArrowRight } from "lucide-react";

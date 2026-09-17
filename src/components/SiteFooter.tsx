@@ -40,7 +40,7 @@ export function SiteFooter() {
       <div className="grid gap-12 pt-14 pb-10 md:grid-cols-12 md:gap-8 md:pt-20">
         <div className="md:col-span-5">
           <Link href="/" className="inline-flex items-center gap-2.5">
-            <StarMark className="w-6" />
+            <StarMark className="w-10" />
             <span className="text-[15px] font-medium tracking-tight">{NAME}</span>
           </Link>
           <p className="mt-4 max-w-xs text-lg leading-snug font-light tracking-tight text-black/60">

@@ -26,14 +26,14 @@ export function AuthShell({
     <div className="font-archivo flex min-h-svh flex-col bg-white text-ink">
       <header className="flex h-16 items-center px-5 lg:px-15">
         <Link href="/" className="flex items-center gap-2.5 whitespace-nowrap">
-          <StarMark className="w-5" />
+          <StarMark className="w-9" />
           <span className="text-[15px] font-medium tracking-tight">{copy.nav.wordmark}</span>
         </Link>
       </header>
 
       <main id="main" className="flex flex-1 justify-center px-5 pt-8 pb-20 md:items-center md:pt-0 md:pb-28">
         <div className={`w-full ${wide ? "max-w-[440px]" : "max-w-[380px]"} animate-in fade-in-0 slide-in-from-bottom-2 duration-500 motion-reduce:animate-none`}>
-          <StarMark className="mx-auto w-14" />
+          <StarMark className="mx-auto w-28" />
           <h1 className="mt-6 text-center text-3xl font-light tracking-tight text-balance">{heading}</h1>
           {body && <p className="mt-3 text-center text-[15px] leading-relaxed font-light text-black/55">{body}</p>}
           <div className="mt-9">{children}</div>

@@ -240,7 +240,7 @@ export function SiteHeader() {
               aria-label={copy.nav.wordmark}
               className="grid size-8 shrink-0 place-items-center rounded-full"
             >
-              <StarMark className="w-5" />
+              <StarMark className="w-7" />
             </Link>
             <div className="relative h-full min-w-0 flex-1">
               <Swap on={!open} delay={0.12} className="absolute inset-0 grid place-items-center">

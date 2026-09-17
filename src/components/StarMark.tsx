@@ -1,7 +1,7 @@
-// The star, standing in as the Lab's logo until the logo exists. Every page
-// that shows it uses this, so the swap happens in one place.
+// The Lab's mark (better.svg, the hero's shape), wherever a page shows a
+// logo. Every page uses this, so a new mark is a one-line swap.
 
 export function StarMark({ className }: { className?: string }) {
   // eslint-disable-next-line @next/next/no-img-element -- a static SVG needs no optimizing
-  return <img src="/star.svg" alt="" aria-hidden className={className} />;
+  return <img src="/better.svg" alt="" aria-hidden className={className} />;
 }
