@@ -11,7 +11,7 @@
 // screen it stays fully shown, and it fades only as its section carries it
 // on or off. Visible throughout for anyone who asks for reduced motion.
 // `leave={false}` keeps content sharp once it is in, for the section the
-// page ends on (the join card, above the footer).
+// page's scroll effects end on (Ask the Lab, before the still join card).
 
 import { useEffect, useRef, type ReactNode } from "react";
 import { prefersReducedMotion } from "@/lib/motion";
