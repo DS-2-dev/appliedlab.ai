@@ -10,6 +10,7 @@ import { useSearchParams } from "next/navigation";
 import { useAccount } from "@/lib/account";
 import { AllProjects } from "@/components/projectum/all-projects";
 import { Approvals, MyClaims } from "@/components/projectum/claims-view";
+import { OverviewView } from "@/components/projectum/overview-view";
 import { ProblemView } from "@/components/projectum/problem-view";
 import { MyProblems, NoticeBoard } from "@/components/projectum/problems-view";
 import { AppSidebar, type ProjectumView } from "@/components/projectum/app-sidebar";
@@ -38,6 +39,7 @@ function pickView(
   if (projectId && !partner) return "project";
   if (asked === "claims" && role === "member") return "claims";
   if (asked === "queue" && approver) return "queue";
+  if (asked === "overview" && approver) return "overview";
   if (asked === "projects" && !partner) return "projects";
   return partner ? "mine" : "board";
 }
@@ -80,6 +82,8 @@ export function ProjectumView({ settings }: { settings: React.ReactNode }) {
               <MyClaims />
             ) : view === "queue" ? (
               <Approvals />
+            ) : view === "overview" ? (
+              <OverviewView />
             ) : view === "projects" ? (
               <AllProjects />
             ) : view === "mine" ? (

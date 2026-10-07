@@ -29,6 +29,7 @@
 // email, and the team hears each decision.
 
 import { type AccountEnv, type Json, type UserRow, isApprover, sendEmail, sessionUser } from "./accounts";
+import type { AccountRole } from "@/lib/email-rules";
 import { cleanDescription, cleanName, cleanProjects, type Project } from "@/lib/projects";
 import {
   type ClaimDraft,
@@ -1024,17 +1025,116 @@ async function completePhase(env: AccountEnv, user: UserRow, claimId: string, js
   return json({ ok: true });
 }
 
+// --- Overview --------------------------------------------------------------------
+
+// Everything at once, for approvers: every problem, open or closed; every
+// claim with where it stands; and every account. Built from a few joined
+// queries rather than one per row.
+async function overview(env: AccountEnv, json: Json): Promise<Response> {
+  const problems = await env.DB.prepare(`${PROBLEM_SELECT} ORDER BY p.created_at DESC`).all<ProblemRow>();
+  const claims = await env.DB.prepare(
+    "SELECT c.id, c.problem_id, c.status, c.created_at, c.reviewed_at, pr.title, pr.origin, ou.name AS owner_name, " +
+      "(SELECT s.status FROM submissions s WHERE s.claim_id = c.id ORDER BY s.created_at DESC LIMIT 1) AS submission, " +
+      "(SELECT m.status FROM meetings m WHERE m.claim_id = c.id ORDER BY m.created_at DESC LIMIT 1) AS meeting, " +
+      "(SELECT CASE WHEN sel.completed_at IS NULL THEN 'hired' ELSE 'complete' END FROM selections sel WHERE sel.claim_id = c.id) AS selection, " +
+      "(SELECT pj.id FROM projects pj WHERE pj.claim_id = c.id) AS project_id " +
+      "FROM claims c JOIN problems pr ON pr.id = c.problem_id JOIN users ou ON ou.id = pr.owner_id ORDER BY c.created_at DESC",
+  ).all<{
+    id: string;
+    problem_id: string;
+    status: ClaimStatus;
+    created_at: string;
+    reviewed_at: string | null;
+    title: string;
+    origin: "partner" | "member";
+    owner_name: string;
+    submission: "pending" | "accepted" | "returned" | null;
+    meeting: "requested" | "arranged" | null;
+    selection: "hired" | "complete" | null;
+    project_id: string | null;
+  }>();
+  const members = await env.DB.prepare(
+    "SELECT m.claim_id, u.id, u.name FROM claim_members m JOIN users u ON u.id = m.user_id ORDER BY u.name COLLATE NOCASE",
+  ).all<{ claim_id: string; id: string; name: string }>();
+  const team = new Map<string, Person[]>();
+  for (const r of members.results) team.set(r.claim_id, [...(team.get(r.claim_id) ?? []), { id: r.id, name: r.name }]);
+  const people = await env.DB.prepare(
+    "SELECT u.id, u.email, u.name, u.role, u.status, u.created_at, " +
+      "(SELECT COUNT(*) FROM claim_members m JOIN claims c ON c.id = m.claim_id WHERE m.user_id = u.id AND c.status = 'approved') AS active_claims, " +
+      "(SELECT COUNT(*) FROM problems p WHERE p.owner_id = u.id) AS problems " +
+      "FROM users u ORDER BY u.created_at DESC",
+  ).all<{
+    id: string;
+    email: string;
+    name: string;
+    role: AccountRole;
+    status: string;
+    created_at: string;
+    active_claims: number;
+    problems: number;
+  }>();
+  return json({
+    problems: problems.results.map(problemOut),
+    claims: claims.results.map((c) => ({
+      id: c.id,
+      problemId: c.problem_id,
+      title: c.title,
+      origin: c.origin,
+      owner: c.owner_name,
+      status: c.status,
+      createdAt: c.created_at,
+      reviewedAt: c.reviewed_at,
+      submission: c.submission,
+      meeting: c.meeting,
+      selection: c.selection,
+      projectId: c.project_id,
+      team: team.get(c.id) ?? [],
+    })),
+    people: people.results.map((u) => ({
+      id: u.id,
+      email: u.email,
+      name: u.name,
+      role: u.role,
+      status: u.status,
+      createdAt: u.created_at,
+      approver: isApprover(env, { email: u.email, role: u.role, status: u.status }),
+      activeClaims: u.active_claims,
+      problems: u.problems,
+    })),
+  });
+}
+
+// An approver turns an account off, which also signs it out everywhere, or
+// back on. Nobody turns off their own account or another approver's.
+async function setPersonStatus(req: Request, env: AccountEnv, user: UserRow, id: string, json: Json): Promise<Response> {
+  const body = ((await req.json().catch(() => null)) ?? {}) as Record<string, unknown>;
+  const status = body.status === "removed" ? "removed" : body.status === "active" ? "active" : null;
+  if (!status) return json({ error: "status" }, 400);
+  if (id === user.id) return json({ error: "self" }, 403);
+  const target = await env.DB.prepare("SELECT email, role, status FROM users WHERE id = ?")
+    .bind(id)
+    .first<{ email: string; role: AccountRole; status: string }>();
+  if (!target) return json({ error: "not-found" }, 404);
+  if (isApprover(env, { ...target, status: "active" })) return json({ error: "approver" }, 403);
+  await env.DB.batch([
+    env.DB.prepare("UPDATE users SET status = ? WHERE id = ?").bind(status, id),
+    ...(status === "removed" ? [env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(id)] : []),
+  ]);
+  return json({ ok: true });
+}
+
 // --- Routes --------------------------------------------------------------------
 
 // /problems, /claims, /queue, /partners, /proposals, /projects,
-// /submissions and /meetings. Null for any other path.
+// /submissions, /meetings, /overview and /accounts. Null for any other
+// path.
 export async function handlePipeline(
   req: Request,
   env: AccountEnv,
   headers: Record<string, string>,
 ): Promise<Response | null> {
   const { pathname } = new URL(req.url);
-  if (!/^\/(problems|claims|queue|partners|proposals|projects|submissions|meetings)(\/|$)/.test(pathname)) return null;
+  if (!/^\/(problems|claims|queue|partners|proposals|projects|submissions|meetings|overview|accounts)(\/|$)/.test(pathname)) return null;
   const json: Json = (body, status = 200) =>
     Response.json(body, { status, headers: { ...headers, "cache-control": "no-store" } });
 
@@ -1071,10 +1171,13 @@ export async function handlePipeline(
   match = pathname.match(/^\/claims\/([\w-]{1,64})\/withdraw$/);
   if (match && m === "POST") return withdrawClaim(env, user, match[1], json);
 
-  if (!approver && /^\/(queue|partners|meetings)|^\/(claims|submissions)\/[\w-]+\/review$/.test(pathname)) {
+  if (!approver && /^\/(queue|partners|meetings|overview|accounts)|^\/(claims|submissions)\/[\w-]+\/review$/.test(pathname)) {
     return json({ error: "forbidden" }, 403);
   }
   if (pathname === "/queue" && m === "GET") return queue(env, json);
+  if (pathname === "/overview" && m === "GET") return overview(env, json);
+  match = pathname.match(/^\/accounts\/([\w-]{1,64})\/status$/);
+  if (match && m === "POST") return setPersonStatus(req, env, user, match[1], json);
   match = pathname.match(/^\/claims\/([\w-]{1,64})\/review$/);
   if (match && m === "POST") return reviewClaim(req, env, user, match[1], json);
   match = pathname.match(/^\/submissions\/([\w-]{1,64})\/review$/);

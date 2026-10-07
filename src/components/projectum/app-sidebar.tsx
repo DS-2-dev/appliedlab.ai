@@ -8,12 +8,12 @@
 // account's views, which depend on its role. Partners get My Problems.
 // Members get the Notice Board, My Claims and All Projects with Your
 // Projects under it; reps get the Notice Board and All Projects; and
-// approvers also get Approvals, with how many are waiting. At the bottom sits
+// approvers also get Approvals, with how many are waiting, and Overview. At the bottom sits
 // the profile, which opens Settings in a dialog, where Log out also lives.
 
 import * as React from "react";
 import Link from "next/link";
-import { ClipboardCheck, FolderKanban, Inbox, type LucideIcon, Megaphone, PanelLeft } from "lucide-react";
+import { ClipboardCheck, FolderKanban, Inbox, LayoutDashboard, type LucideIcon, Megaphone, PanelLeft } from "lucide-react";
 import { copy } from "@/content/copy";
 import { useAccount } from "@/lib/account";
 import { initials } from "@/lib/initials";
@@ -39,7 +39,7 @@ import { Button } from "@/components/ui/button";
 
 const S = copy.projectum;
 
-export type ProjectumView = "board" | "mine" | "problem" | "claims" | "queue" | "projects" | "project";
+export type ProjectumView = "board" | "mine" | "problem" | "claims" | "queue" | "overview" | "projects" | "project";
 
 // The collapse toggle, one for each state of the bar. Open, it sits at the
 // right as the sidebar icon. Folded, a second one takes the mark's own spot
@@ -95,7 +95,10 @@ function navItems(role: string, approver: boolean, waiting: number): NavItem[] {
   if (role === "partner") return [{ view: "mine", label: P.nav.myProblems, href: "/projectum", icon: Megaphone }];
   const items: NavItem[] = [{ view: "board", label: P.nav.board, href: "/projectum", icon: Megaphone }];
   if (role === "member") items.push({ view: "claims", label: P.nav.myClaims, href: "/projectum?view=claims", icon: ClipboardCheck });
-  if (approver) items.push({ view: "queue", label: P.nav.queue, href: "/projectum?view=queue", icon: Inbox, badge: waiting });
+  if (approver) {
+    items.push({ view: "queue", label: P.nav.queue, href: "/projectum?view=queue", icon: Inbox, badge: waiting });
+    items.push({ view: "overview", label: P.overview.nav, href: "/projectum?view=overview", icon: LayoutDashboard });
+  }
   items.push({ view: "projects", label: S.projects, href: "/projectum?view=projects", icon: FolderKanban, className: HOP });
   return items;
 }
