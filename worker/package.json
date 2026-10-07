@@ -1,0 +1,16 @@
+{
+  "name": "appliedlab-ask",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev",
+    "deploy": "wrangler deploy",
+    "check": "tsc --noEmit && wrangler deploy --dry-run --outdir dist"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^5.20260917.1",
+    "typescript": "^5",
+    "wrangler": "^4.133.0"
+  },
+  "//": "The Anthropic SDK comes from the site's own node_modules (one level up), so the Worker and src/lib/ask.ts share one copy. Run npm install in website/site first."
+}

@@ -1,0 +1,331 @@
+/* Typekit kit: TT Paplane, the Projectum name.
+   Must stay the first line: `@import "tailwindcss"` expands in place, so
+   anything after it lands below Tailwind's rules and CSS rejects it. */
+@import url("https://use.typekit.net/yrs7pes.css");
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "shadcn/tailwind.css";
+
+@custom-variant dark (&:is(.dark *));
+
+/* Screens too short for every detail on a landing card; they drop some. */
+@custom-variant short (@media (max-height: 820px));
+
+/* The site's ink, and the body face. */
+:root {
+  /* The body face, behind --font-sans. A variable rather than a literal so
+     a surface can swap it: .projectum-ui repoints it to Geist, shadcn's face,
+     and every font-sans inside follows. */
+  --font-body: var(--font-inter), ui-sans-serif, system-ui, sans-serif;
+
+  /* The landing's text colour. */
+  --ink: #1a1a1a;
+
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --radius: 0.625rem;
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+/* The landing's small uppercase labels. Opacity stays per use. */
+@utility kicker {
+  font-size: 11px;
+  font-weight: 500;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+@theme inline {
+  --color-ink: var(--ink);
+
+  --font-sans: var(--font-body);
+  /* The landing's face (next/font, layout.tsx). */
+  --font-archivo: var(--font-archivo-face), ui-sans-serif, system-ui, sans-serif;
+  /* The Projectum name beside its logo. TT Paplane ships 400 only. */
+  --font-paplane: "tt-paplane", var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, monospace;
+  --font-heading: var(--font-body);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar: var(--sidebar);
+  --color-chart-5: var(--chart-5);
+  --color-chart-4: var(--chart-4);
+  --color-chart-3: var(--chart-3);
+  --color-chart-2: var(--chart-2);
+  --color-chart-1: var(--chart-1);
+  --color-ring: var(--ring);
+  --color-input: var(--input);
+  --color-border: var(--border);
+  --color-destructive: var(--destructive);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-accent: var(--accent);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-muted: var(--muted);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-secondary: var(--secondary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary: var(--primary);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-popover: var(--popover);
+  --color-card-foreground: var(--card-foreground);
+  --color-card: var(--card);
+  --color-foreground: var(--foreground);
+  --color-background: var(--background);
+  --radius-sm: calc(var(--radius) * 0.6);
+  --radius-md: calc(var(--radius) * 0.8);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) * 1.4);
+  --radius-2xl: calc(var(--radius) * 1.8);
+  --radius-3xl: calc(var(--radius) * 2.2);
+  --radius-4xl: calc(var(--radius) * 2.6);
+}
+
+/* No CSS smooth scroll: the landing glides with Lenis (SmoothScroll), and
+   deep links from other pages land instantly. */
+
+body {
+  background: #ffffff;
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-size: 1rem;
+  line-height: 1.6;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgb(0 0 0 / 0.1);
+  color: var(--ink);
+}
+
+/* Visible focus, in the base layer so a component's own focus style wins.
+   Projectum's components carry their own rings, so it stays off there. */
+@layer base {
+  :root:not(:has(.projectum-ui)) :focus-visible {
+    outline: 2px solid var(--ink);
+    outline-offset: 3px;
+    border-radius: 2px;
+  }
+}
+
+.dark {
+  color-scheme: dark;
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.87 0 0);
+  --chart-2: oklch(0.556 0 0);
+  --chart-3: oklch(0.439 0 0);
+  --chart-4: oklch(0.371 0 0);
+  --chart-5: oklch(0.269 0 0);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  /* Neutral like the rest: shadcn's dark default here is a violet. */
+  --sidebar-primary: oklch(0.922 0 0);
+  --sidebar-primary-foreground: oklch(0.205 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+  html {
+    @apply font-sans;
+  }
+}
+
+/* The Projectum app surface (2026-09-11). Everything under it is stock shadcn
+   (base-nova, neutral), including its face, Geist. The marketing site keeps
+   Inter: shadcn init had pointed the whole document at Geist, and that change
+   was never asked for on the landing. Dialogs, menus and the mobile sheet
+   portal to <body>, outside this scope, so the root takes Geist too whenever
+   a Projectum page is mounted. */
+.projectum-ui,
+:root:has(.projectum-ui) {
+  --font-body: var(--font-geist), ui-sans-serif, system-ui, sans-serif;
+
+  /* Surfaces tuned for contrast between the whites, after ChatGPT's light
+     theme: a grey rail against a white canvas, a clearly darker grey for
+     hover and the active entry, and hairlines drawn from black at low
+     alpha so they hold on both the rail and the canvas. Text is untouched. */
+  --background: #ffffff;
+  --card: #ffffff;
+  --popover: #ffffff;
+  --secondary: #f4f4f4;
+  --muted: #f4f4f4;
+  --accent: #ececec;
+  --border: oklch(0 0 0 / 10%);
+  --input: oklch(0 0 0 / 14%);
+  --sidebar: #f9f9f9;
+  --sidebar-accent: #ececec;
+  --sidebar-border: oklch(0 0 0 / 8%);
+}
+/* Dark mode (Settings, Preferences), ChatGPT's current dark theme one for
+   one: a pure black canvas and rail split by a faint hairline, cards flat on
+   the black (as the light theme's white on white), #212121 for the active
+   entry, hover, inputs and menus, pure white text over #afafaf secondary
+   text, and white primary buttons. */
+.dark .projectum-ui,
+:root.dark:has(.projectum-ui) {
+  --background: #000000;
+  --foreground: #ffffff;
+  --card: #000000;
+  --card-foreground: #ffffff;
+  --popover: #212121;
+  --popover-foreground: #ffffff;
+  --primary: #ffffff;
+  --primary-foreground: #000000;
+  --secondary: #212121;
+  --secondary-foreground: #ffffff;
+  --muted: #212121;
+  --muted-foreground: #afafaf;
+  --accent: #212121;
+  --accent-foreground: #ffffff;
+  --border: oklch(1 0 0 / 12%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: #8f8f8f;
+  --sidebar: #000000;
+  --sidebar-foreground: #ffffff;
+  --sidebar-accent: #212121;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: oklch(1 0 0 / 12%);
+  --sidebar-ring: #8f8f8f;
+}
+/* The landing heading's tilting word (page.tsx). Upright most of the time,
+   it leans into an italic slant now and then and straightens again. The
+   heading's face ships no italic, so the slant is a skew from the
+   baseline. Still for anyone who asks for reduced motion. */
+@keyframes tilt-word {
+  0%,
+  62%,
+  100% {
+    transform: translateX(0) skewX(0deg);
+  }
+  70%,
+  88% {
+    /* the lean pushes the top of the word right, so it steps back a touch
+       to keep its space before the next word */
+    transform: translateX(-0.05em) skewX(-12deg);
+  }
+}
+
+.tilt-word {
+  display: inline-block;
+  transform-origin: 50% 85%;
+  animation: tilt-word 7s cubic-bezier(0.65, 0, 0.35, 1) 1.5s infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .tilt-word {
+    animation: none;
+  }
+}
+
+.projectum-ui {
+  font-family: var(--font-body);
+}
+/* Switching dark mode crossfades the whole page as one (a view transition,
+   theme-switch.tsx), so buttons and their text change with everything
+   else. The switch stays live above the fade, its thumb sliding. */
+html.theme-fade::view-transition-old(root),
+html.theme-fade::view-transition-new(root) {
+  animation-duration: 450ms;
+  animation-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+}
+html.theme-fade::view-transition-old(theme-switch) {
+  display: none;
+}
+html.theme-fade::view-transition-new(theme-switch) {
+  animation: none;
+}
+/* The sidebar's icons on hover (app-sidebar.tsx): the All Projects folder
+   and each of Your Projects' folders hop,
+   and the collapse toggle nudges the
+   way the bar will go (--nudge, negative to fold, positive to open). Each
+   plays once and ends where it started. */
+@keyframes projectum-nudge {
+  0%,
+  100% {
+    translate: 0 0;
+  }
+  40% {
+    translate: var(--nudge, -3px) 0;
+  }
+  70% {
+    translate: calc(var(--nudge, -3px) * -0.35) 0;
+  }
+}
+@keyframes projectum-hop {
+  0%,
+  60%,
+  100% {
+    translate: 0 0;
+  }
+  30% {
+    translate: 0 -3px;
+  }
+  78% {
+    translate: 0 -1px;
+  }
+}
+/* The site's body colours are unlayered too, so they beat shadcn's
+   bg-background and text-foreground. Projectum takes shadcn's, so text with
+   no colour of its own, dialogs included, follows light and dark mode. */
+:root:has(.projectum-ui) body {
+  background: var(--background);
+  color: var(--foreground);
+}
