@@ -36,6 +36,10 @@ scripts/publish-live.sh "What changed"
 
 It refuses to push unless the live copy matches this folder exactly.
 
+The live repo's Settings > Pages > Source must stay on "GitHub Actions". On
+"Deploy from a branch", GitHub also builds the repo's README as a page on
+every push, and whichever deploy finishes last is what appliedlab.ai shows.
+
 ## Copy
 
 Every public string lives in `src/content/copy.ts` and is PROVISIONAL until
