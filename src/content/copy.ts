@@ -128,11 +128,11 @@ export const copy = {
         id: "platform",
         label: "Platform",
         title: "A notice board and a project tracker",
-        status: "Launching next",
+        status: "Open now",
         body: "Partners post problems to the notice board, members claim them with an action plan, and every milestone is tracked where partners and reps can follow it.",
-        cta: { label: "Try the Projectum demo", href: "/projectum" },
-        // A preview of the notice board, with sample problems from the
-        // advisory board deck. The platform is not live yet.
+        cta: { label: "Open Projectum", href: "/projectum" },
+        // A picture of the notice board, drawn with the sample problems from
+        // the advisory board deck. The real one is in Projectum.
         board: {
           label: "Notice board",
           status: "Sample",
@@ -158,8 +158,8 @@ export const copy = {
           },
           {
             level: "For reps",
-            name: "Approvals and help",
-            points: ["Claim and submission approvals", "Requests for help from members"],
+            name: "Approvals and an overview",
+            points: ["Claim and submission approvals", "Every team and partner at a glance"],
           },
         ],
         footnote: "Several members can work one project, together or in parallel.",
@@ -199,13 +199,13 @@ export const copy = {
         label: "Partners",
         title: "Bring the problems your team runs into",
         body: "Organizations post as many problems as they like, and members from any discipline build the solutions.",
-        cta: { label: "Bring a problem", href: "mailto:ailab@weber.edu" },
-        // A preview of the partner portal, drawn with the sample projects
-        // from the advisory board deck. The platform is not live yet.
+        cta: { label: "Post a problem", href: "join" },
+        // A picture of the partner portal, drawn with the sample projects
+        // from the advisory board deck. The real one is in Projectum.
         portal: {
           label: "Partner portal",
           status: "Sample",
-          note: "Arrives with the platform launch",
+          note: "Sign up as a business to post your own",
           rows: [
             { name: "Lead-intake CRM", meta: "2 submissions ready" },
             { name: "Route optimizer", meta: "Members working" },
@@ -269,7 +269,7 @@ export const copy = {
     labLabel: "The Lab",
     contactLabel: "Contact",
     tryLabel: "Try",
-    projectum: "Projectum demo",
+    projectum: "Projectum",
     askLink: "Ask the Lab",
     email: "ailab@weber.edu",
     copyEmail: "Copy the email address ailab@weber.edu",

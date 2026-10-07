@@ -55,25 +55,28 @@ Why a pipeline: it creates low-stakes experience opportunities that grow into st
 - Level 3, Builder: actively implementing with an organization, hired as an intern by a partner, and featured on the partner's profile.
 - The path: start as an Affiliate, earn funding, get hired.
 
-## The platform (in development; its launch is up next)
-- Notice board: partners post as many problems as they like, tagged by discipline (for example finance, computer science, accounting, design). Several members can work one project together or in parallel.
-- Claiming: a member submits an action plan, faculty approve it, and approval unlocks the project and access to the Lab's Claude Teams account.
-- Project tracker: members lay out their action plan as milestones with criteria for success and log progress. Reps are notified of claims and submission requests, and partners are notified when a submission is approved. Partners set deadlines, review multiple submissions, meet with members, and can select a member for an internship, which moves the project to Phase 2.
-- Portals: members get a public profile showing their claimable, active and completed projects. Partners see their listed projects, how many members are on each, and finished submissions. Reps monitor activity, manage claim and submission approvals, and respond to requests for help.
-- Projectum is the Lab's project workspace on this site; a demo is open to try.
+## The platform (live on this site as Projectum, at appliedlab.ai/projectum)
+- Signing up: at appliedlab.ai/signup, a person picks student, faculty or business and gets a 6-digit code by email (Google sign-in is being set up). Students use their @mail.weber.edu address and faculty their @weber.edu address. Businesses use their own email, and the Lab approves each new business before it can post.
+- Notice board: partners post as many problems as they like, tagged by field (finance, accounting, business, computer science, design, mathematics, marketing). Several teams can work one problem in parallel.
+- Claiming: a student, alone or with teammates, claims a problem with an action plan (an approach and milestones, each with how success is judged). The Lab reviews and approves it. Students can also propose a project of their own the same way.
+- The board: an approved plan opens the team's board, where it moves from Solidifying to Prototype with a build log the partner can follow, then to Submitted.
+- Submitting: the team uploads a final report (a PDF) and credits each person. The Lab reviews it first, then the partner reads it.
+- After acceptance: the partner can ask the Lab to introduce them to the team, and can select the team for an internship. That opens phase 2, a checklist of implementation milestones, until the partner marks the project complete.
+- Levels and profiles: a student's level (Affiliate, Sponsored, Builder) follows from their projects, and a student can turn on a public profile page showing their level and work. Sponsored students get a Lab-funded Claude account.
 
 ## For organizations (partners)
 - The Lab looks for the problems that surface at an organization's front line or in the heat of its operations, which usually a worker, a middle manager or an engineer knows best.
 - How organizations can help: find those people, find their problems, and connect them with the Lab. Every connection becomes a project for a member.
 - Example problems and the disciplines they call for: a snow removal annual pricing model (finance), a business model (business management), an accounting structure (accounting), internal document style enforcement (graphic design), the fastest maintenance routine (mathematics), and automatic schedule creation and assignment (computer science).
 - Partners review each submission and meet the students behind it, and can hire a member as an intern to implement the work.
-- To bring a problem, email ailab@weber.edu.
+- To bring a problem, sign up as a business at appliedlab.ai/signup and post it on the notice board once the Lab approves the account, or email ailab@weber.edu.
 
 ## Progress (Fall 2026)
 - Complete: initial planning and attendance.
 - Funding: largely secured, with the last pieces still being finalized.
 - Halfway: marketing and awareness.
-- Up next: partner projects, the platform launch, then scaling and iterating.
+- Platform: launched, as Projectum on this site.
+- Up next: partner projects, then scaling and iterating.
 
 ## Beliefs
 1. AI is a means to an end, not the end itself.
