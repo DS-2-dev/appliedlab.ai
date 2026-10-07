@@ -4,7 +4,7 @@
 // plan laid out, a team, dates, and the loading and error states.
 
 import * as React from "react";
-import { CircleCheck, CircleDashed, CircleX, Download, ExternalLink, Undo2 } from "lucide-react";
+import { Award, CircleCheck, CircleDashed, CircleX, Download, ExternalLink, Sprout, Undo2, Wrench } from "lucide-react";
 import { copy } from "@/content/copy";
 import { initials } from "@/lib/initials";
 import type { ClaimStatus, Field } from "@/lib/problems";
@@ -223,5 +223,23 @@ export function SubmissionPanel({
         </div>
       )}
     </section>
+  );
+}
+
+export type Level = "affiliate" | "sponsored" | "builder";
+
+const LEVEL_ICON: Record<Level, React.ReactNode> = {
+  affiliate: <Sprout />,
+  sponsored: <Award />,
+  builder: <Wrench />,
+};
+
+// A member's level, with what it means on hover.
+export function LevelBadge({ level }: { level: Level }) {
+  return (
+    <Badge variant={level === "affiliate" ? "outline" : "default"} title={P.levels[level].meaning} data-level={level}>
+      {LEVEL_ICON[level]}
+      {P.levels[level].name}
+    </Badge>
   );
 }

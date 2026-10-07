@@ -20,8 +20,17 @@ export interface Account {
   role: AccountRole;
   status: "active" | "pending";
   avatar: string | null;
-  // Approves claims and new partners: reps, and the Lab's approver.
+  // Approves claims and new partners: reps, and the Lab's approvers.
   approver: boolean;
+  // Members: their level, worked out from their claims, whether their
+  // profile page is public and its address, and whether the Lab has given
+  // them a funded Claude account. Partners: whether their name stays off
+  // student profiles.
+  level: "affiliate" | "sponsored" | "builder" | null;
+  profilePublic: boolean;
+  handle: string | null;
+  claudeAccess: boolean;
+  hideName: boolean;
 }
 
 export type AccountState =
@@ -217,7 +226,12 @@ export async function logout(): Promise<void> {
   set(SIGNED_OUT);
 }
 
-export async function updateAccount(patch: { name?: string; avatar?: string | null }): Promise<void> {
+export async function updateAccount(patch: {
+  name?: string;
+  avatar?: string | null;
+  profilePublic?: boolean;
+  hideName?: boolean;
+}): Promise<void> {
   const { user } = await api<{ user: Account }>("/me", { method: "PATCH", body: JSON.stringify(patch) });
   set({ status: "signed-in", account: user });
 }

@@ -45,6 +45,8 @@ const MAX_PERSON_NAME = 80;
 
 type Status = "active" | "pending" | "removed";
 
+export const USER_COLS = "id, email, name, role, status, avatar, profile_public, handle, claude_access, hide_name";
+
 export interface UserRow {
   id: string;
   email: string;
@@ -52,6 +54,10 @@ export interface UserRow {
   role: AccountRole;
   status: Status;
   avatar: string | null;
+  profile_public?: number;
+  handle?: string | null;
+  claude_access?: number;
+  hide_name?: number;
 }
 
 // Who approves claims and new partners: reps, the Lab's approver
@@ -74,7 +80,46 @@ function publicUser(u: UserRow, env: AccountEnv) {
     status: u.status,
     avatar: u.avatar,
     approver: isApprover(env, u),
+    profilePublic: Boolean(u.profile_public),
+    handle: u.handle ?? null,
+    claudeAccess: Boolean(u.claude_access),
+    hideName: Boolean(u.hide_name),
   };
+}
+
+export type Level = "affiliate" | "sponsored" | "builder";
+
+// A member's level, from the deck: Affiliate once registered, Sponsored
+// while on an approved claim, Builder once a partner hires their team.
+// Worked out each time, never stored, so it can't drift from the claims.
+export async function levelOf(env: AccountEnv, userId: string): Promise<Level> {
+  const row = await env.DB.prepare(
+    "SELECT " +
+      "EXISTS (SELECT 1 FROM claim_members m JOIN claims c ON c.id = m.claim_id JOIN selections s ON s.claim_id = c.id WHERE m.user_id = ?1 AND c.status = 'approved') AS builder, " +
+      "EXISTS (SELECT 1 FROM claim_members m JOIN claims c ON c.id = m.claim_id WHERE m.user_id = ?1 AND c.status = 'approved') AS sponsored",
+  )
+    .bind(userId)
+    .first<{ builder: number; sponsored: number }>();
+  return row?.builder ? "builder" : row?.sponsored ? "sponsored" : "affiliate";
+}
+
+// The account as the browser gets it, with a member's level.
+async function accountOut(u: UserRow, env: AccountEnv) {
+  return { ...publicUser(u, env), level: u.role === "member" ? await levelOf(env, u.id) : null };
+}
+
+// A profile's address: the name as a slug, plus a few letters so two Sam
+// Lees don't collide.
+function handleFor(name: string): string {
+  const slug = name
+    .normalize("NFKD")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .toLowerCase()
+    .replace(/[\s_]+/g, "-")
+    .slice(0, 40);
+  const tail = [...crypto.getRandomValues(new Uint8Array(4))].map((b) => "abcdefghjkmnpqrstuvwxyz23456789"[b % 31]).join("");
+  return `${slug || "member"}-${tail}`;
 }
 
 const enc = new TextEncoder();
@@ -195,7 +240,7 @@ async function verifyLogin(req: Request, env: AccountEnv, ip: string, json: Json
   if (!row) return json({ error: "expired" }, 400);
   if (!same(row.code_hash, await sha256(`${env.AUTH_SECRET}:${email}:${code}`))) return json({ error: "code" }, 400);
 
-  let user = await env.DB.prepare("SELECT id, email, name, role, status, avatar FROM users WHERE email = ?")
+  let user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?`)
     .bind(email)
     .first<UserRow>();
   if (user?.status === "removed") return json({ error: "removed" }, 403);
@@ -213,7 +258,7 @@ async function verifyLogin(req: Request, env: AccountEnv, ip: string, json: Json
   }
 
   await env.DB.prepare("DELETE FROM login_codes WHERE email = ?").bind(email).run();
-  return json({ token: await issueSession(env, user.id), user: publicUser(user, env) });
+  return json({ token: await issueSession(env, user.id), user: await accountOut(user, env) });
 }
 
 // A new account, with the role its address gives it. Partners start pending
@@ -304,7 +349,7 @@ export async function approvePartner(req: Request, env: AccountEnv): Promise<Res
     return page("That link doesn't work", "It may have been copied incompletely.", 400);
   }
   if (Number(exp) < Date.now()) return page("That link has expired", "Approve them in Approvals on Projectum instead.", 400);
-  const user = await env.DB.prepare("SELECT id, email, name, role, status, avatar FROM users WHERE id = ?")
+  const user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`)
     .bind(id)
     .first<UserRow>();
   if (!user) return page("No such account", "It may have been deleted.", 404);
@@ -335,7 +380,7 @@ export async function sessionUser(req: Request, env: AccountEnv): Promise<UserRo
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   if (!token || token.length > 100) return null;
   const user = await env.DB.prepare(
-    "SELECT u.id, u.email, u.name, u.role, u.status, u.avatar FROM sessions s JOIN users u ON u.id = s.user_id " +
+    `SELECT ${USER_COLS.split(", ").map((c) => `u.${c}`).join(", ")} FROM sessions s JOIN users u ON u.id = s.user_id ` +
       "WHERE s.token_hash = ? AND s.expires_at > ?",
   )
     .bind(await sha256(token), Date.now())
@@ -352,12 +397,31 @@ async function updateMe(req: Request, env: AccountEnv, user: UserRow, json: Json
     if (!name) return json({ error: "name" }, 400);
     next.name = name;
   }
+  if ("profilePublic" in body) {
+    if (user.role !== "member") return json({ error: "profile" }, 400);
+    next.profile_public = body.profilePublic === true ? 1 : 0;
+    // The address is made the first time the profile goes public, and kept.
+    if (next.profile_public && !next.handle) next.handle = handleFor(next.name);
+  }
+  if ("hideName" in body) {
+    if (user.role !== "partner") return json({ error: "hide" }, 400);
+    next.hide_name = body.hideName === true ? 1 : 0;
+  }
   if ("avatar" in body) {
     if (body.avatar !== null && !isThumbnail(body.avatar)) return json({ error: "avatar" }, 400);
     next.avatar = body.avatar as string | null;
   }
-  await env.DB.prepare("UPDATE users SET name = ?, avatar = ? WHERE id = ?").bind(next.name, next.avatar, user.id).run();
-  return json({ user: publicUser(next, env) });
+  for (let tries = 0; ; tries++) {
+    const r = await env.DB.prepare("UPDATE users SET name = ?, avatar = ?, profile_public = ?, handle = ?, hide_name = ? WHERE id = ?")
+      .bind(next.name, next.avatar, next.profile_public ?? 0, next.handle ?? null, next.hide_name ?? 0, user.id)
+      .run()
+      .catch((e: unknown) => e);
+    if (!(r instanceof Error)) break;
+    // A handle someone already has: make another.
+    if (tries > 3 || !/UNIQUE/.test(r.message)) throw r;
+    next.handle = handleFor(next.name);
+  }
+  return json({ user: await accountOut(next, env) });
 }
 
 // The Lab's people, for adding teammates: active members and reps, by name.
@@ -396,7 +460,7 @@ export async function handleAccounts(
     await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(await sha256(token)).run();
     return json({ ok: true });
   }
-  if (pathname === "/me" && req.method === "GET") return json({ user: publicUser(user, env) });
+  if (pathname === "/me" && req.method === "GET") return json({ user: await accountOut(user, env) });
   if (pathname === "/me" && req.method === "PATCH") return updateMe(req, env, user, json);
   if (pathname === "/people" && req.method === "GET") return listPeople(env, user, json);
   return json({ error: "not-found" }, 404);
@@ -551,7 +615,7 @@ async function googleCallback(req: Request, env: GoogleEnv): Promise<Response> {
   }
 
   const email = normalizeEmail(claims.email);
-  let user = await env.DB.prepare("SELECT id, email, name, role, status, avatar FROM users WHERE email = ?")
+  let user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?`)
     .bind(email)
     .first<UserRow>();
   if (user?.status === "removed") return fail("removed");

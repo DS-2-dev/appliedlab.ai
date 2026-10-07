@@ -3,7 +3,8 @@
 // The approvers' overview (Kylar and faculty reps): every problem, open or
 // closed; every team's claim and where it stands, from a pending plan to a
 // completed internship; and every account, with Approve for a waiting
-// partner and Turn off or on for anyone but an approver. Counts across the
+// partner and Turn off or on for anyone but an approver, with each member's
+// level and whether their funded Claude account has been given. Counts across the
 // top, then one table per tab, each searched and filtered.
 
 import * as React from "react";
@@ -12,7 +13,7 @@ import { copy } from "@/content/copy";
 import type { AccountRole } from "@/lib/email-rules";
 import type { ClaimStatus } from "@/lib/problems";
 import { type Person, type Problem, send, useApi } from "@/components/projectum/pipeline-store";
-import { LoadError, Loading, ViewFrame, formatDate } from "@/components/projectum/pipeline-ui";
+import { type Level, LevelBadge, LoadError, Loading, ViewFrame, formatDate } from "@/components/projectum/pipeline-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -47,6 +48,9 @@ type OverviewPerson = {
   approver: boolean;
   activeClaims: number;
   problems: number;
+  level: Level | null;
+  claudeAccess: boolean;
+  profilePublic: boolean;
 };
 
 type Overview = { problems: Problem[]; claims: OverviewClaim[]; people: OverviewPerson[] };
@@ -277,11 +281,40 @@ function PersonAction({ person }: { person: OverviewPerson }) {
   );
 }
 
+// A member's funded Claude account: needed from Sponsored, marked given here
+// once the Lab has sent the invite.
+function ClaudeCell({ person }: { person: OverviewPerson }) {
+  const [busy, setBusy] = React.useState(false);
+  if (person.role !== "member" || person.level === "affiliate") return null;
+  const toggle = async () => {
+    setBusy(true);
+    try {
+      await send(`/accounts/${person.id}/claude`, "POST", { granted: !person.claudeAccess });
+    } finally {
+      setBusy(false);
+    }
+  };
+  return person.claudeAccess ? (
+    <Button size="sm" variant="ghost" disabled={busy} onClick={() => void toggle()}>
+      {V.claudeGiven}
+    </Button>
+  ) : (
+    <div className="flex items-center gap-2">
+      <Badge variant="secondary">{V.claudeNeeded}</Badge>
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => void toggle()}>
+        {V.claudeGive}
+      </Button>
+    </div>
+  );
+}
+
+const LEVELS: Level[] = ["affiliate", "sponsored", "builder"];
+
 function PeopleTab({ people }: { people: OverviewPerson[] }) {
   const [query, setQuery] = React.useState("");
-  const [role, setRole] = React.useState<AccountRole | "all">("all");
+  const [role, setRole] = React.useState<AccountRole | Level | "all">("all");
   const q = query.trim().toLowerCase();
-  const shown = people.filter((p) => (role === "all" || p.role === role) && matches(q, p.name, p.email));
+  const shown = people.filter((p) => (role === "all" || p.role === role || p.level === role) && matches(q, p.name, p.email));
   return (
     <div className="grid gap-3">
       <Filters
@@ -297,10 +330,11 @@ function PeopleTab({ people }: { people: OverviewPerson[] }) {
             label: V.roles[r],
             count: people.filter((p) => p.role === r).length,
           })),
+          ...LEVELS.map((l) => ({ value: l, label: P.levels[l].name, count: people.filter((p) => p.level === l).length })),
         ]}
       />
       <Table
-        head={[V.columns.name, V.columns.email, V.columns.role, V.columns.status, V.columns.activity, V.columns.joined, ""]}
+        head={[V.columns.name, V.columns.email, V.columns.role, V.level, V.claude, V.columns.status, V.columns.activity, V.columns.joined, ""]}
         empty={!shown.length}
       >
         {shown.map((p) => (
@@ -318,6 +352,10 @@ function PeopleTab({ people }: { people: OverviewPerson[] }) {
                   {V.approverBadge}
                 </Badge>
               )}
+            </td>
+            <td className="px-3 py-2">{p.level && <LevelBadge level={p.level} />}</td>
+            <td className="px-3 py-2">
+              <ClaudeCell person={p} />
             </td>
             <td className="px-3 py-2">
               <Badge variant={p.status === "active" ? "outline" : "secondary"}>{V.personStatus[p.status]}</Badge>

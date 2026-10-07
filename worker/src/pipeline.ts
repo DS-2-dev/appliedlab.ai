@@ -28,7 +28,7 @@
 // The approver hears about each new claim, submission and meeting request by
 // email, and the team hears each decision.
 
-import { type AccountEnv, type Json, type UserRow, isApprover, sendEmail, sessionUser } from "./accounts";
+import { type AccountEnv, type Json, type UserRow, isApprover, levelOf, sendEmail, sessionUser } from "./accounts";
 import type { AccountRole } from "@/lib/email-rules";
 import { cleanDescription, cleanName, cleanProjects, type Project } from "@/lib/projects";
 import {
@@ -1059,7 +1059,8 @@ async function overview(env: AccountEnv, json: Json): Promise<Response> {
   const team = new Map<string, Person[]>();
   for (const r of members.results) team.set(r.claim_id, [...(team.get(r.claim_id) ?? []), { id: r.id, name: r.name }]);
   const people = await env.DB.prepare(
-    "SELECT u.id, u.email, u.name, u.role, u.status, u.created_at, " +
+    "SELECT u.id, u.email, u.name, u.role, u.status, u.created_at, u.claude_access, u.profile_public, " +
+      "EXISTS (SELECT 1 FROM claim_members m JOIN claims c ON c.id = m.claim_id JOIN selections s ON s.claim_id = c.id WHERE m.user_id = u.id AND c.status = 'approved') AS builder, " +
       "(SELECT COUNT(*) FROM claim_members m JOIN claims c ON c.id = m.claim_id WHERE m.user_id = u.id AND c.status = 'approved') AS active_claims, " +
       "(SELECT COUNT(*) FROM problems p WHERE p.owner_id = u.id) AS problems " +
       "FROM users u ORDER BY u.created_at DESC",
@@ -1070,6 +1071,9 @@ async function overview(env: AccountEnv, json: Json): Promise<Response> {
     role: AccountRole;
     status: string;
     created_at: string;
+    claude_access: number;
+    profile_public: number;
+    builder: number;
     active_claims: number;
     problems: number;
   }>();
@@ -1100,6 +1104,10 @@ async function overview(env: AccountEnv, json: Json): Promise<Response> {
       approver: isApprover(env, { email: u.email, role: u.role, status: u.status }),
       activeClaims: u.active_claims,
       problems: u.problems,
+      // Levels are members' only.
+      level: u.role !== "member" ? null : u.builder ? "builder" : u.active_claims ? "sponsored" : "affiliate",
+      claudeAccess: Boolean(u.claude_access),
+      profilePublic: Boolean(u.profile_public),
     })),
   });
 }
@@ -1123,6 +1131,82 @@ async function setPersonStatus(req: Request, env: AccountEnv, user: UserRow, id:
   return json({ ok: true });
 }
 
+// --- Profiles -----------------------------------------------------------------------
+
+// A member's public profile, for anyone with the link, when they've made it
+// public: name, picture, level, the fields they've worked in, the projects
+// they're on, and the work the Lab accepted. A partner's name shows only on
+// accepted work, and never when the partner asked to stay off profiles.
+// No emails, plans or notes.
+async function profile(env: AccountEnv, handle: string, json: Json): Promise<Response> {
+  const u = await env.DB.prepare(
+    "SELECT id, name, avatar FROM users WHERE handle = ? AND profile_public = 1 AND role = 'member' AND status = 'active'",
+  )
+    .bind(handle)
+    .first<{ id: string; name: string; avatar: string | null }>();
+  if (!u) return json({ error: "not-found" }, 404);
+  const { results } = await env.DB.prepare(
+    "SELECT c.id, pr.title, pr.fields, pr.origin, ou.name AS partner, ou.hide_name, c.created_at, " +
+      "(SELECT s.status FROM submissions s WHERE s.claim_id = c.id ORDER BY s.created_at DESC LIMIT 1) AS submission, " +
+      "(SELECT sel.completed_at FROM selections sel WHERE sel.claim_id = c.id) AS completed_at, " +
+      "EXISTS (SELECT 1 FROM selections sel WHERE sel.claim_id = c.id) AS hired, " +
+      "(SELECT pj.data FROM projects pj WHERE pj.claim_id = c.id) AS data " +
+      "FROM claim_members m JOIN claims c ON c.id = m.claim_id JOIN problems pr ON pr.id = c.problem_id JOIN users ou ON ou.id = pr.owner_id " +
+      "WHERE m.user_id = ? AND c.status = 'approved' ORDER BY c.created_at DESC",
+  )
+    .bind(u.id)
+    .all<{
+      id: string;
+      title: string;
+      fields: string;
+      origin: "partner" | "member";
+      partner: string;
+      hide_name: number;
+      created_at: string;
+      submission: string | null;
+      completed_at: string | null;
+      hired: number;
+      data: string | null;
+    }>();
+  const team = await teams(env, results.map((r) => r.id));
+  const fields = new Set<Field>();
+  const projects = results.map((r) => {
+    for (const f of parseFields(r.fields)) fields.add(f);
+    const accepted = r.submission === "accepted";
+    const [board] = r.data ? cleanProjects([JSON.parse(r.data)]) : [];
+    return {
+      title: r.title,
+      partner: accepted && r.origin === "partner" && !r.hide_name ? r.partner : null,
+      own: r.origin === "member",
+      team: (team.get(r.id) ?? []).map((t) => t.name),
+      accepted,
+      hired: Boolean(r.hired),
+      completedAt: r.completed_at,
+      contribution: accepted ? (board?.launch?.contributions[u.id] ?? "") : "",
+      startedAt: r.created_at,
+    };
+  });
+  return json({
+    profile: {
+      name: u.name,
+      avatar: u.avatar,
+      level: await levelOf(env, u.id),
+      fields: [...fields],
+      projects,
+    },
+  });
+}
+
+// An approver marks a member's funded Claude account as given, or not.
+async function setClaudeAccess(req: Request, env: AccountEnv, id: string, json: Json): Promise<Response> {
+  const body = ((await req.json().catch(() => null)) ?? {}) as Record<string, unknown>;
+  if (typeof body.granted !== "boolean") return json({ error: "granted" }, 400);
+  const r = await env.DB.prepare("UPDATE users SET claude_access = ? WHERE id = ? AND role = 'member'")
+    .bind(body.granted ? 1 : 0, id)
+    .run();
+  return r.meta.changes ? json({ ok: true }) : json({ error: "not-found" }, 404);
+}
+
 // --- Routes --------------------------------------------------------------------
 
 // /problems, /claims, /queue, /partners, /proposals, /projects,
@@ -1134,9 +1218,15 @@ export async function handlePipeline(
   headers: Record<string, string>,
 ): Promise<Response | null> {
   const { pathname } = new URL(req.url);
-  if (!/^\/(problems|claims|queue|partners|proposals|projects|submissions|meetings|overview|accounts)(\/|$)/.test(pathname)) return null;
+  if (!/^\/(problems|claims|queue|partners|proposals|projects|submissions|meetings|overview|accounts|profiles)(\/|$)/.test(pathname)) {
+    return null;
+  }
   const json: Json = (body, status = 200) =>
     Response.json(body, { status, headers: { ...headers, "cache-control": "no-store" } });
+
+  // Public profiles need no account.
+  const public_ = pathname.match(/^\/profiles\/([a-z0-9-]{1,60})$/);
+  if (public_ && req.method === "GET") return profile(env, public_[1], json);
 
   const user = await sessionUser(req, env);
   if (!user) return json({ error: "signed-out" }, 401);
@@ -1178,6 +1268,8 @@ export async function handlePipeline(
   if (pathname === "/overview" && m === "GET") return overview(env, json);
   match = pathname.match(/^\/accounts\/([\w-]{1,64})\/status$/);
   if (match && m === "POST") return setPersonStatus(req, env, user, match[1], json);
+  match = pathname.match(/^\/accounts\/([\w-]{1,64})\/claude$/);
+  if (match && m === "POST") return setClaudeAccess(req, env, match[1], json);
   match = pathname.match(/^\/claims\/([\w-]{1,64})\/review$/);
   if (match && m === "POST") return reviewClaim(req, env, user, match[1], json);
   match = pathname.match(/^\/submissions\/([\w-]{1,64})\/review$/);
