@@ -925,7 +925,7 @@ export const copy = {
         claudeReady: "Your Lab-funded Claude account is ready. Check your Weber State email for the invite.",
         claudeWaiting: "The Lab is setting up your funded Claude account.",
         publicLabel: "Public profile",
-        publicHelp: "A page anyone with the link can see: your name, picture, level and projects. Never your email.",
+        publicHelp: "Anyone with the link sees your name, picture, level and projects, and never your email.",
         copyLink: "Copy link",
         copied: "Copied",
         view: "View",
