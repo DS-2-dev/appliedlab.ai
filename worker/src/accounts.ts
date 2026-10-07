@@ -15,6 +15,7 @@
 
 import { looksLikeEmail, normalizeEmail, roleForEmail, type AccountRole } from "@/lib/email-rules";
 import { type AlertEnv, alert } from "./alerts";
+import { approverIds, notify } from "./notify";
 import { isThumbnail } from "@/lib/projects";
 
 export interface AccountEnv {
@@ -287,7 +288,10 @@ async function createUser(
   await env.DB.prepare("INSERT INTO users (id, email, name, role, status, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
     .bind(user.id, email, name, role, user.status, avatar, new Date().toISOString())
     .run();
-  if (role === "partner") await askApproval(env, req, user);
+  if (role === "partner") {
+    await askApproval(env, req, user);
+    await notify(env, await approverIds(env), "partner-new", `${name} signed up as a business and is waiting for approval`, "/projectum?view=queue");
+  }
   return user;
 }
 
@@ -368,6 +372,7 @@ export async function approvePartner(req: Request, env: AccountEnv): Promise<Res
   }
   if (user.status === "pending") {
     await env.DB.prepare("UPDATE users SET status = 'active' WHERE id = ?").bind(id).run();
+    await notify(env, [id], "partner-approved", "The Lab approved your account. Post your first problem.", "/projectum");
     await sendEmail(
       env,
       user.email,

@@ -636,6 +636,16 @@ export const copy = {
     },
     logout: "Log out",
     toggle: "Toggle sidebar",
+    // The bell at the top of the sidebar: what happened that concerns this
+    // account. Microcopy.
+    notifications: {
+      label: "Notifications",
+      markAll: "Mark all read",
+      empty: "Nothing yet",
+      emptyHelp: "Approvals, submissions and meetings that concern you show up here.",
+      unread: (n: number) => `${n} unread`,
+      justNow: "Just now",
+    },
     // Shown in place of Projectum if a view crashes. The Lab gets an alert.
     crash: {
       title: "Something went wrong",

@@ -30,6 +30,7 @@
 
 import { type AccountEnv, type Json, type UserRow, isApprover, levelOf, sendEmail, sessionUser } from "./accounts";
 import type { AccountRole } from "@/lib/email-rules";
+import { approverIds, handleNotifications, notify, teamIds } from "./notify";
 import { cleanDescription, cleanName, cleanProjects, type Project } from "@/lib/projects";
 import {
   type ClaimDraft,
@@ -343,6 +344,7 @@ async function createClaim(req: Request, env: AccountEnv, user: UserRow, problem
       draft.milestones.length === 1 ? "" : "s"
     }.\n\nReview it in Approvals:\n${env.SITE_URL}/projectum?view=queue\n\nApplied AI Lab`,
   );
+  await notify(env, await approverIds(env, user.id), "claim-new", `${user.name} claimed "${row.title}"`, "/projectum?view=queue");
   return json({ id: made }, 201);
 }
 
@@ -424,6 +426,7 @@ async function propose(req: Request, env: AccountEnv, user: UserRow, json: Json)
       plan.milestones.length === 1 ? "" : "s"
     }.\n\nReview it in Approvals:\n${env.SITE_URL}/projectum?view=queue\n\nApplied AI Lab`,
   );
+  await notify(env, await approverIds(env, user.id), "claim-new", `${user.name} proposed a project, "${problem.title}"`, "/projectum?view=queue");
   return json({ id: made, problemId }, 201);
 }
 
@@ -546,6 +549,15 @@ async function reviewClaim(req: Request, env: AccountEnv, user: UserRow, id: str
 
   const problem = await getProblem(env, claim.problem_id);
   if (decision === "approved" && problem) await openBoard(env, claim, problem);
+  await notify(
+    env,
+    await teamIds(env, id),
+    decision === "approved" ? "claim-approved" : "claim-denied",
+    decision === "approved"
+      ? `Your plan for "${problem?.title ?? "your project"}" was approved. Your board is open.`
+      : `Your claim on "${problem?.title ?? "a problem"}" wasn't approved this time`,
+    "/projectum?view=claims",
+  );
   const { results } = await env.DB.prepare(
     "SELECT u.email, u.name FROM claim_members m JOIN users u ON u.id = m.user_id WHERE m.claim_id = ?",
   )
@@ -581,6 +593,7 @@ async function approvePartnerInApp(env: AccountEnv, id: string, json: Json): Pro
       "You're approved on Projectum",
       `Hi ${p.name},\n\nThe Applied AI Lab approved your account. Log in to post problems for our students:\n${env.SITE_URL}/login\n\nApplied AI Lab, Weber State University`,
     );
+    await notify(env, [id], "partner-approved", "The Lab approved your account. Post your first problem.", "/projectum");
   }
   return json({ ok: true });
 }
@@ -782,6 +795,7 @@ async function submit(req: Request, env: AccountEnv, user: UserRow, projectId: s
     `Submitted: "${problem?.title ?? project.name}"`,
     `${user.name}'s team submitted its work on "${problem?.title ?? project.name}".\n\nReview it in Approvals:\n${env.SITE_URL}/projectum?view=queue\n\nApplied AI Lab`,
   );
+  await notify(env, await approverIds(env, user.id), "submission-new", `${user.name}'s team submitted "${problem?.title ?? project.name}"`, "/projectum?view=queue");
   return json({ id, project }, 201);
 }
 
@@ -860,6 +874,16 @@ async function reviewSubmission(req: Request, env: AccountEnv, user: UserRow, id
       decision === "accepted" ? `Accepted: "${title}"` : `Back to you: "${title}"`,
       `Hi ${m.name},\n\n${text}${note ? `\n\nNote from the Lab: ${note}` : ""}\n\n${env.SITE_URL}/projectum?view=claims\n\nApplied AI Lab`,
     );
+  }
+  await notify(
+    env,
+    await teamIds(env, sub.claim_id),
+    decision === "accepted" ? "submission-accepted" : "submission-returned",
+    decision === "accepted" ? `The Lab accepted your submission on "${title}"` : `The Lab sent your submission on "${title}" back with a note`,
+    `/projectum?project=${sub.project_id}`,
+  );
+  if (decision === "accepted" && problem?.origin === "partner") {
+    await notify(env, [problem.owner_id], "team-submitted", `A team finished "${title}". Read their report.`, `/projectum?problem=${problem.id}`);
   }
   if (decision === "accepted" && problem?.origin === "partner") {
     const owner = await env.DB.prepare("SELECT email, name FROM users WHERE id = ?").bind(problem.owner_id).first<{ email: string; name: string }>();
@@ -946,6 +970,8 @@ async function requestMeeting(req: Request, env: AccountEnv, user: UserRow, clai
       }\n\nApplied AI Lab`,
     );
   }
+  await notify(env, await approverIds(env, user.id), "meeting-requested", `${claim.partner_name} wants to meet the team on "${claim.title}"`, "/projectum?view=queue");
+  await notify(env, await teamIds(env, claimId), "meeting-requested", `${claim.partner_name} wants to meet your team about "${claim.title}"`, "/projectum?view=claims");
   return json({ ok: true }, 201);
 }
 
@@ -985,6 +1011,8 @@ async function selectTeam(req: Request, env: AccountEnv, user: UserRow, claimId:
     `Internship: "${claim.title}"`,
     `${claim.partner_name} selected ${team.map((t) => t.name).join(", ")} as interns for "${claim.title}".\n\n${env.SITE_URL}/projectum?problem=${claim.problem_id}\n\nApplied AI Lab`,
   );
+  await notify(env, await teamIds(env, claimId), "selected", `${claim.partner_name} selected your team for an internship on "${claim.title}"`, "/projectum?view=claims");
+  await notify(env, await approverIds(env, user.id), "selected", `${claim.partner_name} hired a team on "${claim.title}"`, `/projectum?problem=${claim.problem_id}`);
   return json({ ok: true }, 201);
 }
 
@@ -1022,6 +1050,7 @@ async function completePhase(env: AccountEnv, user: UserRow, claimId: string, js
       `Hi ${t.name},\n\n"${claim.title}" with ${claim.partner_name} is marked complete. Shipped work, an industry relationship and a line on the résumé.\n\nApplied AI Lab`,
     );
   }
+  await notify(env, await teamIds(env, claimId), "complete", `"${claim.title}" is complete. Nice work.`, "/projectum?view=claims");
   return json({ ok: true });
 }
 
@@ -1218,7 +1247,7 @@ export async function handlePipeline(
   headers: Record<string, string>,
 ): Promise<Response | null> {
   const { pathname } = new URL(req.url);
-  if (!/^\/(problems|claims|queue|partners|proposals|projects|submissions|meetings|overview|accounts|profiles)(\/|$)/.test(pathname)) {
+  if (!/^\/(problems|claims|queue|partners|proposals|projects|submissions|meetings|overview|accounts|profiles|notifications)(\/|$)/.test(pathname)) {
     return null;
   }
   const json: Json = (body, status = 200) =>
@@ -1233,6 +1262,9 @@ export async function handlePipeline(
   if (user.status !== "active") return json({ error: "pending" }, 403);
   const m = req.method;
   const approver = isApprover(env, user);
+
+  const bell = await handleNotifications(req, env, user, json);
+  if (bell) return bell;
 
   if (pathname === "/problems" && m === "GET") return listProblems(env, user, json);
   if (pathname === "/problems" && m === "POST") return createProblem(req, env, user, json);

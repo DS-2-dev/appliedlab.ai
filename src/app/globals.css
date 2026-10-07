@@ -309,6 +309,22 @@ html.theme-fade::view-transition-new(theme-switch) {
     translate: calc(var(--nudge, -3px) * -0.35) 0;
   }
 }
+/* The bell rings: a short shake that settles back (notifications-menu.tsx). */
+@keyframes projectum-wiggle {
+  0%,
+  100% {
+    rotate: 0deg;
+  }
+  20% {
+    rotate: -14deg;
+  }
+  45% {
+    rotate: 12deg;
+  }
+  70% {
+    rotate: -6deg;
+  }
+}
 @keyframes projectum-hop {
   0%,
   60%,

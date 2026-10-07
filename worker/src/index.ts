@@ -34,6 +34,7 @@ import {
 } from "@/lib/ask";
 import { type GoogleEnv, approvePartner, handleAccounts, handleGoogle } from "./accounts";
 import { type AlertEnv, alert, clientError, errorText, healthCheck } from "./alerts";
+import { clearOldNotifications } from "./notify";
 import { handlePipeline } from "./pipeline";
 import { DEFAULT_SETTINGS, type LabEvent, type Settings } from "@/lib/types";
 import events from "../../data/events.json";
@@ -116,9 +117,11 @@ export default {
     }
   },
 
-  // The daily health check (the cron in wrangler.jsonc).
+  // Daily (the cron in wrangler.jsonc): the health check, and clearing read
+// notifications older than 60 days.
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(healthCheck(env).then(() => undefined));
+    ctx.waitUntil(clearOldNotifications(env).catch((e) => alert(env, "Cleanup failed", errorText(e).summary)));
   },
 } satisfies ExportedHandler<Env>;
 

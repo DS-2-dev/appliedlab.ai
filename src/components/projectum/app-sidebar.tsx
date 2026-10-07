@@ -4,8 +4,9 @@
 // (components/ui/sidebar.tsx, avatar). Neutral throughout, no brand purple,
 // lucide icons only.
 //
-// Just the bar: the mark and the collapse toggle at the top, then the
-// account's views, which depend on its role. Partners get My Problems.
+// Just the bar: the mark and the collapse toggle at the top, then the bell
+// (notifications-menu.tsx) and the account's views, which depend on its
+// role. Partners get My Problems.
 // Members get the Notice Board, My Claims and All Projects with Your
 // Projects under it; reps get the Notice Board and All Projects; and
 // approvers also get Approvals, with how many are waiting, and Overview. At the bottom sits
@@ -19,6 +20,7 @@ import { useAccount } from "@/lib/account";
 import { initials } from "@/lib/initials";
 import { useApi } from "@/components/projectum/pipeline-store";
 import { useAvatar } from "@/components/projectum/profile-store";
+import { NotificationsMenu } from "@/components/projectum/notifications-menu";
 import { ProjectFolders } from "@/components/projectum/project-folders";
 import { ProjectumLogo } from "@/components/projectum/projectum-logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -156,6 +158,7 @@ export function AppSidebar({
       <SidebarContent>
         <SidebarGroup>
           <SidebarMenu>
+            <NotificationsMenu />
             {items.map((item) => (
               <SidebarMenuItem key={item.view}>
                 <SidebarMenuButton
