@@ -14,6 +14,7 @@
 // Problems, claims and project boards are in pipeline.ts.
 
 import { looksLikeEmail, normalizeEmail, roleForEmail, type AccountRole } from "@/lib/email-rules";
+import { type AlertEnv, alert } from "./alerts";
 import { isThumbnail } from "@/lib/projects";
 
 export interface AccountEnv {
@@ -175,7 +176,11 @@ export async function sendEmail(env: AccountEnv, to: string, subject: string, te
       text,
     }),
   });
-  if (!res.ok) console.error("email failed", res.status, await res.text().catch(() => ""));
+  if (!res.ok) {
+    // Sign-in codes go out this way, so a refused email locks people out.
+    const reason = await res.text().catch(() => "");
+    await alert(env as AlertEnv, "Email failed", `Resend refused an email (${res.status})`, `Subject: ${subject}\n\n${reason.slice(0, 1000)}`);
+  }
   return res.ok;
 }
 

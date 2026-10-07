@@ -636,6 +636,13 @@ export const copy = {
     },
     logout: "Log out",
     toggle: "Toggle sidebar",
+    // Shown in place of Projectum if a view crashes. The Lab gets an alert.
+    crash: {
+      title: "Something went wrong",
+      body: "This view hit an error, and the Lab has been told. Try again, and if it keeps happening, reload the page.",
+      retry: "Try again",
+      reload: "Reload page",
+    },
     // The pipeline from the board deck: partners post problems, members
     // claim them with an action plan, the approver approves or denies.
     // Microcopy, apart from the descriptions under each view's title.

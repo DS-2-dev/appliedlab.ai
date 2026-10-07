@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { copy } from "@/content/copy";
 import { logout, useAccountState } from "@/lib/account";
+import { watchErrors } from "@/lib/report-error";
 import { clearPipeline } from "@/components/projectum/pipeline-store";
 import { Button } from "@/components/ui/button";
 
@@ -38,6 +39,8 @@ export function LogoutButton() {
 export function AccountGate({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const state = useAccountState();
+  // Errors in Projectum that nothing caught reach the Lab as alerts.
+  React.useEffect(() => watchErrors(), []);
   React.useEffect(() => {
     if (state.status !== "signed-out") return;
     const here = `${window.location.pathname}${window.location.search}`;

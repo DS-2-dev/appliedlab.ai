@@ -111,3 +111,41 @@ Actions > Variables) to the new address and re-run the workflow.
 - `npm run check` type-checks and bundles without deploying.
 - Allowed sites are `ALLOWED_ORIGINS` in `wrangler.jsonc`; the rate limit
   is `ratelimits` there too.
+
+## When something breaks
+
+`ALERT_EMAIL` (in `wrangler.jsonc`) gets an email, from `src/alerts.ts`, when:
+
+- a request fails inside the Worker (the person sees a short error, not a
+  broken page),
+- Resend refuses an email, which means sign-in codes aren't going out,
+- the daily health check (14:00 UTC, the cron in `wrangler.jsonc`) finds the
+  database, report storage or Resend not answering,
+- someone's browser hits an error in Projectum (`POST /client-errors`, sent
+  by `src/lib/report-error.ts` and the crash screen in
+  `src/app/projectum/error.tsx`).
+
+Each distinct alert goes out at most once an hour, and 20 an hour at most.
+
+To look closer:
+
+```bash
+npx wrangler tail                       # live logs; alerts start with [alert]
+```
+
+or Cloudflare dashboard > Workers & Pages > appliedlab-ask > Logs.
+
+### Rolling the database back
+
+D1 keeps every change for 30 days and can restore the database to any
+minute in that window. This replaces everything, so export first:
+
+```bash
+npx wrangler d1 export appliedlab-projectum --remote --output backup-$(date +%F).sql
+npx wrangler d1 time-travel info appliedlab-projectum                     # the current bookmark
+npx wrangler d1 time-travel restore appliedlab-projectum --timestamp=2026-10-07T18:00:00Z
+```
+
+Submitted reports live in the `REPORTS` KV namespace, which time travel
+doesn't cover; restoring the database leaves them in place.
+

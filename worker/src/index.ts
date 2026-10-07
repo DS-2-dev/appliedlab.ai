@@ -33,6 +33,7 @@ import {
   type Turn,
 } from "@/lib/ask";
 import { type GoogleEnv, approvePartner, handleAccounts, handleGoogle } from "./accounts";
+import { type AlertEnv, alert, clientError, errorText, healthCheck } from "./alerts";
 import { handlePipeline } from "./pipeline";
 import { DEFAULT_SETTINGS, type LabEvent, type Settings } from "@/lib/types";
 import events from "../../data/events.json";
@@ -40,7 +41,7 @@ import settings from "../../data/settings.json";
 
 const FREE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
-interface Env extends GoogleEnv {
+interface Env extends GoogleEnv, AlertEnv {
   ANTHROPIC_API_KEY?: string;
   ALLOWED_ORIGINS: string;
   ASK_LIMITER: RateLimit;
@@ -99,35 +100,59 @@ function streamFree(env: Env, turns: Turn[], schedule: string): ReadableStream<U
 }
 
 export default {
-  async fetch(req: Request, env: Env): Promise<Response> {
-    if ((req.method === "GET" || req.method === "POST") && new URL(req.url).pathname === "/approve") return approvePartner(req, env);
-    // Nothing the site sends is this big, apart from a report (pipeline.ts
-    // checks those against their own limit).
-    const size = Number(req.headers.get("content-length") ?? 0);
-    if (size > 256 * 1024 && !/\/submissions$/.test(new URL(req.url).pathname)) return new Response(null, { status: 413 });
-    const google = await handleGoogle(req, env);
-    if (google) return google;
+  // Every request goes through route(); one that throws gets a plain 500 the
+  // site can show, and an alert by email (alerts.ts).
+  async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+    try {
+      return await route(req, env, ctx);
+    } catch (e) {
+      const { summary, detail } = errorText(e);
+      const url = new URL(req.url);
+      ctx.waitUntil(alert(env, "Worker error", summary, `${req.method} ${url.pathname}\n\n${detail}`));
+      return Response.json(
+        { error: "server" },
+        { status: 500, headers: { ...cors(req.headers.get("origin"), env), "cache-control": "no-store" } },
+      );
+    }
+  },
 
-    const headers = cors(req.headers.get("origin"), env);
-    // Only the Lab's own pages may call.
-    if (!headers["access-control-allow-origin"]) return text("Forbidden.", 403, {});
-    if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
-
-    const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
-    const account = (await handleAccounts(req, env, ip, headers)) ?? (await handlePipeline(req, env, headers));
-    if (account) return account;
-    if (req.method !== "POST") return text("Method not allowed.", 405, headers);
-
-    const { success } = await env.ASK_LIMITER.limit({ key: ip });
-    if (!success) return text(LIMITED_TEXT, 429, headers);
-
-    const turns = parseTurns(await req.json().catch(() => null));
-    if (!turns) return text(BAD_REQUEST_TEXT, 400, headers);
-
-    const schedule = scheduleNote(SETTINGS, events as LabEvent[]);
-    const body = env.ANTHROPIC_API_KEY
-      ? streamAnswer(new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), turns, schedule)
-      : streamFree(env, turns, schedule);
-    return new Response(body, { headers: { ...headers, ...TEXT_HEADERS } });
+  // The daily health check (the cron in wrangler.jsonc).
+  async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
+    ctx.waitUntil(healthCheck(env).then(() => undefined));
   },
 } satisfies ExportedHandler<Env>;
+
+async function route(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
+  if ((req.method === "GET" || req.method === "POST") && new URL(req.url).pathname === "/approve") return approvePartner(req, env);
+  // Nothing the site sends is this big, apart from a report (pipeline.ts
+  // checks those against their own limit).
+  const size = Number(req.headers.get("content-length") ?? 0);
+  if (size > 256 * 1024 && !/\/submissions$/.test(new URL(req.url).pathname)) return new Response(null, { status: 413 });
+  const google = await handleGoogle(req, env);
+  if (google) return google;
+
+  const headers = cors(req.headers.get("origin"), env);
+  // Only the Lab's own pages may call.
+  if (!headers["access-control-allow-origin"]) return text("Forbidden.", 403, {});
+  if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
+
+  const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+  if (req.method === "POST" && new URL(req.url).pathname === "/client-errors") {
+    return clientError(req, env, ip, env.LOGIN_IP_LIMITER, ctx, headers);
+  }
+  const account = (await handleAccounts(req, env, ip, headers)) ?? (await handlePipeline(req, env, headers));
+  if (account) return account;
+  if (req.method !== "POST") return text("Method not allowed.", 405, headers);
+
+  const { success } = await env.ASK_LIMITER.limit({ key: ip });
+  if (!success) return text(LIMITED_TEXT, 429, headers);
+
+  const turns = parseTurns(await req.json().catch(() => null));
+  if (!turns) return text(BAD_REQUEST_TEXT, 400, headers);
+
+  const schedule = scheduleNote(SETTINGS, events as LabEvent[]);
+  const body = env.ANTHROPIC_API_KEY
+    ? streamAnswer(new Anthropic({ apiKey: env.ANTHROPIC_API_KEY }), turns, schedule)
+    : streamFree(env, turns, schedule);
+  return new Response(body, { headers: { ...headers, ...TEXT_HEADERS } });
+}
