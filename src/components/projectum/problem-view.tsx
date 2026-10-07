@@ -23,6 +23,7 @@ import {
   formatDate,
 } from "@/components/projectum/pipeline-ui";
 import { ProblemFormDialog } from "@/components/projectum/problem-form";
+import { PartnerActions, PhasePanel } from "@/components/projectum/phase-two";
 import { ProjectCard } from "@/components/projectum/project-board";
 import { useVisibleProjects } from "@/components/projectum/project-store";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -34,8 +35,18 @@ const P = copy.projectum.pipeline;
 
 // A team's claim, with its board once approved: the team opens it, and
 // everyone else views it as it stands.
-function ClaimCard({ claim }: { claim: ClaimWithSubmission }) {
+function ClaimCard({
+  claim,
+  ownsProblem,
+  approver,
+}: {
+  claim: ClaimWithSubmission;
+  // The partner whose problem this is, who meets and selects teams.
+  ownsProblem: boolean;
+  approver: boolean;
+}) {
   const { entries } = useVisibleProjects();
+  const accepted = claim.submission?.status === "accepted";
   const board = claim.projectId ? entries.find((e) => e.project.id === claim.projectId) : undefined;
   const [viewing, setViewing] = React.useState(false);
   return (
@@ -71,6 +82,15 @@ function ClaimCard({ claim }: { claim: ClaimWithSubmission }) {
       <CardContent className="grid gap-4">
         {claim.submission && (
           <SubmissionPanel submission={claim.submission} launch={board?.project.launch} people={board?.project.people} />
+        )}
+        {accepted && ownsProblem && <PartnerActions claimId={claim.id} meeting={claim.meeting} selection={claim.selection} />}
+        {claim.selection && (
+          <PhasePanel
+            claimId={claim.id}
+            selection={claim.selection}
+            editable={Boolean(board?.onTeam)}
+            canComplete={ownsProblem || approver}
+          />
         )}
         <PlanView plan={claim.plan} />
       </CardContent>
@@ -192,7 +212,7 @@ export function ProblemView({ id }: { id: string }) {
         {claims.length ? (
           <div className="grid gap-3">
             {claims.map((c) => (
-              <ClaimCard key={c.id} claim={c} />
+              <ClaimCard key={c.id} claim={c} ownsProblem={problem.owner.id === me.id} approver={me.approver} />
             ))}
           </div>
         ) : (

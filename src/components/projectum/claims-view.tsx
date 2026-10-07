@@ -13,6 +13,7 @@ import {
   type MyClaim,
   type PendingPartner,
   type QueueClaim,
+  type MeetingRequest,
   type QueueSubmission,
   send,
   useApi,
@@ -88,6 +89,16 @@ export function MyClaims() {
                   <Team team={c.team} />
                 </div>
                 {c.submission && <SubmissionPanel submission={c.submission} />}
+                {(c.meeting || c.selection) && (
+                  <div className="flex flex-wrap gap-2">
+                    {c.meeting && (
+                      <Badge variant="outline">
+                        {c.meeting.status === "arranged" ? P.phase.meetingArranged : P.phase.meetingRequested}
+                      </Badge>
+                    )}
+                    {c.selection && <Badge>{c.selection.completedAt ? P.phase.complete : P.phase.selected}</Badge>}
+                  </div>
+                )}
                 <PlanView plan={c.plan} />
               </CardContent>
               {(c.status === "pending" || c.status === "approved") && (
@@ -231,6 +242,67 @@ function QueueSubmissionCard({ submission }: { submission: QueueSubmission }) {
   );
 }
 
+function MeetingCard({ meeting }: { meeting: MeetingRequest }) {
+  const [busy, setBusy] = React.useState(false);
+  return (
+    <Card size="sm" data-queue-meeting="">
+      <CardHeader className="gap-1">
+        {meeting.problem && (
+          <CardTitle>
+            <Link href={problemHref(meeting.problem.id)} className="hover:underline">
+              {meeting.problem.title}
+            </Link>
+          </CardTitle>
+        )}
+        <CardDescription>{formatDate(meeting.createdAt)}</CardDescription>
+      </CardHeader>
+      <CardContent className="grid gap-3 text-sm">
+        {meeting.message && <p className="rounded-md bg-muted p-2.5">{meeting.message}</p>}
+        <div className="grid gap-4 sm:grid-cols-2">
+          {meeting.partner && (
+            <div className="grid gap-0.5">
+              <p className="text-xs font-medium text-muted-foreground">{P.queue.partnerContact}</p>
+              <p>
+                {meeting.partner.name},{" "}
+                <a href={`mailto:${meeting.partner.email}`} className="underline-offset-4 hover:underline">
+                  {meeting.partner.email}
+                </a>
+              </p>
+            </div>
+          )}
+          <div className="grid gap-0.5">
+            <p className="text-xs font-medium text-muted-foreground">{P.queue.teamContacts}</p>
+            {meeting.team.map((t) => (
+              <p key={t.id}>
+                {t.name},{" "}
+                <a href={`mailto:${t.email}`} className="underline-offset-4 hover:underline">
+                  {t.email}
+                </a>
+              </p>
+            ))}
+          </div>
+        </div>
+      </CardContent>
+      <CardFooter>
+        <Button
+          size="sm"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await send(`/meetings/${meeting.id}/arranged`, "POST");
+            } catch {
+              setBusy(false);
+            }
+          }}
+        >
+          {P.queue.arranged}
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
 function PartnerRow({ partner }: { partner: PendingPartner }) {
   const [busy, setBusy] = React.useState(false);
   return (
@@ -261,6 +333,7 @@ function PartnerRow({ partner }: { partner: PendingPartner }) {
 
 export function Approvals() {
   const { data, error, retry } = useApi<{
+    meetings: MeetingRequest[];
     claims: QueueClaim[];
     submissions: QueueSubmission[];
     partners: PendingPartner[];
@@ -273,6 +346,18 @@ export function Approvals() {
         <Loading />
       ) : (
         <div className="grid gap-8">
+          <section className="grid gap-3">
+            <h2 className="text-lg font-medium">{P.queue.meetings}</h2>
+            {data.meetings.length ? (
+              <div className="grid gap-4">
+                {data.meetings.map((m) => (
+                  <MeetingCard key={m.id} meeting={m} />
+                ))}
+              </div>
+            ) : (
+              <Empty>{P.queue.noMeetings}</Empty>
+            )}
+          </section>
           <section className="grid gap-3">
             <h2 className="text-lg font-medium">{P.queue.submissions}</h2>
             {data.submissions.length ? (

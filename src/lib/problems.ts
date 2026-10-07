@@ -34,6 +34,7 @@ export const LIMITS = {
   milestones: 8,
   teammates: 6,
   note: 1000,
+  phaseMilestones: 12,
 } as const;
 
 export type ProblemDraft = {
@@ -147,3 +148,17 @@ export function claimIssues(draft: ClaimDraft): ClaimIssue[] {
 // A claim still in play: it holds the member's place on the problem, so
 // they cannot open a second one there.
 export const isActiveClaim = (status: ClaimStatus) => status === "pending" || status === "approved";
+
+// Phase 2: once a partner selects a team for an internship, the team tracks
+// implementation milestones, each just what it is and whether it's done.
+export type PhaseMilestone = { title: string; done: boolean };
+
+export function cleanPhaseMilestones(value: unknown): PhaseMilestone[] {
+  return (Array.isArray(value) ? value : [])
+    .map((m) => {
+      const o = (m && typeof m === "object" ? m : {}) as Record<string, unknown>;
+      return { title: cleanLine(o.title, LIMITS.milestoneTitle), done: o.done === true };
+    })
+    .filter((m) => m.title)
+    .slice(0, LIMITS.phaseMilestones);
+}

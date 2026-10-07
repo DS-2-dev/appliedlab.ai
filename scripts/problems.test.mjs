@@ -2,7 +2,9 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 // The pipeline's rules, shared by the forms and the Worker.
-const { cleanProblem, problemIssues, cleanClaim, claimIssues, cleanDate, LIMITS } = await import("../src/lib/problems.ts");
+const { cleanProblem, problemIssues, cleanClaim, claimIssues, cleanDate, cleanPhaseMilestones, LIMITS } = await import(
+  "../src/lib/problems.ts"
+);
 
 test("dates must be real calendar days", () => {
   assert.equal(cleanDate("2026-11-14"), "2026-11-14");
@@ -45,4 +47,13 @@ test("an action plan needs an approach and complete milestones", () => {
   assert.deepEqual(claimIssues(cleanClaim({})), ["approach", "milestones"]);
   const many = cleanClaim({ milestones: Array.from({ length: 20 }, (_, i) => ({ title: `m${i}`, criterion: "c" })) });
   assert.equal(many.milestones.length, LIMITS.milestones);
+});
+
+test("phase 2 milestones keep a title and a done flag", () => {
+  assert.deepEqual(cleanPhaseMilestones([{ title: " Go live ", done: true }, { title: "", done: true }, { title: "Train staff", done: "yes" }, 5]), [
+    { title: "Go live", done: true },
+    { title: "Train staff", done: false },
+  ]);
+  assert.deepEqual(cleanPhaseMilestones(null), []);
+  assert.equal(cleanPhaseMilestones(Array.from({ length: 30 }, (_, i) => ({ title: `m${i}` }))).length, LIMITS.phaseMilestones);
 });

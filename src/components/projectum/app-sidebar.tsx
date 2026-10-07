@@ -100,10 +100,12 @@ function navItems(role: string, approver: boolean, waiting: number): NavItem[] {
   return items;
 }
 
-// How many claims, submissions and partners wait for an approver.
+// How many meetings, claims, submissions and partners wait for an approver.
 function useWaiting(approver: boolean): number {
-  const { data } = useApi<{ claims: unknown[]; submissions: unknown[]; partners: unknown[] }>(approver ? "/queue" : null);
-  return data ? data.claims.length + data.submissions.length + data.partners.length : 0;
+  const { data } = useApi<{ meetings: unknown[]; claims: unknown[]; submissions: unknown[]; partners: unknown[] }>(
+    approver ? "/queue" : null,
+  );
+  return data ? data.meetings.length + data.claims.length + data.submissions.length + data.partners.length : 0;
 }
 
 export function AppSidebar({

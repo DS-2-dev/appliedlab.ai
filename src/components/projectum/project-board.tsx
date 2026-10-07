@@ -63,6 +63,8 @@ import { ProjectDetailsDialog } from "@/components/projectum/add-project-dialog"
 import { BuildDate, BuildLog, NewBuildDialog, buildNote, formatDay } from "@/components/projectum/build-dialogs";
 import { LiveDialog, type LiveMode } from "@/components/projectum/live-dialog";
 import { PlanDialog, type PlanMode, type PlanTarget, RoleDot } from "@/components/projectum/plan-dialog";
+import { useAccount } from "@/lib/account";
+import { PhasePanel } from "@/components/projectum/phase-two";
 import { SubmissionPanel } from "@/components/projectum/pipeline-ui";
 import { useProjects, useVisibleProjects } from "@/components/projectum/project-store";
 import { ROLE_STYLE, projectMeanings, roleName } from "@/components/projectum/roles";
@@ -263,7 +265,7 @@ function LaunchPanel({ launch }: { launch: Launch }) {
     { href: launch.siteUrl, label: B.visitSite, Icon: Globe, variant: "default" as const },
     { href: launch.slidesUrl, label: B.slides, Icon: Presentation, variant: "outline" as const },
     { href: launch.demoUrl, label: B.demo, Icon: MonitorPlay, variant: "outline" as const },
-  ];
+  ].filter((l) => l.href);
   return (
     <section aria-label={B.launch} data-launch="" className="grid gap-3 rounded-lg border p-4">
       <div className="flex items-center justify-between gap-2">
@@ -277,6 +279,7 @@ function LaunchPanel({ launch }: { launch: Launch }) {
           </span>
         )}
       </div>
+      {links.length > 0 && (
       <div className="flex flex-wrap items-center gap-2">
         {links.map(({ href, label, Icon, variant }) => (
           <a key={label} href={href} target="_blank" rel="noreferrer" className={buttonVariants({ variant })}>
@@ -285,7 +288,8 @@ function LaunchPanel({ launch }: { launch: Launch }) {
           </a>
         ))}
       </div>
-      <p className="truncate text-xs text-muted-foreground">{urlLabel(launch.siteUrl)}</p>
+      )}
+      {launch.siteUrl && <p className="truncate text-xs text-muted-foreground">{urlLabel(launch.siteUrl)}</p>}
     </section>
   );
 }
@@ -587,6 +591,7 @@ export function ProjectBoard({ projectId }: { projectId: string }) {
   const [list, update] = useProjects();
   const project = list.find((p) => p.id === projectId) ?? null;
   const entry = useVisibleProjects().entries.find((e) => e.project.id === projectId);
+  const me = useAccount();
   const [planOpen, setPlanOpen] = React.useState(false);
   const [planTarget, setPlanTarget] = React.useState<PlanTarget>("solidifying");
   const [planMode, setPlanMode] = React.useState<PlanMode>("move");
@@ -690,6 +695,10 @@ export function ProjectBoard({ projectId }: { projectId: string }) {
           with the Lab's note. */}
       {entry?.submission && !pastProject && (
         <SubmissionPanel submission={entry.submission} launch={project.launch} people={project.people} />
+      )}
+      {/* Phase 2, once a partner selects the team for an internship. */}
+      {entry?.selection && !pastProject && (
+        <PhasePanel claimId={entry.claimId} selection={entry.selection} editable={entry.editable} canComplete={me.approver} />
       )}
 
       {/* Keyed by the stage on show, so opening a past stage or going back

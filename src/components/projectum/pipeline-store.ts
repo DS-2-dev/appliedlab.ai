@@ -10,7 +10,7 @@ import { ACCOUNT_URL } from "@/lib/site";
 import { ApiError, api, sessionToken } from "@/lib/account";
 import type { Project } from "@/lib/projects";
 import { reloadProjects } from "@/components/projectum/project-store";
-import type { ClaimStatus, Field, Milestone, ProblemStatus } from "@/lib/problems";
+import type { ClaimStatus, Field, Milestone, PhaseMilestone, ProblemStatus } from "@/lib/problems";
 
 export type Person = { id: string; name: string };
 
@@ -55,7 +55,29 @@ export type Submission = {
   createdAt: string;
 };
 
-export type ClaimWithSubmission = Claim & { submission?: Submission | null };
+// After an accepted submission: the partner's latest meeting request, and
+// its selection of the team for an internship, which starts phase 2.
+export type Meeting = { id: string; status: "requested" | "arranged"; message: string; createdAt: string };
+export type Selection = {
+  message: string;
+  milestones: PhaseMilestone[];
+  completedAt: string | null;
+  createdAt: string;
+};
+export type MeetingRequest = {
+  id: string;
+  message: string;
+  createdAt: string;
+  problem: Problem | null;
+  partner: { name: string; email: string } | null;
+  team: { id: string; name: string; email: string }[];
+};
+
+export type ClaimWithSubmission = Claim & {
+  submission?: Submission | null;
+  meeting?: Meeting | null;
+  selection?: Selection | null;
+};
 export type MyClaim = ClaimWithSubmission & { problem: { id: string; title: string; owner: string } | null };
 export type QueueClaim = Claim & { problem: Problem | null };
 export type QueueSubmission = Submission & { problem: Problem | null; project: Project | null };

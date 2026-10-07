@@ -14,7 +14,7 @@
 import * as React from "react";
 import { type Account, api, useAccountState } from "@/lib/account";
 import { type Project, cleanProjects } from "@/lib/projects";
-import type { Submission } from "@/components/projectum/pipeline-store";
+import type { Selection, Submission } from "@/components/projectum/pipeline-store";
 
 export type ProjectOwner = { id: string; name: string; email: string; role: Account["role"] };
 export type ProjectEntry = {
@@ -27,6 +27,9 @@ export type ProjectEntry = {
   editable: boolean;
   // The team's latest submission. Partners only get accepted ones.
   submission: Submission | null;
+  // The claim the board belongs to, and its internship, once selected.
+  claimId: string;
+  selection: Selection | null;
 };
 
 const EMPTY: ProjectEntry[] = [];
