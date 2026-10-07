@@ -10,7 +10,7 @@ import Link from "next/link";
 import { ArrowLeft, CalendarClock, Eye, Pencil } from "lucide-react";
 import { copy } from "@/content/copy";
 import { useAccount } from "@/lib/account";
-import { type Claim, type Problem, send, useApi } from "@/components/projectum/pipeline-store";
+import { type ClaimWithSubmission, type Problem, send, useApi } from "@/components/projectum/pipeline-store";
 import { ClaimFormDialog } from "@/components/projectum/claim-form";
 import {
   ClaimStatusBadge,
@@ -18,6 +18,7 @@ import {
   LoadError,
   Loading,
   PlanView,
+  SubmissionPanel,
   Team,
   formatDate,
 } from "@/components/projectum/pipeline-ui";
@@ -33,7 +34,7 @@ const P = copy.projectum.pipeline;
 
 // A team's claim, with its board once approved: the team opens it, and
 // everyone else views it as it stands.
-function ClaimCard({ claim }: { claim: Claim }) {
+function ClaimCard({ claim }: { claim: ClaimWithSubmission }) {
   const { entries } = useVisibleProjects();
   const board = claim.projectId ? entries.find((e) => e.project.id === claim.projectId) : undefined;
   const [viewing, setViewing] = React.useState(false);
@@ -67,7 +68,10 @@ function ClaimCard({ claim }: { claim: Claim }) {
           </DialogContent>
         </Dialog>
       )}
-      <CardContent>
+      <CardContent className="grid gap-4">
+        {claim.submission && (
+          <SubmissionPanel submission={claim.submission} launch={board?.project.launch} people={board?.project.people} />
+        )}
         <PlanView plan={claim.plan} />
       </CardContent>
     </Card>
@@ -76,7 +80,7 @@ function ClaimCard({ claim }: { claim: Claim }) {
 
 export function ProblemView({ id }: { id: string }) {
   const me = useAccount();
-  const { data, error, retry } = useApi<{ problem: Problem; claims: Claim[]; canEdit: boolean }>(
+  const { data, error, retry } = useApi<{ problem: Problem; claims: ClaimWithSubmission[]; canEdit: boolean }>(
     `/problems/${encodeURIComponent(id)}`,
   );
   const [claiming, setClaiming] = React.useState(false);
@@ -157,11 +161,12 @@ export function ProblemView({ id }: { id: string }) {
         <FieldTags fields={problem.fields} />
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-[1fr_16rem]">
+      <div className={problem.deliverable || problem.deadline ? "grid gap-4 sm:grid-cols-[1fr_16rem]" : "grid gap-4"}>
         <section className="grid content-start gap-2">
           <h2 className="text-xs font-medium text-muted-foreground">{P.problem.details}</h2>
           <p className="text-sm whitespace-pre-line">{problem.details || problem.summary}</p>
         </section>
+        {(problem.deliverable || problem.deadline) && (
         <aside className="grid content-start gap-4 rounded-lg border p-4 text-sm">
           {problem.deliverable && (
             <section className="grid gap-1">
@@ -179,6 +184,7 @@ export function ProblemView({ id }: { id: string }) {
             </section>
           )}
         </aside>
+        )}
       </div>
 
       <section className="grid gap-3">

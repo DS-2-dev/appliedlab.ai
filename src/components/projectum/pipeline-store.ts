@@ -6,7 +6,9 @@
 // refresh() reloads every path loaded so far, so lists and counts agree.
 
 import * as React from "react";
-import { api } from "@/lib/account";
+import { ACCOUNT_URL } from "@/lib/site";
+import { ApiError, api, sessionToken } from "@/lib/account";
+import type { Project } from "@/lib/projects";
 import { reloadProjects } from "@/components/projectum/project-store";
 import type { ClaimStatus, Field, Milestone, ProblemStatus } from "@/lib/problems";
 
@@ -43,8 +45,20 @@ export type Claim = {
   team: Person[];
 };
 
-export type MyClaim = Claim & { problem: { id: string; title: string; owner: string } | null };
+// A team's latest submission. Partners only ever get accepted ones.
+export type Submission = {
+  id: string;
+  status: "pending" | "accepted" | "returned";
+  reviewNote: string;
+  reportName: string;
+  reportSize: number;
+  createdAt: string;
+};
+
+export type ClaimWithSubmission = Claim & { submission?: Submission | null };
+export type MyClaim = ClaimWithSubmission & { problem: { id: string; title: string; owner: string } | null };
 export type QueueClaim = Claim & { problem: Problem | null };
+export type QueueSubmission = Submission & { problem: Problem | null; project: Project | null };
 export type PendingPartner = { id: string; email: string; name: string; createdAt: string };
 
 type Entry = { data?: unknown; error?: boolean; loading?: Promise<void> };
@@ -116,4 +130,36 @@ export async function send<T = unknown>(path: string, method: string, body?: unk
   // An approval opens a board, and a withdrawal closes one.
   reloadProjects();
   return res;
+}
+
+// Submits a board: the board moved to its last stage, and the final report.
+// Sent as a form, since it carries a file.
+export async function submitWork(project: Project, report: File): Promise<void> {
+  const body = new FormData();
+  body.set("project", JSON.stringify(project));
+  body.set("report", report);
+  await api(`/projects/${encodeURIComponent(project.id)}/submissions`, { method: "POST", body });
+  refresh();
+  reloadProjects();
+}
+
+// Downloads a submission's report as the signed-in person, then hands the
+// file to the browser under its own name.
+export async function downloadReport(submission: Pick<Submission, "id" | "reportName">): Promise<void> {
+  const token = sessionToken();
+  let res: Response;
+  try {
+    res = await fetch(`${ACCOUNT_URL}/submissions/${encodeURIComponent(submission.id)}/report`, {
+      headers: token ? { authorization: `Bearer ${token}` } : {},
+    });
+  } catch {
+    throw new ApiError(0, "network");
+  }
+  if (!res.ok) throw new ApiError(res.status, "report");
+  const url = URL.createObjectURL(await res.blob());
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = submission.reportName;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }

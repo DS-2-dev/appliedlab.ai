@@ -4,11 +4,12 @@
 // plan laid out, a team, dates, and the loading and error states.
 
 import * as React from "react";
-import { CircleCheck, CircleDashed, CircleX, Undo2 } from "lucide-react";
+import { CircleCheck, CircleDashed, CircleX, Download, ExternalLink, Undo2 } from "lucide-react";
 import { copy } from "@/content/copy";
 import { initials } from "@/lib/initials";
 import type { ClaimStatus, Field } from "@/lib/problems";
-import type { Claim, Person } from "@/components/projectum/pipeline-store";
+import type { Launch, Person as BoardPerson } from "@/lib/projects";
+import { type Claim, type Person, type Submission, downloadReport } from "@/components/projectum/pipeline-store";
 import { Avatar, AvatarFallback, AvatarGroup } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -149,4 +150,78 @@ export function LoadError({ retry }: { retry: () => void }) {
 
 export function Empty({ children }: { children: React.ReactNode }) {
   return <p className="rounded-lg border border-dashed p-8 text-center text-muted-foreground">{children}</p>;
+}
+
+// A team's latest submission: where it stands, the Lab's note, the report to
+// download and, given the board's launch, its links and credits.
+export function SubmissionPanel({
+  submission,
+  launch,
+  people = [],
+}: {
+  submission: Submission;
+  launch?: Launch | null;
+  people?: BoardPerson[];
+}) {
+  const S = P.submission;
+  const [failed, setFailed] = React.useState(false);
+  const links = launch
+    ? ([
+        [S.links.site, launch.siteUrl],
+        [S.links.slides, launch.slidesUrl],
+        [S.links.demo, launch.demoUrl],
+      ] as const).filter(([, url]) => url)
+    : [];
+  return (
+    <section data-submission={submission.status} className="grid gap-3 rounded-lg border p-3 text-sm">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Badge variant={submission.status === "accepted" ? "default" : "outline"}>
+          {submission.status === "accepted" ? <CircleCheck /> : submission.status === "returned" ? <Undo2 /> : <CircleDashed />}
+          {S[submission.status]}
+        </Badge>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setFailed(false);
+            downloadReport(submission).catch(() => setFailed(true));
+          }}
+        >
+          <Download />
+          {S.report}
+        </Button>
+      </div>
+      {failed && <p className="text-destructive">{P.failed}</p>}
+      {submission.reviewNote && (
+        <div className="rounded-md bg-muted p-2.5">
+          <p className="text-xs font-medium text-muted-foreground">{S.note}</p>
+          <p>{submission.reviewNote}</p>
+        </div>
+      )}
+      {links.length > 0 && (
+        <ul className="flex flex-wrap gap-x-4 gap-y-1">
+          {links.map(([label, url]) => (
+            <li key={label}>
+              <a href={url} target="_blank" rel="noreferrer" className="flex items-center gap-1 font-medium hover:underline">
+                <ExternalLink className="size-3.5" />
+                {label}
+              </a>
+            </li>
+          ))}
+        </ul>
+      )}
+      {launch && people.length > 0 && (
+        <div className="grid gap-1">
+          <p className="text-xs font-medium text-muted-foreground">{S.contributions}</p>
+          <ul className="grid gap-0.5">
+            {people.map((p) => (
+              <li key={p.id}>
+                <span className="font-medium">{p.name}:</span> {launch.contributions[p.id]}
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
+  );
 }

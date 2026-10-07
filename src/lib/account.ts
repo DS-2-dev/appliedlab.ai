@@ -64,6 +64,9 @@ function writeToken(token: string | null) {
 let memoryToken: string | null = null;
 const token = () => memoryToken ?? readToken();
 
+// For a request api() can't make, a file download.
+export const sessionToken = token;
+
 export class ApiError extends Error {
   constructor(
     public status: number,
@@ -79,7 +82,8 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
   const t = token();
   if (t) headers.set("authorization", `Bearer ${t}`);
-  if (init.body) headers.set("content-type", "application/json");
+  // JSON, unless it is a form, which the browser labels itself.
+  if (init.body && !(init.body instanceof FormData)) headers.set("content-type", "application/json");
   let res: Response;
   try {
     res = await fetch(`${ACCOUNT_URL}${path}`, { ...init, headers });

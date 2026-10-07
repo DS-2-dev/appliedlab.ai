@@ -1,14 +1,18 @@
 "use client";
 
-// The form from Prototype to Live, the last stage: where to see the finished
-// project (the live site or portal, the presentation slides and a demo),
-// what each person contributed, and a confirmation that the credits are
-// accurate. Every field is required. Contributions start from the steps each
-// person owned, and the confirmation always starts unticked, on the way in
-// and on every edit after.
+// Submit work, the form from Prototype to the last stage: the final report
+// (a PDF), what each person contributed, and a confirmation that the credits
+// are accurate, with optional links to a site, slides and a demo.
+// Submitting sends the report and the moved board to the Worker together,
+// for the Lab to review. Editing afterwards changes the links and credits
+// only. Contributions start from the steps each person owned, and the
+// confirmation always starts unticked, on the way in and on every edit after.
 
 import * as React from "react";
-import { Rocket } from "lucide-react";
+import { FileUp, Rocket } from "lucide-react";
+import { ApiError } from "@/lib/account";
+import { submitWork } from "@/components/projectum/pipeline-store";
+import { setLocalProject } from "@/components/projectum/project-store";
 import { copy } from "@/content/copy";
 import { cn } from "@/lib/utils";
 import { initials } from "@/lib/initials";
@@ -47,6 +51,8 @@ function startingContributions(project: Project): Record<string, string> {
   return out;
 }
 
+const MAX_REPORT = 10 * 1024 * 1024;
+
 function LiveForm({ project, mode, onSave }: { project: Project; mode: LiveMode; onSave: (next: Project) => void }) {
   const ids = React.useId();
   const formRef = React.useRef<HTMLFormElement>(null);
@@ -58,6 +64,11 @@ function LiveForm({ project, mode, onSave }: { project: Project; mode: LiveMode;
   const [contributions, setContributions] = React.useState(() => startingContributions(project));
   const [confirmed, setConfirmed] = React.useState(false);
   const [showErrors, setShowErrors] = React.useState(false);
+  const [report, setReport] = React.useState<File | null>(null);
+  const [reportError, setReportError] = React.useState<string | null>(null);
+  const [formError, setFormError] = React.useState<string | null>(null);
+  const [sending, setSending] = React.useState(false);
+  const fileRef = React.useRef<HTMLInputElement>(null);
 
   const draft = { ...urls, contributions, confirmed };
   const problems = liveProblems(draft, project.people);
@@ -65,13 +76,51 @@ function LiveForm({ project, mode, onSave }: { project: Project; mode: LiveMode;
   const errId = (key: string) => `${ids}-err-${key.replace(/[^a-z0-9-]/gi, "-")}`;
   const edit = mode === "edit";
 
-  const submit = (e: React.FormEvent) => {
+  const pickReport = (file: File | undefined) => {
+    if (!file) return;
+    if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+      setReportError(L.errors.reportType);
+      return;
+    }
+    if (file.size > MAX_REPORT) {
+      setReportError(L.errors.reportSize);
+      return;
+    }
+    setReport(file);
+    setReportError(null);
+  };
+
+  const submit = async (e: React.FormEvent) => {
     e.preventDefault();
     const next = edit ? editLaunch(project, draft) : liveProject(project, draft);
-    if (next) {
+    if (next && edit) {
       onSave(next);
       return;
     }
+    if (next && report) {
+      setSending(true);
+      setFormError(null);
+      try {
+        await submitWork(next, report);
+        setLocalProject(next);
+        onSave(next);
+      } catch (err) {
+        const code = err instanceof ApiError ? err.code : "";
+        setFormError(
+          code === "report-type"
+            ? L.errors.reportType
+            : code === "report-size"
+              ? L.errors.reportSize
+              : code === "pending"
+                ? L.errors.pending
+                : L.errors.failed,
+        );
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+    if (!edit && !report) setReportError(L.errors.report);
     setShowErrors(true);
     // After the errors render, put the cursor on the first field missing.
     requestAnimationFrame(() => formRef.current?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus());
@@ -89,6 +138,55 @@ function LiveForm({ project, mode, onSave }: { project: Project; mode: LiveMode;
         <DialogTitle>{edit ? L.editTitle : L.title}</DialogTitle>
         <DialogDescription>{edit ? L.editDescription : L.description}</DialogDescription>
       </DialogHeader>
+
+      {!edit && (
+        <div className="grid gap-2">
+          <Label htmlFor={`${ids}-report`}>{L.report}</Label>
+          <input
+            ref={fileRef}
+            id={`${ids}-report`}
+            type="file"
+            accept="application/pdf,.pdf"
+            className="sr-only"
+            aria-invalid={reportError ? true : undefined}
+            aria-describedby={`${ids}-report-help${reportError ? ` ${ids}-report-error` : ""}`}
+            onChange={(e) => {
+              pickReport(e.target.files?.[0]);
+              e.target.value = "";
+            }}
+          />
+          <button
+            type="button"
+            tabIndex={-1}
+            onClick={() => fileRef.current?.click()}
+            data-invalid={reportError ? "" : undefined}
+            className="flex h-14 w-full items-center justify-center gap-2 rounded-lg border border-dashed text-sm text-muted-foreground transition-colors hover:bg-muted/50 data-invalid:border-destructive"
+          >
+            <FileUp className="size-4" />
+            {report ? (
+              <span className="truncate text-foreground">
+                {report.name} ({Math.max(1, Math.round(report.size / 1024))} KB). {L.reportChange}
+              </span>
+            ) : (
+              L.reportPick
+            )}
+          </button>
+          <p id={`${ids}-report-help`} className="text-xs text-muted-foreground">
+            {L.reportHelp}
+          </p>
+          {reportError && (
+            <p id={`${ids}-report-error`} className="text-sm text-destructive">
+              {reportError}
+            </p>
+          )}
+        </div>
+      )}
+
+      {formError && (
+        <p role="alert" className="text-sm text-destructive">
+          {formError}
+        </p>
+      )}
 
       {showErrors && problems.length > 0 && (
         <p role="alert" className="rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2 text-sm text-destructive">
@@ -194,9 +292,9 @@ function LiveForm({ project, mode, onSave }: { project: Project; mode: LiveMode;
 
       <DialogFooter>
         <DialogClose render={<Button type="button" variant="outline" />}>{copy.projectum.cancel}</DialogClose>
-        <Button type="submit">
+        <Button type="submit" disabled={sending}>
           <Rocket />
-          {edit ? L.editSubmit : L.submit}
+          {edit ? L.editSubmit : sending ? L.sending : L.submit}
         </Button>
       </DialogFooter>
     </form>

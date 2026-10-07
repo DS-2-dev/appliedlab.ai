@@ -18,6 +18,8 @@ import { isThumbnail } from "@/lib/projects";
 
 export interface AccountEnv {
   DB: D1Database;
+  // Submitted final reports (pipeline.ts).
+  REPORTS: KVNamespace;
   LOGIN_LIMITER: RateLimit;
   LOGIN_IP_LIMITER: RateLimit;
   // Hashes codes and signs approval links. A wrangler secret.

@@ -63,7 +63,8 @@ import { ProjectDetailsDialog } from "@/components/projectum/add-project-dialog"
 import { BuildDate, BuildLog, NewBuildDialog, buildNote, formatDay } from "@/components/projectum/build-dialogs";
 import { LiveDialog, type LiveMode } from "@/components/projectum/live-dialog";
 import { PlanDialog, type PlanMode, type PlanTarget, RoleDot } from "@/components/projectum/plan-dialog";
-import { useProjects } from "@/components/projectum/project-store";
+import { SubmissionPanel } from "@/components/projectum/pipeline-ui";
+import { useProjects, useVisibleProjects } from "@/components/projectum/project-store";
 import { ROLE_STYLE, projectMeanings, roleName } from "@/components/projectum/roles";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -585,6 +586,7 @@ export function ProjectCard({
 export function ProjectBoard({ projectId }: { projectId: string }) {
   const [list, update] = useProjects();
   const project = list.find((p) => p.id === projectId) ?? null;
+  const entry = useVisibleProjects().entries.find((e) => e.project.id === projectId);
   const [planOpen, setPlanOpen] = React.useState(false);
   const [planTarget, setPlanTarget] = React.useState<PlanTarget>("solidifying");
   const [planMode, setPlanMode] = React.useState<PlanMode>("move");
@@ -683,6 +685,12 @@ export function ProjectBoard({ projectId }: { projectId: string }) {
           )}
         </div>
       </div>
+
+      {/* The team's latest submission: waiting, accepted, or sent back
+          with the Lab's note. */}
+      {entry?.submission && !pastProject && (
+        <SubmissionPanel submission={entry.submission} launch={project.launch} people={project.people} />
+      )}
 
       {/* Keyed by the stage on show, so opening a past stage or going back
           fades the card in. */}

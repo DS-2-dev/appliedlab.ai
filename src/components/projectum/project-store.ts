@@ -14,6 +14,7 @@
 import * as React from "react";
 import { type Account, api, useAccountState } from "@/lib/account";
 import { type Project, cleanProjects } from "@/lib/projects";
+import type { Submission } from "@/components/projectum/pipeline-store";
 
 export type ProjectOwner = { id: string; name: string; email: string; role: Account["role"] };
 export type ProjectEntry = {
@@ -24,6 +25,8 @@ export type ProjectEntry = {
   // an approver).
   onTeam: boolean;
   editable: boolean;
+  // The team's latest submission. Partners only get accepted ones.
+  submission: Submission | null;
 };
 
 const EMPTY: ProjectEntry[] = [];
@@ -50,6 +53,12 @@ async function load(accountId: string) {
   } catch {
     // Signed out or offline: the list stays as it was.
   }
+}
+
+// A board the Worker already saved, a submission say, put in place here
+// without sending it again.
+export function setLocalProject(project: Project) {
+  set(entries.map((e) => (e.project.id === project.id ? { ...e, project } : e)));
 }
 
 // Boards appear when a claim is approved elsewhere, so a view that may show

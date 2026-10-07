@@ -321,13 +321,16 @@ const liveDraft = (extra = {}) => ({
 const toPrototype = () =>
   prototypeProject(solidifyProject(p("a", "Alpha"), fullDraft(), meanings), { ...fullDraft(), githubUrl: GH, supabase: true }, meanings);
 
-test("moving to Live needs three links, a contribution from everyone and the confirmation", () => {
+test("submitting needs a contribution from everyone and the confirmation; links are optional but must be web addresses", () => {
   const proto = toPrototype();
   assert.deepEqual(liveProblems(liveDraft(), proto.people), []);
   assert.deepEqual(
     liveProblems({ siteUrl: "", slidesUrl: "nope", demoUrl: "javascript:x", contributions: {}, confirmed: false }, proto.people),
-    ["siteUrl", "slidesUrl", "demoUrl", "contribution:a", "confirmed"],
+    ["slidesUrl", "demoUrl", "contribution:a", "confirmed"],
   );
+  const noLinks = liveProject(proto, liveDraft({ siteUrl: "", slidesUrl: "", demoUrl: "" }));
+  assert.deepEqual([noLinks.launch.siteUrl, noLinks.launch.slidesUrl, noLinks.launch.demoUrl], ["", "", ""]);
+  assert.equal(cleanProjects([noLinks])[0].stage, "live", "a submission without links stays submitted");
   assert.equal(liveProject(proto, liveDraft({ confirmed: false })), null);
   assert.equal(liveProject(solidifyProject(p("b", "Beta"), fullDraft(), meanings), liveDraft()), null, "Solidifying skips no stage");
   const live = liveProject(proto, liveDraft(), "2026-09-12T10:00:00.000Z");

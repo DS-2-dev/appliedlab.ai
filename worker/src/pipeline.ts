@@ -16,8 +16,12 @@
 // that starts in Solidifying with the approved plan. The team works on it;
 // approvers can too; everyone else can read it, and partners only for their
 // own problems.
-// The approver hears about each new claim by email, and the team hears the
-// decision.
+// - A team submits from its board: the board moves to its last stage with
+//   links and credits, and a final report (a PDF, kept in the REPORTS KV
+//   namespace). The approver accepts it, which shows it to the partner, or
+//   returns it with a note, which sends the board back to Prototype.
+// The approver hears about each new claim and submission by email, and the
+// team hears each decision.
 
 import { type AccountEnv, type Json, type UserRow, isApprover, sendEmail, sessionUser } from "./accounts";
 import { cleanDescription, cleanName, cleanProjects, type Project } from "@/lib/projects";
@@ -122,6 +126,48 @@ async function teams(env: AccountEnv, claimIds: string[]): Promise<Map<string, P
   return map;
 }
 
+interface SubmissionRow {
+  id: string;
+  claim_id: string;
+  project_id: string;
+  report_name: string;
+  report_size: number;
+  status: "pending" | "accepted" | "returned";
+  review_note: string;
+  created_at: string;
+}
+
+function submissionOut(row: SubmissionRow) {
+  return {
+    id: row.id,
+    status: row.status,
+    reviewNote: row.review_note,
+    reportName: row.report_name,
+    reportSize: row.report_size,
+    createdAt: row.created_at,
+  };
+}
+
+// Each claim's latest submission. Partners only ever see accepted ones.
+async function latestSubmissions(
+  env: AccountEnv,
+  claimIds: string[],
+  acceptedOnly = false,
+): Promise<Map<string, ReturnType<typeof submissionOut>>> {
+  const map = new Map<string, ReturnType<typeof submissionOut>>();
+  if (!claimIds.length) return map;
+  const marks = claimIds.map(() => "?").join(",");
+  const { results } = await env.DB.prepare(
+    `SELECT id, claim_id, project_id, report_name, report_size, status, review_note, created_at FROM submissions WHERE claim_id IN (${marks})${
+      acceptedOnly ? " AND status = 'accepted'" : ""
+    } ORDER BY created_at`,
+  )
+    .bind(...claimIds)
+    .all<SubmissionRow>();
+  for (const r of results) map.set(r.claim_id, submissionOut(r));
+  return map;
+}
+
 function claimOut(row: ClaimRow, team: Person[]) {
   const plan = cleanClaim(JSON.parse(row.plan));
   return {
@@ -171,9 +217,10 @@ async function showProblem(env: AccountEnv, user: UserRow, id: string, json: Jso
     .bind(id)
     .all<ClaimRow>();
   const team = await teams(env, results.map((c) => c.id));
+  const subs = await latestSubmissions(env, results.map((c) => c.id), user.role === "partner");
   return json({
     problem: problemOut(row),
-    claims: results.map((c) => claimOut(c, team.get(c.id) ?? [])),
+    claims: results.map((c) => ({ ...claimOut(c, team.get(c.id) ?? []), submission: subs.get(c.id) ?? null })),
     canEdit: canEdit(user, row),
   });
 }
@@ -329,8 +376,13 @@ async function myClaims(env: AccountEnv, user: UserRow, json: Json): Promise<Res
     const p = await getProblem(env, c.problem_id);
     if (p) problems.set(p.id, { id: p.id, title: p.title, owner: p.owner_name });
   }
+  const subs = await latestSubmissions(env, results.map((c) => c.id));
   return json({
-    claims: results.map((c) => ({ ...claimOut(c, team.get(c.id) ?? []), problem: problems.get(c.problem_id) ?? null })),
+    claims: results.map((c) => ({
+      ...claimOut(c, team.get(c.id) ?? []),
+      problem: problems.get(c.problem_id) ?? null,
+      submission: subs.get(c.id) ?? null,
+    })),
   });
 }
 
@@ -357,7 +409,23 @@ async function queue(env: AccountEnv, json: Json): Promise<Response> {
   const partners = await env.DB.prepare(
     "SELECT id, email, name, created_at FROM users WHERE role = 'partner' AND status = 'pending' ORDER BY created_at",
   ).all<{ id: string; email: string; name: string; created_at: string }>();
+  const pending = await env.DB.prepare(
+    "SELECT s.id, s.claim_id, s.project_id, s.report_name, s.report_size, s.status, s.review_note, s.created_at, pj.data " +
+      "FROM submissions s JOIN projects pj ON pj.id = s.project_id WHERE s.status = 'pending' ORDER BY s.created_at",
+  ).all<SubmissionRow & { data: string }>();
+  const submissions = [];
+  for (const sub of pending.results) {
+    const claim = await env.DB.prepare(`${CLAIM_SELECT} WHERE c.id = ?`).bind(sub.claim_id).first<ClaimRow>();
+    const p = claim ? await getProblem(env, claim.problem_id) : null;
+    const [project] = cleanProjects([JSON.parse(sub.data)]);
+    submissions.push({
+      ...submissionOut(sub),
+      problem: p ? problemOut(p) : null,
+      project: project ?? null,
+    });
+  }
   return json({
+    submissions,
     claims,
     partners: partners.results.map((p) => ({ id: p.id, email: p.email, name: p.name, createdAt: p.created_at })),
   });
@@ -464,6 +532,7 @@ interface BoardRow {
   owner_role: string;
   data: string;
   problem_id: string;
+  claim_id: string;
   on_team: number | null;
 }
 
@@ -472,7 +541,7 @@ interface BoardRow {
 // the ones it can change: its team's, or any for an approver.
 async function listBoards(env: AccountEnv, user: UserRow, json: Json): Promise<Response> {
   const select =
-    "SELECT pj.id, pj.owner_id, u.name AS owner_name, u.email AS owner_email, u.role AS owner_role, pj.data, c.problem_id, " +
+    "SELECT pj.id, pj.owner_id, u.name AS owner_name, u.email AS owner_email, u.role AS owner_role, pj.data, c.problem_id, c.id AS claim_id, " +
     "(SELECT 1 FROM claim_members m WHERE m.claim_id = c.id AND m.user_id = ?) AS on_team " +
     "FROM projects pj JOIN claims c ON c.id = pj.claim_id JOIN problems pr ON pr.id = c.problem_id JOIN users u ON u.id = pj.owner_id " +
     "WHERE c.status = 'approved'";
@@ -481,6 +550,7 @@ async function listBoards(env: AccountEnv, user: UserRow, json: Json): Promise<R
       ? await env.DB.prepare(`${select} AND pr.owner_id = ? ORDER BY pj.created_at`).bind(user.id, user.id).all<BoardRow>()
       : await env.DB.prepare(`${select} ORDER BY pj.created_at`).bind(user.id).all<BoardRow>();
   const approver = isApprover(env, user);
+  const subs = await latestSubmissions(env, results.map((r) => r.claim_id), user.role === "partner");
   return json({
     projects: results.flatMap((r) => {
       const [project] = cleanProjects([JSON.parse(r.data)]);
@@ -492,6 +562,7 @@ async function listBoards(env: AccountEnv, user: UserRow, json: Json): Promise<R
               problemId: r.problem_id,
               onTeam: Boolean(r.on_team),
               editable: Boolean(r.on_team) || approver,
+              submission: subs.get(r.claim_id) ?? null,
             },
           ]
         : [];
@@ -528,17 +599,168 @@ async function deleteBoard(env: AccountEnv, user: UserRow, id: string, json: Jso
   return json({ ok: true });
 }
 
+// --- Submissions ---------------------------------------------------------------
+
+const MAX_REPORT = 10 * 1024 * 1024;
+
+// A file is a PDF when it starts with "%PDF-", whatever it is called.
+function isPdf(bytes: Uint8Array): boolean {
+  return bytes.length > 5 && String.fromCharCode(...bytes.subarray(0, 5)) === "%PDF-";
+}
+
+// The team submits: the board moved to its last stage, sent as JSON, and
+// the final report as a file, in one form. One submission waits at a time.
+async function submit(req: Request, env: AccountEnv, user: UserRow, projectId: string, json: Json): Promise<Response> {
+  const access = await boardAccess(env, user, projectId);
+  if (access === "missing") return json({ error: "not-found" }, 404);
+  if (access === "none") return json({ error: "forbidden" }, 403);
+  const row = await env.DB.prepare(`${CLAIM_SELECT} JOIN projects pj ON pj.claim_id = c.id WHERE pj.id = ?`)
+    .bind(projectId)
+    .first<ClaimRow>();
+  if (!row || row.status !== "approved") return json({ error: "state" }, 409);
+  const open = await env.DB.prepare("SELECT status FROM submissions WHERE claim_id = ? AND status IN ('pending', 'accepted') LIMIT 1")
+    .bind(row.id)
+    .first<{ status: string }>();
+  if (open) return json({ error: open.status === "pending" ? "pending" : "accepted" }, 409);
+
+  const form = await req.formData().catch(() => null);
+  const file = form?.get("report");
+  if (!form || !file || typeof file === "string") return json({ error: "report" }, 400);
+  if (file.size > MAX_REPORT) return json({ error: "report-size" }, 413);
+  const bytes = new Uint8Array(await file.arrayBuffer());
+  if (!isPdf(bytes)) return json({ error: "report-type" }, 415);
+
+  let parsed: unknown = null;
+  try {
+    parsed = JSON.parse(String(form.get("project") ?? ""));
+  } catch {
+    parsed = null;
+  }
+  const [project] = cleanProjects([parsed]);
+  if (!project || project.id !== projectId || project.stage !== "live" || !project.launch) return json({ error: "project" }, 400);
+
+  const id = crypto.randomUUID();
+  const name = cleanLine(file.name, 120).replace(/[^\w .()-]/g, "_") || "report.pdf";
+  await env.REPORTS.put(id, bytes, { metadata: { name } });
+  await env.DB.batch([
+    env.DB.prepare(
+      "INSERT INTO submissions (id, claim_id, project_id, submitted_by, report_name, report_size, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)",
+    ).bind(id, row.id, projectId, user.id, name, bytes.length, now()),
+    env.DB.prepare("UPDATE projects SET data = ?, updated_at = ? WHERE id = ?").bind(JSON.stringify(project), now(), projectId),
+  ]);
+
+  const problem = await getProblem(env, row.problem_id);
+  await sendEmail(
+    env,
+    env.APPROVER_EMAIL,
+    `Submitted: "${problem?.title ?? project.name}"`,
+    `${user.name}'s team submitted its work on "${problem?.title ?? project.name}".\n\nReview it in Approvals:\n${env.SITE_URL}/projectum?view=queue\n\nApplied AI Lab`,
+  );
+  return json({ id, project }, 201);
+}
+
+// The report itself. The approver, members and reps can read any; a
+// partner only an accepted one on its own problem.
+async function report(env: AccountEnv, user: UserRow, id: string, headers: Record<string, string>, json: Json): Promise<Response> {
+  const sub = await env.DB.prepare(
+    "SELECT s.status, s.report_name, pr.owner_id AS problem_owner FROM submissions s JOIN claims c ON c.id = s.claim_id JOIN problems pr ON pr.id = c.problem_id WHERE s.id = ?",
+  )
+    .bind(id)
+    .first<{ status: string; report_name: string; problem_owner: string }>();
+  if (!sub) return json({ error: "not-found" }, 404);
+  if (user.role === "partner" && (sub.status !== "accepted" || sub.problem_owner !== user.id)) return json({ error: "not-found" }, 404);
+  const body = await env.REPORTS.get(id, "arrayBuffer");
+  if (!body) return json({ error: "not-found" }, 404);
+  return new Response(body, {
+    headers: {
+      ...headers,
+      "content-type": "application/pdf",
+      "content-disposition": `attachment; filename="${sub.report_name.replace(/"/g, "")}"`,
+      "cache-control": "private, no-store",
+    },
+  });
+}
+
+// The approver accepts a submission, which shows it to the partner, or
+// returns it with a note, which sends the board back to Prototype so the
+// team can work on and submit again.
+async function reviewSubmission(req: Request, env: AccountEnv, user: UserRow, id: string, json: Json): Promise<Response> {
+  const body = ((await req.json().catch(() => null)) ?? {}) as Record<string, unknown>;
+  const decision = body.decision === "accept" ? "accepted" : body.decision === "return" ? "returned" : null;
+  if (!decision) return json({ error: "decision" }, 400);
+  const note = cleanLine(body.note, LIMITS.note);
+  const sub = await env.DB.prepare("SELECT id, claim_id, project_id, status FROM submissions WHERE id = ?")
+    .bind(id)
+    .first<{ id: string; claim_id: string; project_id: string; status: string }>();
+  if (!sub) return json({ error: "not-found" }, 404);
+  if (sub.status !== "pending") return json({ error: "state" }, 409);
+
+  const writes = [
+    env.DB.prepare("UPDATE submissions SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?").bind(
+      decision,
+      note,
+      user.id,
+      now(),
+      id,
+    ),
+  ];
+  if (decision === "returned") {
+    const pj = await env.DB.prepare("SELECT data FROM projects WHERE id = ?").bind(sub.project_id).first<{ data: string }>();
+    const [current] = pj ? cleanProjects([JSON.parse(pj.data)]) : [];
+    if (current) {
+      const history = { ...current.history };
+      delete history.prototype;
+      const [back] = cleanProjects([{ ...current, stage: "prototype", launch: null, history }]);
+      if (back) writes.push(env.DB.prepare("UPDATE projects SET data = ?, updated_at = ? WHERE id = ?").bind(JSON.stringify(back), now(), sub.project_id));
+    }
+  }
+  await env.DB.batch(writes);
+
+  const claim = await env.DB.prepare(`${CLAIM_SELECT} WHERE c.id = ?`).bind(sub.claim_id).first<ClaimRow>();
+  const problem = claim ? await getProblem(env, claim.problem_id) : null;
+  const title = problem?.title ?? "your project";
+  const { results } = await env.DB.prepare(
+    "SELECT u.email, u.name FROM claim_members m JOIN users u ON u.id = m.user_id WHERE m.claim_id = ?",
+  )
+    .bind(sub.claim_id)
+    .all<{ email: string; name: string }>();
+  const text =
+    decision === "accepted"
+      ? `The Lab accepted your submission on "${title}".${problem?.origin === "partner" ? ` ${problem.owner_name} can now review it.` : ""}`
+      : `The Lab sent your submission on "${title}" back for more work. Your board is in Prototype again, so you can keep building and submit when it's ready.`;
+  for (const m of results) {
+    await sendEmail(
+      env,
+      m.email,
+      decision === "accepted" ? `Accepted: "${title}"` : `Back to you: "${title}"`,
+      `Hi ${m.name},\n\n${text}${note ? `\n\nNote from the Lab: ${note}` : ""}\n\n${env.SITE_URL}/projectum?view=claims\n\nApplied AI Lab`,
+    );
+  }
+  if (decision === "accepted" && problem?.origin === "partner") {
+    const owner = await env.DB.prepare("SELECT email, name FROM users WHERE id = ?").bind(problem.owner_id).first<{ email: string; name: string }>();
+    if (owner) {
+      await sendEmail(
+        env,
+        owner.email,
+        `A team finished "${title}"`,
+        `Hi ${owner.name},\n\nA student team submitted its work on "${title}", and the Lab reviewed it. Read their report and links:\n${env.SITE_URL}/projectum?problem=${problem.id}\n\nApplied AI Lab, Weber State University`,
+      );
+    }
+  }
+  return json({ ok: true });
+}
+
 // --- Routes --------------------------------------------------------------------
 
-// /problems, /claims, /queue, /partners, /proposals and /projects. Null for
-// any other path.
+// /problems, /claims, /queue, /partners, /proposals, /projects and
+// /submissions. Null for any other path.
 export async function handlePipeline(
   req: Request,
   env: AccountEnv,
   headers: Record<string, string>,
 ): Promise<Response | null> {
   const { pathname } = new URL(req.url);
-  if (!/^\/(problems|claims|queue|partners|proposals|projects)(\/|$)/.test(pathname)) return null;
+  if (!/^\/(problems|claims|queue|partners|proposals|projects|submissions)(\/|$)/.test(pathname)) return null;
   const json: Json = (body, status = 200) =>
     Response.json(body, { status, headers: { ...headers, "cache-control": "no-store" } });
 
@@ -561,15 +783,23 @@ export async function handlePipeline(
   match = pathname.match(/^\/projects\/([\w-]{1,64})$/);
   if (match && m === "PUT") return saveBoard(req, env, user, match[1], json);
   if (match && m === "DELETE") return deleteBoard(env, user, match[1], json);
+  match = pathname.match(/^\/projects\/([\w-]{1,64})\/submissions$/);
+  if (match && m === "POST") return submit(req, env, user, match[1], json);
+  match = pathname.match(/^\/submissions\/([\w-]{1,64})\/report$/);
+  if (match && m === "GET") return report(env, user, match[1], headers, json);
 
   if (pathname === "/claims/mine" && m === "GET") return myClaims(env, user, json);
   match = pathname.match(/^\/claims\/([\w-]{1,64})\/withdraw$/);
   if (match && m === "POST") return withdrawClaim(env, user, match[1], json);
 
-  if (!approver && /^\/(queue|partners)|^\/claims\/[\w-]+\/review$/.test(pathname)) return json({ error: "forbidden" }, 403);
+  if (!approver && /^\/(queue|partners)|^\/(claims|submissions)\/[\w-]+\/review$/.test(pathname)) {
+    return json({ error: "forbidden" }, 403);
+  }
   if (pathname === "/queue" && m === "GET") return queue(env, json);
   match = pathname.match(/^\/claims\/([\w-]{1,64})\/review$/);
   if (match && m === "POST") return reviewClaim(req, env, user, match[1], json);
+  match = pathname.match(/^\/submissions\/([\w-]{1,64})\/review$/);
+  if (match && m === "POST") return reviewSubmission(req, env, user, match[1], json);
   match = pathname.match(/^\/partners\/([\w-]{1,64})\/approve$/);
   if (match && m === "POST") return approvePartnerInApp(env, match[1], json);
 

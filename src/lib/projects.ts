@@ -326,8 +326,8 @@ function cleanRecord(value: unknown, stage: Stage): StageRecord | null {
 function cleanLaunch(value: unknown, people: Person[]): Launch | null {
   if (!value || typeof value !== "object") return null;
   const l = value as Record<string, unknown>;
-  const urls = [str(l.siteUrl), str(l.slidesUrl), str(l.demoUrl)];
-  if (!urls.every(isWebUrl) || people.length === 0) return null;
+  const urls = [str(l.siteUrl), str(l.slidesUrl), str(l.demoUrl)].map((u) => u.trim());
+  if (!urls.every(optionalUrl) || people.length === 0) return null;
   const raw = l.contributions && typeof l.contributions === "object" ? (l.contributions as Record<string, unknown>) : {};
   const contributions: Record<string, string> = {};
   for (const person of people) {
@@ -335,7 +335,7 @@ function cleanLaunch(value: unknown, people: Person[]): Launch | null {
     if (!text) return null;
     contributions[person.id] = text;
   }
-  const [siteUrl, slidesUrl, demoUrl] = urls.map(normalizeUrl);
+  const [siteUrl, slidesUrl, demoUrl] = urls.map((u) => (u ? normalizeUrl(u) : ""));
   return { siteUrl, slidesUrl, demoUrl, contributions, at: isTimestamp(l.at) ? l.at : "" };
 }
 
@@ -466,23 +466,29 @@ export type LiveDraft = {
   confirmed: boolean;
 };
 
-// Everything the Live form still needs: the three links, a contribution
-// from each person, and the confirmation.
+// A link a submission may leave out; any it gives must be a web address.
+const optionalUrl = (value: string) => !value.trim() || isWebUrl(value);
+
+// Everything the submission form still needs: a contribution from each
+// person and the confirmation. The site, slides and demo links are optional,
+// since not every project has them, but any given must be a web address.
+// (The final report is a file, checked by the form and the Worker.)
 export function liveProblems(draft: LiveDraft, people: Person[]): string[] {
   const problems: string[] = [];
-  if (!isWebUrl(draft.siteUrl)) problems.push("siteUrl");
-  if (!isWebUrl(draft.slidesUrl)) problems.push("slidesUrl");
-  if (!isWebUrl(draft.demoUrl)) problems.push("demoUrl");
+  if (!optionalUrl(draft.siteUrl)) problems.push("siteUrl");
+  if (!optionalUrl(draft.slidesUrl)) problems.push("slidesUrl");
+  if (!optionalUrl(draft.demoUrl)) problems.push("demoUrl");
   for (const person of people) if (!cleanLine(draft.contributions[person.id] ?? "")) problems.push(`contribution:${person.id}`);
   if (!draft.confirmed) problems.push("confirmed");
   return problems;
 }
 
 function launchFrom(draft: LiveDraft, people: Person[], at: string): Launch {
+  const link = (u: string) => (u.trim() ? normalizeUrl(u) : "");
   return {
-    siteUrl: normalizeUrl(draft.siteUrl),
-    slidesUrl: normalizeUrl(draft.slidesUrl),
-    demoUrl: normalizeUrl(draft.demoUrl),
+    siteUrl: link(draft.siteUrl),
+    slidesUrl: link(draft.slidesUrl),
+    demoUrl: link(draft.demoUrl),
     contributions: Object.fromEntries(people.map((p) => [p.id, cleanLine(draft.contributions[p.id] ?? "")])),
     at,
   };

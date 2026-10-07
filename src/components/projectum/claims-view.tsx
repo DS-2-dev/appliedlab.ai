@@ -13,6 +13,7 @@ import {
   type MyClaim,
   type PendingPartner,
   type QueueClaim,
+  type QueueSubmission,
   send,
   useApi,
 } from "@/components/projectum/pipeline-store";
@@ -23,6 +24,7 @@ import {
   LoadError,
   Loading,
   PlanView,
+  SubmissionPanel,
   Team,
   ViewFrame,
   formatDate,
@@ -85,6 +87,7 @@ export function MyClaims() {
                   <p className="text-xs font-medium text-muted-foreground">{P.myClaims.team}</p>
                   <Team team={c.team} />
                 </div>
+                {c.submission && <SubmissionPanel submission={c.submission} />}
                 <PlanView plan={c.plan} />
               </CardContent>
               {(c.status === "pending" || c.status === "approved") && (
@@ -169,6 +172,65 @@ function QueueClaimCard({ claim }: { claim: QueueClaim }) {
   );
 }
 
+function QueueSubmissionCard({ submission }: { submission: QueueSubmission }) {
+  const ids = React.useId();
+  const [note, setNote] = React.useState("");
+  const [busy, setBusy] = React.useState(false);
+  const decide = async (decision: "accept" | "return") => {
+    setBusy(true);
+    try {
+      await send(`/submissions/${submission.id}/review`, "POST", { decision, note });
+    } catch {
+      setBusy(false);
+    }
+  };
+  const { problem, project } = submission;
+  return (
+    <Card size="sm" data-queue-submission="">
+      <CardHeader className="gap-1">
+        {problem && (
+          <>
+            <CardTitle>
+              <Link href={problemHref(problem.id)} className="hover:underline">
+                {problem.title}
+              </Link>
+            </CardTitle>
+            <CardDescription>{problem.owner.name}</CardDescription>
+          </>
+        )}
+      </CardHeader>
+      <CardContent className="grid gap-4">
+        {project && (
+          <div className="grid gap-1">
+            <p className="text-xs font-medium text-muted-foreground">{P.myClaims.team}</p>
+            <Team team={project.people.map((p) => ({ id: p.id, name: p.name }))} />
+          </div>
+        )}
+        <SubmissionPanel submission={submission} launch={project?.launch} people={project?.people} />
+        <div className="grid gap-2">
+          <Label htmlFor={`${ids}-note`}>{P.queue.submissionNote}</Label>
+          <Textarea
+            id={`${ids}-note`}
+            rows={2}
+            value={note}
+            maxLength={LIMITS.note}
+            placeholder={P.queue.submissionNotePlaceholder}
+            onChange={(e) => setNote(e.target.value)}
+          />
+        </div>
+      </CardContent>
+      <CardFooter className="gap-2">
+        <Button disabled={busy} onClick={() => void decide("accept")}>
+          {P.queue.accept}
+        </Button>
+        <Button variant="outline" disabled={busy} onClick={() => void decide("return")}>
+          {P.queue.sendBack}
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
 function PartnerRow({ partner }: { partner: PendingPartner }) {
   const [busy, setBusy] = React.useState(false);
   return (
@@ -198,7 +260,11 @@ function PartnerRow({ partner }: { partner: PendingPartner }) {
 }
 
 export function Approvals() {
-  const { data, error, retry } = useApi<{ claims: QueueClaim[]; partners: PendingPartner[] }>("/queue");
+  const { data, error, retry } = useApi<{
+    claims: QueueClaim[];
+    submissions: QueueSubmission[];
+    partners: PendingPartner[];
+  }>("/queue");
   return (
     <ViewFrame title={P.queue.title} description={P.queue.description}>
       {error && !data ? (
@@ -207,6 +273,18 @@ export function Approvals() {
         <Loading />
       ) : (
         <div className="grid gap-8">
+          <section className="grid gap-3">
+            <h2 className="text-lg font-medium">{P.queue.submissions}</h2>
+            {data.submissions.length ? (
+              <div className="grid gap-4">
+                {data.submissions.map((s) => (
+                  <QueueSubmissionCard key={s.id} submission={s} />
+                ))}
+              </div>
+            ) : (
+              <Empty>{P.queue.noSubmissions}</Empty>
+            )}
+          </section>
           <section className="grid gap-3">
             <h2 className="text-lg font-medium">{P.queue.claims}</h2>
             {data.claims.length ? (

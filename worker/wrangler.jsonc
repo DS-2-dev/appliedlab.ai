@@ -39,6 +39,9 @@
       "simple": { "limit": 60, "period": 60 }
     }
   ],
+  // Submitted final reports (PDFs), one entry per submission, keyed by its
+  // id. KV rather than R2, which this account has not turned on.
+  "kv_namespaces": [{ "binding": "REPORTS", "id": "e0dd07f7d598468ea0e774be5f763431" }],
   // Projectum accounts, sessions and projects. Schema in migrations/.
   "d1_databases": [
     {
