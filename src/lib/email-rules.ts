@@ -23,3 +23,17 @@ export function isWeberEmail(email: string): boolean {
 export function looksLikeEmail(email: string): boolean {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizeEmail(email));
 }
+
+// Projectum accounts take their role from the address, compared exactly like
+// isWeberEmail: faculty and staff (@weber.edu) are reps, students
+// (@mail.weber.edu) are members, and every other address is a partner, an
+// organization that posts problems. Login proves the address, so the role
+// can be trusted.
+export type AccountRole = "rep" | "member" | "partner";
+
+export function roleForEmail(email: string): AccountRole {
+  const domain = normalizeEmail(email).split("@")[1];
+  if (domain === "weber.edu") return "rep";
+  if (domain === "mail.weber.edu") return "member";
+  return "partner";
+}

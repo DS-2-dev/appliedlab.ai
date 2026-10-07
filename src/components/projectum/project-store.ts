@@ -1,73 +1,112 @@
 "use client";
 
-// Where Projectum projects live for now: this browser's localStorage, keyed by
-// account, until projects have a place in the database. A small external
-// store read through useSyncExternalStore, so the server and the first
-// client render agree (empty), every component on the page sees the same
-// list, and other tabs' edits arrive through the storage event. Memory is
-// the source of truth for this tab, so the list still works when
-// localStorage refuses a write (a full quota, a private window).
+// Projectum projects, saved to the account on the Worker
+// (worker/src/accounts.ts), so they follow the person to any device. The
+// Worker decides what each account sees: members and reps get every
+// project, partners only their own.
+//
+// A small external store read through useSyncExternalStore, so every
+// component on the page sees the same list. Edits show at once and save in
+// the background, one request at a time so they land in order. A failed
+// save reloads the list from the Worker.
 
 import * as React from "react";
+import { type Account, api, useAccountState } from "@/lib/account";
 import { type Project, cleanProjects } from "@/lib/projects";
 
-const EMPTY: Project[] = [];
-const memory = new Map<string, Project[]>();
+export type ProjectOwner = { id: string; name: string; email: string; role: Account["role"] };
+export type ProjectEntry = { project: Project; owner: ProjectOwner };
+
+const EMPTY: ProjectEntry[] = [];
+let entries: ProjectEntry[] = EMPTY;
+let loadedFor: string | null = null;
 const listeners = new Set<() => void>();
+let queue: Promise<unknown> = Promise.resolve();
 
-// The key predates thumbnails, when projects were only folder names. Kept
-// so those saves still load.
-function projectsKey(email: string) {
-  return `statur:folders:${email.toLowerCase()}`;
-}
-
-function load(key: string): Project[] {
-  let list = EMPTY;
-  try {
-    const raw = window.localStorage.getItem(key);
-    if (raw) list = cleanProjects(JSON.parse(raw));
-  } catch {
-    // Unreadable or blocked storage starts from an empty list.
-  }
-  memory.set(key, list);
-  return list;
-}
-
-function save(key: string, list: Project[]) {
-  memory.set(key, list);
-  try {
-    window.localStorage.setItem(key, JSON.stringify(list));
-  } catch {
-    // Kept in memory for this visit.
-  }
+function set(next: ProjectEntry[]) {
+  entries = next;
   listeners.forEach((l) => l());
 }
 
-function subscribe(onChange: () => void) {
-  const onStorage = (e: StorageEvent) => {
-    if (e.key && memory.has(e.key)) {
-      memory.delete(e.key);
-      onChange();
-    }
-  };
-  listeners.add(onChange);
-  window.addEventListener("storage", onStorage);
-  return () => {
-    listeners.delete(onChange);
-    window.removeEventListener("storage", onStorage);
-  };
+async function load(accountId: string) {
+  try {
+    const { projects } = await api<{ projects: { project: unknown; owner: ProjectOwner }[] }>("/projects");
+    if (loadedFor !== accountId) return;
+    set(
+      projects.flatMap(({ project, owner }) => {
+        const [clean] = cleanProjects([project]);
+        return clean ? [{ project: clean, owner }] : [];
+      }),
+    );
+  } catch {
+    // Signed out or offline: the list stays as it was.
+  }
 }
 
-export function useProjects(email: string) {
-  const key = projectsKey(email);
+function subscribe(onChange: () => void) {
+  listeners.add(onChange);
+  return () => listeners.delete(onChange);
+}
+
+// Loads the list once per signed-in account, and empties it on sign-out.
+function useEntries(): { entries: ProjectEntry[]; me: Account | null } {
+  const s = useAccountState();
+  const me = s.status === "signed-in" ? s.account : null;
+  const id = me?.id ?? null;
+  React.useEffect(() => {
+    if (loadedFor === id) return;
+    loadedFor = id;
+    set(EMPTY);
+    if (id) void load(id);
+  }, [id]);
   const list = React.useSyncExternalStore(
     subscribe,
-    () => memory.get(key) ?? load(key),
+    () => entries,
     () => EMPTY,
   );
+  return { entries: list, me };
+}
+
+function save(accountId: string, before: Project[], after: Project[]) {
+  const old = new Map(before.map((p) => [p.id, JSON.stringify(p)]));
+  const kept = new Set(after.map((p) => p.id));
+  const calls: (() => Promise<unknown>)[] = [];
+  for (const p of after) {
+    const json = JSON.stringify(p);
+    if (old.get(p.id) !== json) {
+      calls.push(() => api(`/projects/${encodeURIComponent(p.id)}`, { method: "PUT", body: JSON.stringify({ project: p }) }));
+    }
+  }
+  for (const id of old.keys()) {
+    if (!kept.has(id)) calls.push(() => api(`/projects/${encodeURIComponent(id)}`, { method: "DELETE" }));
+  }
+  for (const call of calls) {
+    queue = queue.then(call).catch(() => {
+      if (loadedFor === accountId) void load(accountId);
+    });
+  }
+}
+
+// The signed-in person's own projects, for the sidebar, the board and the
+// project form, and the way to change them.
+export function useProjects() {
+  const { entries: all, me } = useEntries();
+  const own = React.useMemo(() => all.filter((e) => e.owner.id === me?.id).map((e) => e.project), [all, me?.id]);
   const update = React.useCallback(
-    (fn: (l: Project[]) => Project[]) => save(key, fn(memory.get(key) ?? load(key))),
-    [key],
+    (fn: (l: Project[]) => Project[]) => {
+      if (!me) return;
+      const owner: ProjectOwner = { id: me.id, name: me.name, email: me.email, role: me.role };
+      const before = entries.filter((e) => e.owner.id === me.id).map((e) => e.project);
+      const after = fn(before);
+      set([...entries.filter((e) => e.owner.id !== me.id), ...after.map((project) => ({ project, owner }))]);
+      save(me.id, before, after);
+    },
+    [me],
   );
-  return [list, update] as const;
+  return [own, update] as const;
+}
+
+// Every project this account can see, with whose it is, for All Projects.
+export function useVisibleProjects(): { entries: ProjectEntry[]; me: Account | null } {
+  return useEntries();
 }

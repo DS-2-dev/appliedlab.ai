@@ -1,17 +1,17 @@
 // Projectum's Settings, a dialog opened from the profile at the bottom of
 // the sidebar (app-sidebar.tsx). Each section is made here, on the server,
 // and settings-tabs.tsx lays them out, a nav at the left and the chosen one
-// at the right. The profile picture can be uploaded (profile-photo.tsx), and
-// Log out is a plain form so it works before JavaScript loads. The static
-// site's demo has no account to leave, so it skips Account.
+// at the right. The account's name, email and picture are read in the
+// browser (profile-fields.tsx, profile-photo.tsx), and so is Log out
+// (account-gate.tsx), since the account lives on the Worker.
 
-import { Bot, CalendarCheck, KeyRound, LogOut, SlidersHorizontal, UserRound } from "lucide-react";
+import { Bot, CalendarCheck, KeyRound, SlidersHorizontal, UserRound } from "lucide-react";
 import { copy } from "@/content/copy";
 import { getSettings } from "@/lib/data";
-import { logoutAction } from "@/lib/auth-actions";
-import { STATIC_SITE } from "@/lib/site";
+import { LogoutButton } from "@/components/projectum/account-gate";
 import { AttendanceGraph } from "@/components/projectum/attendance-graph";
 import { CONNECTOR_LOGOS } from "@/components/projectum/connector-logos";
+import { ProfileFields } from "@/components/projectum/profile-fields";
 import { ProfilePhoto } from "@/components/projectum/profile-photo";
 import { type SettingsSection, SettingsTabs } from "@/components/projectum/settings-tabs";
 import { DarkModeSwitch } from "@/components/projectum/theme-switch";
@@ -19,38 +19,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
-const S = copy.projectum;
 const P = copy.projectum.settingsPage;
 
-// Log out, for real accounts only.
 function account(): SettingsSection {
   return {
     id: "account",
     title: P.accountTitle,
     description: P.accountDescription,
     icon: <KeyRound />,
-    content: (
-      <form action={logoutAction}>
-        <Button type="submit" variant="outline">
-          <LogOut />
-          {S.logout}
-        </Button>
-      </form>
-    ),
+    content: <LogoutButton />,
   };
 }
 
-// Headed like the project card's fields.
-function Field({ heading, value }: { heading: string; value: string }) {
-  return (
-    <section className="grid content-start gap-1.5">
-      <h3 className="text-xs font-medium text-muted-foreground">{heading}</h3>
-      <p className="truncate">{value}</p>
-    </section>
-  );
-}
-
-export async function SettingsPanel({ name, email, dark }: { name: string; email: string; dark: boolean }) {
+export async function SettingsPanel({ dark }: { dark: boolean }) {
   const { meeting_schedule: schedule } = await getSettings();
 
   const sections: SettingsSection[] = [
@@ -61,11 +42,8 @@ export async function SettingsPanel({ name, email, dark }: { name: string; email
       icon: <UserRound />,
       content: (
         <>
-          <ProfilePhoto name={name} email={email} />
-          <div className="grid grid-cols-2 gap-6">
-            <Field heading={P.nameLabel} value={name} />
-            <Field heading={P.emailLabel} value={email} />
-          </div>
+          <ProfilePhoto />
+          <ProfileFields />
         </>
       ),
     },
@@ -127,8 +105,8 @@ export async function SettingsPanel({ name, email, dark }: { name: string; email
       icon: <CalendarCheck />,
       content: <AttendanceGraph schedule={schedule} />,
     },
+    account(),
   ];
-  if (!STATIC_SITE) sections.push(account());
 
   return <SettingsTabs sections={sections} />;
 }

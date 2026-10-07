@@ -3,7 +3,7 @@
 // The profile picture at the top of Settings' left column: the photo, or
 // initials until there is one, with Upload (Change once there is a photo)
 // and Remove below it. The centre square of the image is kept, 256px
-// across, in this browser for now (profile-store.ts), and the sidebar's
+// across, on the account (profile-store.ts), and the sidebar's
 // profile shows the same picture.
 // The hidden file input takes the files; the button is what gets focus.
 
@@ -11,6 +11,7 @@ import * as React from "react";
 import { ImagePlus, Trash2 } from "lucide-react";
 import { copy } from "@/content/copy";
 import { initials } from "@/lib/initials";
+import { useAccount } from "@/lib/account";
 import { useAvatar } from "@/components/projectum/profile-store";
 import { readAvatar } from "@/components/projectum/read-image";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -18,8 +19,9 @@ import { Button } from "@/components/ui/button";
 
 const P = copy.projectum.settingsPage;
 
-export function ProfilePhoto({ name, email }: { name: string; email: string }) {
-  const [src, setSrc] = useAvatar(email);
+export function ProfilePhoto() {
+  const { name } = useAccount();
+  const [src, setSrc] = useAvatar();
   const [error, setError] = React.useState<string | null>(null);
   const fileRef = React.useRef<HTMLInputElement>(null);
   const ids = React.useId();
@@ -30,11 +32,18 @@ export function ProfilePhoto({ name, email }: { name: string; email: string }) {
       setError(P.photoErrors.type);
       return;
     }
+    let image: string;
     try {
-      setSrc(await readAvatar(file));
-      setError(null);
+      image = await readAvatar(file);
     } catch {
       setError(P.photoErrors.read);
+      return;
+    }
+    try {
+      await setSrc(image);
+      setError(null);
+    } catch {
+      setError(P.photoErrors.save);
     }
   };
 
@@ -69,7 +78,7 @@ export function ProfilePhoto({ name, email }: { name: string; email: string }) {
             {src ? P.photoChange : P.photoUpload}
           </Button>
           {src && (
-            <Button type="button" variant="ghost" size="sm" onClick={() => setSrc(null)}>
+            <Button type="button" variant="ghost" size="sm" onClick={() => void setSrc(null).catch(() => setError(P.photoErrors.save))}>
               <Trash2 data-icon="inline-start" />
               {P.photoRemove}
             </Button>

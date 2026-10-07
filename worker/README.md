@@ -1,8 +1,45 @@
 # appliedlab-ask
 
 The Cloudflare Worker behind the GitHub Pages site, which serves files only.
-It answers Ask the Lab (`POST /`) and keeps Join the Lab forms
-(`POST /interest`).
+It answers Ask the Lab (`POST /`), keeps Join the Lab forms
+(`POST /interest`), and holds Projectum accounts and projects
+(`/auth/*`, `/me`, `/projects`, `GET /approve`).
+
+## Projectum accounts
+
+Sign-in is a 6-digit code emailed to the address, so one form both logs in
+and signs up. The role comes from the domain: `@weber.edu` is a rep,
+`@mail.weber.edu` a member, anything else a partner. Partners start pending,
+and `APPROVER_EMAIL` gets a link that approves them. Members and reps see
+every project; partners see only their own. Data is in the
+`appliedlab-projectum` D1 database (schema in `migrations/`).
+
+One-time setup, from `worker/`:
+
+```bash
+npx wrangler d1 migrations apply appliedlab-projectum --remote
+openssl rand -hex 32 | npx wrangler secret put AUTH_SECRET
+npx wrangler secret put RESEND_API_KEY      # from resend.com, see below
+npm run deploy
+```
+
+Email goes through [Resend](https://resend.com). Add `appliedlab.ai` as a
+domain there and copy the DNS records it gives you into Squarespace's DNS
+settings. Once Resend shows the domain verified, codes send from
+`MAIL_FROM` in `wrangler.jsonc`. Until the key is set, sign-in answers that
+email is still being set up.
+
+Locally, `worker/.dev.vars` holds `AUTH_SECRET=...` and `DEV_CODES=1`, which
+shows the code on the login form in place of an email. Run
+`npx wrangler d1 migrations apply appliedlab-projectum --local` once, then
+`npm run dev`, and run the site with
+`NEXT_PUBLIC_ASK_URL=http://localhost:8787`.
+
+To look at accounts:
+
+```bash
+npx wrangler d1 execute appliedlab-projectum --remote --command "SELECT email, name, role, status FROM users"
+```
 
 ## Ask the Lab
 

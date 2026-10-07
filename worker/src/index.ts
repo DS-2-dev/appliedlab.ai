@@ -6,6 +6,9 @@
 // - POST /interest: the Join the Lab form, instead of /api/interest, checked
 //   with the same rules (src/lib/interest.ts) and kept in the INTEREST KV
 //   namespace. worker/README.md shows how to read them.
+// - /auth/*, /me and /projects: Projectum accounts and their saved projects,
+//   in the DB D1 database (accounts.ts). GET /approve is the link that
+//   approves a new partner, opened from an email, so it has no origin.
 //
 // For the chat there are
 // two engines. With an ANTHROPIC_API_KEY secret it asks Claude, exactly as
@@ -30,13 +33,14 @@ import {
   type Turn,
 } from "@/lib/ask";
 import { checkInterest } from "@/lib/interest";
+import { type AccountEnv, approvePartner, handleAccounts } from "./accounts";
 import { DEFAULT_SETTINGS, type LabEvent, type Settings } from "@/lib/types";
 import events from "../../data/events.json";
 import settings from "../../data/settings.json";
 
 const FREE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
-interface Env {
+interface Env extends AccountEnv {
   ANTHROPIC_API_KEY?: string;
   ALLOWED_ORIGINS: string;
   ASK_LIMITER: RateLimit;
@@ -50,8 +54,8 @@ function cors(origin: string | null, env: Env): Record<string, string> {
   if (!origin || !allowed.includes(origin)) return {};
   return {
     "access-control-allow-origin": origin,
-    "access-control-allow-methods": "POST, OPTIONS",
-    "access-control-allow-headers": "content-type",
+    "access-control-allow-methods": "GET, POST, PUT, PATCH, DELETE, OPTIONS",
+    "access-control-allow-headers": "content-type, authorization",
     "access-control-max-age": "86400",
     vary: "origin",
   };
@@ -120,13 +124,17 @@ async function saveInterest(req: Request, env: Env, ip: string, headers: Record<
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
+    if (req.method === "GET" && new URL(req.url).pathname === "/approve") return approvePartner(req, env);
+
     const headers = cors(req.headers.get("origin"), env);
     // Only the Lab's own pages may call.
     if (!headers["access-control-allow-origin"]) return text("Forbidden.", 403, {});
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
-    if (req.method !== "POST") return text("Method not allowed.", 405, headers);
 
     const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
+    const account = await handleAccounts(req, env, ip, headers);
+    if (account) return account;
+    if (req.method !== "POST") return text("Method not allowed.", 405, headers);
     if (new URL(req.url).pathname === "/interest") return saveInterest(req, env, ip, headers);
 
     const { success } = await env.ASK_LIMITER.limit({ key: ip });

@@ -347,6 +347,40 @@ export const copy = {
     staticGoogle: "Google sign-in opens with the platform launch.",
     staticForm: "Accounts open with the platform launch. The Projectum demo is open now.",
     staticDemo: "Try the Projectum demo",
+    // Projectum sign-in by emailed code (src/lib/account.ts). One form for
+    // logging in and signing up: a new address is asked for a name once.
+    code: {
+      heading: "Log in to the Lab",
+      signupHeading: "Join the Lab",
+      body: "Enter your email and we'll send you a 6-digit code. Students, faculty and partner organizations all sign in here.",
+      emailSubmit: "Send code",
+      emailPending: "Sending",
+      codeLabel: "Code",
+      codeSent: "We sent a code to {email}. It works for 10 minutes.",
+      codeSubmit: "Log in",
+      codePending: "Checking",
+      nameIntro: "Welcome to the Lab. Add your name to finish your account.",
+      nameLabel: "Your name",
+      nameHelp: "Partner organizations can use the organization's name.",
+      nameSubmit: "Create account",
+      otherEmail: "Use a different email",
+      resend: "Send a new code",
+      resent: "A new code is on its way.",
+      // Local preview only, where no email goes out.
+      devNote: "Local preview, so no email goes out. Your code is {code}.",
+      errors: {
+        code: "That code doesn't match. Check the email and try again.",
+        expired: "That code has expired. Send a new one.",
+        name: "Enter your name.",
+        emailUnavailable: "Sign-in email is still being set up. Write to ailab@weber.edu for access.",
+        network: "We couldn't reach the Lab. Check your connection and try again.",
+      },
+    },
+    // A partner organization's account before the Lab approves it.
+    pending: {
+      heading: "Your account is waiting for approval",
+      body: "The Lab reviews each new partner organization, and we'll email you once yours is approved.",
+    },
     errors: {
       emailRequired: "Enter your email.",
       emailInvalid: "Enter a valid email address.",
@@ -683,6 +717,8 @@ export const copy = {
       all: "All",
       yours: "Yours",
       sample: "Sample",
+      // Another account's project, marked with its owner's name.
+      by: (name: string) => `By ${name}`,
       empty: "No projects at this stage yet.",
       // Every card opens a brief of its project, to view only. Your own
       // also open their board.
@@ -892,6 +928,7 @@ export const copy = {
       photoErrors: {
         type: "Choose an image file.",
         read: "That image could not be read. Try another.",
+        save: "The picture didn't save. Try again.",
       },
       preferencesTitle: "Preferences",
       preferencesDescription: "How Projectum looks in this browser.",

@@ -1,9 +1,11 @@
 "use client";
 
-// All Projects, Projectum's first view: every project in one grid, filtered
-// by stage with a count on each tab. The signed-in person's projects come
-// first, marked Yours; the Lab's sample projects fill the list until more
-// teams add theirs, marked Sample. Samples are whole projects, with what
+// All Projects, Projectum's first view: every project this account can see
+// in one grid, filtered by stage with a count on each tab. Members and reps
+// see every account's projects, partners only their own (the Worker
+// decides). Yours come first, marked Yours, then everyone else's, marked
+// with the owner's name. For members and reps, the Lab's sample projects
+// fill the list after them, marked Sample. Samples are whole projects, with what
 // their stage needs. Every card's View opens a brief of its project to view
 // only (its stage, links, team, latest build and plan), and your own cards
 // also open their board.
@@ -29,7 +31,7 @@ import { copy } from "@/content/copy";
 import { initials } from "@/lib/initials";
 import { type Project, STAGES, type Stage, sampleProject } from "@/lib/projects";
 import { ProjectCard } from "@/components/projectum/project-board";
-import { useProjects } from "@/components/projectum/project-store";
+import { useVisibleProjects } from "@/components/projectum/project-store";
 import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -66,15 +68,16 @@ const ICONS: Record<string, LucideIcon> = {
   file: FileText,
 };
 
-type Entry = { project: Project; icon: LucideIcon; own: boolean };
+// `owner` is null for a sample, or the owner's name for someone else's.
+type Entry = { project: Project; icon: LucideIcon; own: boolean; owner: string | null };
 
 const SAMPLES: Entry[] = copy.projectum.demo.samples.flatMap((data) => {
   const project = sampleProject(data);
-  return project ? [{ project, icon: ICONS[data.icon] ?? Lightbulb, own: false }] : [];
+  return project ? [{ project, icon: ICONS[data.icon] ?? Lightbulb, own: false, owner: null }] : [];
 });
 
 function ProjectTile({ entry, onView }: { entry: Entry; onView: () => void }) {
-  const { project, icon: Icon, own } = entry;
+  const { project, icon: Icon, own, owner } = entry;
   const extra = project.people.length - SHOWN_PEOPLE;
   return (
     <Card data-project-tile="" size="sm" className="h-full gap-0 py-0">
@@ -97,8 +100,8 @@ function ProjectTile({ entry, onView }: { entry: Entry; onView: () => void }) {
           <Badge variant="outline" className="bg-background">
             {B.stages[project.stage]}
           </Badge>
-          <Badge variant="outline" className="bg-background">
-            {own ? A.yours : A.sample}
+          <Badge variant="outline" className="min-w-0 shrink justify-start bg-background">
+            <span className="truncate">{own ? A.yours : owner ? A.by(owner) : A.sample}</span>
           </Badge>
         </div>
       </div>
@@ -137,13 +140,19 @@ function ProjectTile({ entry, onView }: { entry: Entry; onView: () => void }) {
   );
 }
 
-export function AllProjects({ email }: { email: string }) {
-  const [list] = useProjects(email);
+export function AllProjects() {
+  const { entries: visible, me } = useVisibleProjects();
   const [filter, setFilter] = React.useState<Filter>("all");
   // The project in the overview. Kept after closing so it can animate out.
   const [viewing, setViewing] = React.useState<Project | null>(null);
   const [open, setOpen] = React.useState(false);
-  const entries: Entry[] = [...list.map((project) => ({ project, icon: Lightbulb, own: true })), ...SAMPLES];
+  const mine = visible.filter((e) => e.owner.id === me?.id);
+  const others = visible.filter((e) => e.owner.id !== me?.id);
+  const entries: Entry[] = [
+    ...mine.map(({ project }) => ({ project, icon: Lightbulb, own: true, owner: null })),
+    ...others.map(({ project, owner }) => ({ project, icon: Lightbulb, own: false, owner: owner.name })),
+    ...(me?.role === "partner" ? [] : SAMPLES),
+  ];
   const inFilter = (f: Filter) => (f === "all" ? entries : entries.filter((e) => e.project.stage === f));
   const shown = inFilter(filter);
 

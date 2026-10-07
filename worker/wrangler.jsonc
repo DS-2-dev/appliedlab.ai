@@ -1,4 +1,5 @@
-// The Cloudflare Worker behind Ask the Lab on the static site. Deploy steps
+// The Cloudflare Worker behind the static site: Ask the Lab, Join the Lab,
+// and Projectum accounts. Deploy steps
 // are in worker/README.md.
 {
   "name": "appliedlab-ask",
@@ -7,7 +8,13 @@
   "compatibility_flags": ["nodejs_compat"],
   // Sites allowed to call the Worker.
   "vars": {
-    "ALLOWED_ORIGINS": "https://appliedlab.ai,https://www.appliedlab.ai,http://localhost:3000"
+    "ALLOWED_ORIGINS": "https://appliedlab.ai,https://www.appliedlab.ai,http://localhost:3000,http://localhost:3100",
+    // Gets an email with an approve link for every new partner account.
+    "APPROVER_EMAIL": "kylarvierra@mail.weber.edu",
+    // The site, for links in emails.
+    "SITE_URL": "https://appliedlab.ai",
+    // The sender for sign-in codes. The domain must be verified in Resend.
+    "MAIL_FROM": "Applied AI Lab <login@appliedlab.ai>"
   },
   // At most 6 questions a minute per visitor. Cloudflare allows a period of
   // 10 or 60 seconds; the namespace_id is any number unique to this account.
@@ -22,6 +29,29 @@
       "name": "JOIN_LIMITER",
       "namespace_id": "4102",
       "simple": { "limit": 3, "period": 60 }
+    },
+    // Sign-in: 5 codes and 5 guesses a minute per address (each code also
+    // allows only 5 guesses in all)...
+    {
+      "name": "LOGIN_LIMITER",
+      "namespace_id": "4103",
+      "simple": { "limit": 5, "period": 60 }
+    },
+    // ...and 60 sign-in requests a minute per network, loose because a
+    // campus full of students shares one address.
+    {
+      "name": "LOGIN_IP_LIMITER",
+      "namespace_id": "4104",
+      "simple": { "limit": 60, "period": 60 }
+    }
+  ],
+  // Projectum accounts, sessions and projects. Schema in migrations/.
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "appliedlab-projectum",
+      "database_id": "bfbca4e7-84a5-4a4d-9864-8967faf510ca",
+      "migrations_dir": "migrations"
     }
   ],
   // Join the Lab submissions, one entry each.

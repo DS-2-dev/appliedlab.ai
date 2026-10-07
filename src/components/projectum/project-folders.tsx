@@ -227,7 +227,7 @@ function ProjectActions({
 
 export function ProjectFolders({ email, activeId }: { email: string; activeId: string | null }) {
   const router = useRouter();
-  const [list, update] = useProjects(email);
+  const [list, update] = useProjects();
   const [renaming, setRenaming] = React.useState<string | null>(null);
   // The project just clicked, shown selected until the address catches up.
   // Any change of open project (that one, another, or a page with none)

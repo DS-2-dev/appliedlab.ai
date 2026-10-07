@@ -586,7 +586,7 @@ export function ProjectCard({
 }
 
 export function ProjectBoard({ email, projectId }: { email: string; projectId: string }) {
-  const [list, update] = useProjects(email);
+  const [list, update] = useProjects();
   const project = list.find((p) => p.id === projectId) ?? null;
   const [planOpen, setPlanOpen] = React.useState(false);
   const [planTarget, setPlanTarget] = React.useState<PlanTarget>("solidifying");

@@ -7,6 +7,7 @@
 
 import * as React from "react";
 import { useSearchParams } from "next/navigation";
+import { useAccount } from "@/lib/account";
 import { AllProjects } from "@/components/projectum/all-projects";
 import { AppSidebar, type ProjectumView } from "@/components/projectum/app-sidebar";
 import { ProjectBoard } from "@/components/projectum/project-board";
@@ -23,21 +24,17 @@ function readCookie(name: string): string | undefined {
 
 const subscribeNever = () => () => {};
 
-export function ProjectumView({
-  name,
-  email,
-  settings,
-  agents,
-}: {
-  name: string;
-  email: string;
-  settings: React.ReactNode;
-  agents: React.ReactNode;
-}) {
+export function ProjectumView({ settings, agents }: { settings: React.ReactNode; agents: React.ReactNode }) {
+  const { name, email, role } = useAccount();
   const params = useSearchParams();
   const project = params.get("project");
   const projectId = project ? project : null;
-  const view: ProjectumView = projectId ? "project" : params.get("view") === "agents" ? "agents" : "projects";
+  // Partners have no Agents view.
+  const view: ProjectumView = projectId
+    ? "project"
+    : params.get("view") === "agents" && role !== "partner"
+      ? "agents"
+      : "projects";
 
   // Cookies only exist in the browser; the build renders the defaults.
   const dark = React.useSyncExternalStore(
@@ -55,7 +52,7 @@ export function ProjectumView({
     <>
       <ThemeSync dark={dark} />
       <SidebarProvider key={String(defaultOpen)} defaultOpen={defaultOpen} className="projectum-ui">
-        <AppSidebar name={name} email={email} view={view} projectId={projectId} settings={settings} />
+        <AppSidebar name={name} email={email} role={role} view={view} projectId={projectId} settings={settings} />
         <SidebarInset>
           <div
             key={view === "project" ? `project-${projectId}` : view}
@@ -67,7 +64,7 @@ export function ProjectumView({
             ) : view === "agents" ? (
               agents
             ) : (
-              <AllProjects email={email} />
+              <AllProjects />
             )}
           </div>
         </SidebarInset>

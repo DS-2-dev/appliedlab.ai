@@ -56,7 +56,7 @@ type Errors = { name?: string; thumbnail?: string; notes?: string };
 
 function DetailsForm({ email, project, onDone }: { email: string; project?: Project; onDone: () => void }) {
   const router = useRouter();
-  const [, update] = useProjects(email);
+  const [, update] = useProjects();
   const editing = Boolean(project);
   const peopleLocked = project ? project.stage !== "brainstorming" : false;
   const [name, setName] = React.useState(project?.name ?? "");

@@ -24,3 +24,6 @@ const USE_WORKER = STATIC_SITE || Boolean(process.env.NEXT_PUBLIC_ASK_URL);
 // Where Ask the Lab sends questions, and where Join the Lab sends the form.
 export const ASK_URL = USE_WORKER ? WORKER_URL : "/api/ask";
 export const INTEREST_URL = USE_WORKER ? `${WORKER_URL}/interest` : "/api/interest";
+
+// Projectum accounts and projects live only on the Worker, in every build.
+export const ACCOUNT_URL = WORKER_URL;

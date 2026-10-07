@@ -1,13 +1,11 @@
-// Sign up is Join the Lab: a form, not an account. Students, faculty and
-// organizations each leave their details, and the Lab follows up by email.
-// Accounts come with the platform launch.
+// Sign up is the same form as Log in (login/page.tsx): a new address is
+// asked for a name and gets its account.
 
 import type { Metadata } from "next";
-import Link from "next/link";
+import { Suspense } from "react";
 import { copy } from "@/content/copy";
-import { AuthShell, DemoLink, authLink } from "@/components/auth/AuthShell";
-import { JoinForm } from "@/components/auth/JoinForm";
-import { STATIC_SITE } from "@/lib/site";
+import { AuthShell } from "@/components/auth/AuthShell";
+import { CodeLoginRoute } from "@/components/auth/CodeLoginRoute";
 
 export const metadata: Metadata = {
   title: `${copy.join.title} | ${copy.meta.title}`,
@@ -15,21 +13,10 @@ export const metadata: Metadata = {
 
 export default function SignupPage() {
   return (
-    <AuthShell
-      wide
-      heading={copy.join.heading}
-      body={copy.join.body}
-      footer={
-        <>
-          {copy.auth.signup.switchPrompt}{" "}
-          <Link href="/login" className={authLink}>
-            {copy.auth.signup.switchCta}
-          </Link>
-        </>
-      }
-    >
-      <JoinForm />
-      {STATIC_SITE && <DemoLink />}
+    <AuthShell heading={copy.auth.code.signupHeading} body={copy.auth.code.body}>
+      <Suspense>
+        <CodeLoginRoute />
+      </Suspense>
     </AuthShell>
   );
 }

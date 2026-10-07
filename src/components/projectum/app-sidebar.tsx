@@ -14,6 +14,7 @@ import * as React from "react";
 import Link from "next/link";
 import { ArrowUpRight, Bot, FolderKanban, PanelLeft, QrCode } from "lucide-react";
 import { copy } from "@/content/copy";
+import type { AccountRole } from "@/lib/account";
 import { initials } from "@/lib/initials";
 import { useAvatar } from "@/components/projectum/profile-store";
 import { ProjectFolders } from "@/components/projectum/project-folders";
@@ -83,18 +84,22 @@ function SidebarToggle({ folded }: { folded: boolean }) {
 export function AppSidebar({
   name,
   email,
+  role,
   view,
   projectId,
   settings,
 }: {
   name: string;
   email: string;
+  // Partners see their projects only, without Agents or attendance.
+  role: AccountRole;
   view: ProjectumView;
   projectId: string | null;
   // The Settings dialog's inside, made on the server (settings-panel.tsx).
   settings: React.ReactNode;
 }) {
-  const [avatar] = useAvatar(email);
+  const [avatar] = useAvatar();
+  const partner = role === "partner";
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   return (
     <Sidebar collapsible="icon">
@@ -135,17 +140,19 @@ export function AppSidebar({
                 <span>{S.projects}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip={S.agents.title}
-                isActive={view === "agents"}
-                render={<Link href="/projectum?view=agents" />}
-                className="motion-safe:hover:[&>svg]:animate-[projectum-wiggle_500ms_ease-in-out] motion-safe:focus-visible:[&>svg]:animate-[projectum-wiggle_500ms_ease-in-out]"
-              >
-                <Bot />
-                <span>{S.agents.title}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {!partner && (
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  tooltip={S.agents.title}
+                  isActive={view === "agents"}
+                  render={<Link href="/projectum?view=agents" />}
+                  className="motion-safe:hover:[&>svg]:animate-[projectum-wiggle_500ms_ease-in-out] motion-safe:focus-visible:[&>svg]:animate-[projectum-wiggle_500ms_ease-in-out]"
+                >
+                  <Bot />
+                  <span>{S.agents.title}</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            )}
           </SidebarMenu>
         </SidebarGroup>
         <ProjectFolders email={email} activeId={projectId} />
@@ -187,21 +194,23 @@ export function AppSidebar({
           </Link>
           {/* Members scan this at meetings. Until the real code exists, a
               dashed square marks where it goes. */}
-          <Card data-attendance="" size="sm" className="gap-2 bg-background">
-            <CardHeader>
-              <CardTitle>{S.attendance.title}</CardTitle>
-              <CardDescription className="text-pretty">{S.attendance.description}</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div
-                role="img"
-                aria-label={S.attendance.placeholder}
-                className="mx-auto grid aspect-square w-28 place-items-center rounded-lg border border-dashed text-muted-foreground"
-              >
-                <QrCode className="size-10" />
-              </div>
-            </CardContent>
-          </Card>
+          {!partner && (
+            <Card data-attendance="" size="sm" className="gap-2 bg-background">
+              <CardHeader>
+                <CardTitle>{S.attendance.title}</CardTitle>
+                <CardDescription className="text-pretty">{S.attendance.description}</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div
+                  role="img"
+                  aria-label={S.attendance.placeholder}
+                  className="mx-auto grid aspect-square w-28 place-items-center rounded-lg border border-dashed text-muted-foreground"
+                >
+                  <QrCode className="size-10" />
+                </div>
+              </CardContent>
+            </Card>
+          )}
         </div>
         <SidebarMenu>
           <SidebarMenuItem>
