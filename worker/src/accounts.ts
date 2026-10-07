@@ -29,8 +29,10 @@ export interface AccountEnv {
   RESEND_API_KEY?: string;
   MAIL_FROM?: string;
   DEV_CODES?: string;
-  // Who approves new partners.
+  // Who approves new partners, and gets the emails about what's waiting.
   APPROVER_EMAIL: string;
+  // More approvers, comma separated, who don't get those emails.
+  APPROVERS?: string;
   // The site, for links in emails.
   SITE_URL: string;
 }
@@ -52,10 +54,14 @@ export interface UserRow {
   avatar: string | null;
 }
 
-// Who approves claims and new partners: reps, and the Lab's approver
-// (APPROVER_EMAIL), whatever their own role.
+// Who approves claims and new partners: reps, the Lab's approver
+// (APPROVER_EMAIL, who also gets the emails), and anyone listed in
+// APPROVERS, whatever their own role.
 export function isApprover(env: AccountEnv, u: { email: string; role: AccountRole; status: string }): boolean {
-  return u.status === "active" && (u.role === "rep" || u.email === normalizeEmail(env.APPROVER_EMAIL));
+  if (u.status !== "active") return false;
+  if (u.role === "rep") return true;
+  const listed = [env.APPROVER_EMAIL, ...(env.APPROVERS ?? "").split(",")].map((e) => normalizeEmail(e)).filter(Boolean);
+  return listed.includes(normalizeEmail(u.email));
 }
 
 // What the browser gets about the signed-in person.

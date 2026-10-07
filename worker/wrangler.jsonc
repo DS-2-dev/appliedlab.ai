@@ -13,6 +13,8 @@
     "ALLOWED_ORIGINS": "https://appliedlab.ai,https://www.appliedlab.ai",
     // Gets an email with an approve link for every new partner account.
     "APPROVER_EMAIL": "kylarvierra@mail.weber.edu",
+    // More approvers (Overview, Approvals, any board), without the emails.
+    "APPROVERS": "dantesmith@mail.weber.edu",
     // The site, for links in emails.
     "SITE_URL": "https://appliedlab.ai",
     // The sender for sign-in codes. The domain must be verified in Resend.
