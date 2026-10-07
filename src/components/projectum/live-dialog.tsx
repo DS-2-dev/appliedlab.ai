@@ -319,7 +319,7 @@ export function LiveDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-3xl">
+      <DialogContent className="sm:max-w-[min(56rem,calc(100vw-4rem))]">
         <LiveForm key={formKey} project={project} mode={mode} onSave={onSave} />
       </DialogContent>
     </Dialog>

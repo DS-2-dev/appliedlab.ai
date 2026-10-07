@@ -134,153 +134,160 @@ function DetailsForm({ project, onDone }: { project?: Project; onDone: () => voi
         <DialogDescription>{editing ? F.editDescription : S.addProjectDescription}</DialogDescription>
       </DialogHeader>
 
-      <div className="grid gap-2">
-        <Label htmlFor={`${ids}-name`}>{S.projectName}</Label>
-        <Input
-          ref={nameRef}
-          id={`${ids}-name`}
-          value={name}
-          maxLength={MAX_NAME}
-          placeholder={F.namePlaceholder}
-          aria-invalid={errors.name ? true : undefined}
-          aria-describedby={errors.name ? `${ids}-name-error` : undefined}
-          onChange={(e) => {
-            setName(e.target.value);
-            if (errors.name) setErrors((x) => ({ ...x, name: undefined }));
-          }}
-        />
-        {errors.name && (
-          <p id={`${ids}-name-error`} className="text-sm text-destructive">
-            {errors.name}
-          </p>
-        )}
-      </div>
-
-      <div className="grid gap-2">
-        <Label htmlFor={`${ids}-thumb`}>{F.thumbnail}</Label>
-        {/* The file input stays in the tab order, visually replaced by the
-            drop area or the preview below it. */}
-        <input
-          ref={fileRef}
-          id={`${ids}-thumb`}
-          type="file"
-          accept="image/png,image/jpeg,image/webp,image/gif"
-          className="sr-only"
-          aria-invalid={errors.thumbnail ? true : undefined}
-          aria-describedby={`${ids}-thumb-help${errors.thumbnail ? ` ${ids}-thumb-error` : ""}`}
-          onChange={(e) => {
-            void pickFile(e.target.files?.[0]);
-            e.target.value = "";
-          }}
-        />
-        {thumbnail ? (
+      <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+        <div className="grid content-start gap-5">
           <div className="grid gap-2">
-            <Image
-              src={thumbnail}
-              alt=""
-              width={640}
-              height={360}
-              unoptimized
-              className="h-36 w-full rounded-lg border object-cover"
+            <Label htmlFor={`${ids}-name`}>{S.projectName}</Label>
+            <Input
+              ref={nameRef}
+              id={`${ids}-name`}
+              value={name}
+              maxLength={MAX_NAME}
+              placeholder={F.namePlaceholder}
+              aria-invalid={errors.name ? true : undefined}
+              aria-describedby={errors.name ? `${ids}-name-error` : undefined}
+              onChange={(e) => {
+                setName(e.target.value);
+                if (errors.name) setErrors((x) => ({ ...x, name: undefined }));
+              }}
             />
-            <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={() => fileRef.current?.click()}>
-              <ImagePlus />
-              {F.thumbnailChange}
-            </Button>
+            {errors.name && (
+              <p id={`${ids}-name-error`} className="text-sm text-destructive">
+                {errors.name}
+              </p>
+            )}
           </div>
-        ) : (
-          <button
-            type="button"
-            tabIndex={-1}
-            onClick={() => fileRef.current?.click()}
-            data-invalid={errors.thumbnail ? "" : undefined}
-            className="flex h-36 w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-sm text-muted-foreground transition-colors hover:bg-muted/50 data-invalid:border-destructive"
-          >
-            <ImagePlus className="size-5" />
-            {F.thumbnailPick}
-          </button>
-        )}
-        <p id={`${ids}-thumb-help`} className="text-xs text-muted-foreground">
-          {F.thumbnailHelp}
-        </p>
-        {errors.thumbnail && (
-          <p id={`${ids}-thumb-error`} className="text-sm text-destructive">
-            {errors.thumbnail}
-          </p>
-        )}
-      </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor={`${ids}-desc`}>{F.description}</Label>
-        <Textarea
-          id={`${ids}-desc`}
-          value={description}
-          rows={3}
-          maxLength={MAX_DESCRIPTION}
-          placeholder={F.descriptionPlaceholder}
-          onChange={(e) => setDescription(e.target.value)}
-        />
-      </div>
+          <div className="grid gap-2">
+            <Label htmlFor={`${ids}-desc`}>{F.description}</Label>
+            <Textarea
+              id={`${ids}-desc`}
+              value={description}
+              rows={3}
+              maxLength={MAX_DESCRIPTION}
+              placeholder={F.descriptionPlaceholder}
+              onChange={(e) => setDescription(e.target.value)}
+            />
+          </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor={`${ids}-notes`}>{F.notes}</Label>
-        <Input
-          ref={notesRef}
-          id={`${ids}-notes`}
-          type="text"
-          inputMode="url"
-          value={notesUrl}
-          maxLength={MAX_URL}
-          placeholder={F.notesPlaceholder}
-          aria-invalid={errors.notes ? true : undefined}
-          aria-describedby={`${ids}-notes-help${errors.notes ? ` ${ids}-notes-error` : ""}`}
-          onChange={(e) => {
-            setNotesUrl(e.target.value);
-            if (errors.notes) setErrors((x) => ({ ...x, notes: undefined }));
-          }}
-        />
-        <p id={`${ids}-notes-help`} className="text-xs text-muted-foreground">
-          {F.notesHelp}
-        </p>
-        {errors.notes && (
-          <p id={`${ids}-notes-error`} className="text-sm text-destructive">
-            {errors.notes}
-          </p>
-        )}
-      </div>
+          <div className="grid gap-2">
+            <Label htmlFor={`${ids}-notes`}>{F.notes}</Label>
+            <Input
+              ref={notesRef}
+              id={`${ids}-notes`}
+              type="text"
+              inputMode="url"
+              value={notesUrl}
+              maxLength={MAX_URL}
+              placeholder={F.notesPlaceholder}
+              aria-invalid={errors.notes ? true : undefined}
+              aria-describedby={`${ids}-notes-help${errors.notes ? ` ${ids}-notes-error` : ""}`}
+              onChange={(e) => {
+                setNotesUrl(e.target.value);
+                if (errors.notes) setErrors((x) => ({ ...x, notes: undefined }));
+              }}
+            />
+            <p id={`${ids}-notes-help`} className="text-xs text-muted-foreground">
+              {F.notesHelp}
+            </p>
+            {errors.notes && (
+              <p id={`${ids}-notes-error`} className="text-sm text-destructive">
+                {errors.notes}
+              </p>
+            )}
+          </div>
 
-      <div className="grid gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <span className="text-sm font-medium" id={`${ids}-people`}>
-            {F.people}
-          </span>
-          {!peopleLocked && <AddPersonMenu people={people} onAdd={(person) => setPeople((p) => [...p, person])} />}
         </div>
-        {peopleLocked ? (
-          <p className="text-sm text-muted-foreground">{F.peopleInPlan}</p>
-        ) : people.length ? (
-          <ul aria-labelledby={`${ids}-people`} className="grid gap-1 rounded-lg border p-1">
-            {people.map((person) => (
-              <li key={person.id} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm">
-                <Avatar size="sm">
-                  <AvatarFallback>{initials(person.name)}</AvatarFallback>
-                </Avatar>
-                <span className="flex-1 truncate">{person.name}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`${F.removePerson} ${person.name}`}
-                  onClick={() => setPeople((p) => p.filter((x) => x.id !== person.id))}
-                >
-                  <X />
+        <div className="grid content-start gap-5">
+          <div className="grid gap-2">
+            <Label htmlFor={`${ids}-thumb`}>{F.thumbnail}</Label>
+            {/* The file input stays in the tab order, visually replaced by the
+                drop area or the preview below it. */}
+            <input
+              ref={fileRef}
+              id={`${ids}-thumb`}
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/gif"
+              className="sr-only"
+              aria-invalid={errors.thumbnail ? true : undefined}
+              aria-describedby={`${ids}-thumb-help${errors.thumbnail ? ` ${ids}-thumb-error` : ""}`}
+              onChange={(e) => {
+                void pickFile(e.target.files?.[0]);
+                e.target.value = "";
+              }}
+            />
+            {thumbnail ? (
+              <div className="grid gap-2">
+                <Image
+                  src={thumbnail}
+                  alt=""
+                  width={640}
+                  height={360}
+                  unoptimized
+                  className="h-36 w-full rounded-lg border object-cover"
+                />
+                <Button type="button" variant="outline" size="sm" className="justify-self-start" onClick={() => fileRef.current?.click()}>
+                  <ImagePlus />
+                  {F.thumbnailChange}
                 </Button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-sm text-muted-foreground">{F.noPeople}</p>
-        )}
+              </div>
+            ) : (
+              <button
+                type="button"
+                tabIndex={-1}
+                onClick={() => fileRef.current?.click()}
+                data-invalid={errors.thumbnail ? "" : undefined}
+                className="flex h-36 w-full flex-col items-center justify-center gap-2 rounded-lg border border-dashed text-sm text-muted-foreground transition-colors hover:bg-muted/50 data-invalid:border-destructive"
+              >
+                <ImagePlus className="size-5" />
+                {F.thumbnailPick}
+              </button>
+            )}
+            <p id={`${ids}-thumb-help`} className="text-xs text-muted-foreground">
+              {F.thumbnailHelp}
+            </p>
+            {errors.thumbnail && (
+              <p id={`${ids}-thumb-error`} className="text-sm text-destructive">
+                {errors.thumbnail}
+              </p>
+            )}
+          </div>
+
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium" id={`${ids}-people`}>
+                {F.people}
+              </span>
+              {!peopleLocked && <AddPersonMenu people={people} onAdd={(person) => setPeople((p) => [...p, person])} />}
+            </div>
+            {peopleLocked ? (
+              <p className="text-sm text-muted-foreground">{F.peopleInPlan}</p>
+            ) : people.length ? (
+              <ul aria-labelledby={`${ids}-people`} className="grid gap-1 rounded-lg border p-1">
+                {people.map((person) => (
+                  <li key={person.id} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm">
+                    <Avatar size="sm">
+                      <AvatarFallback>{initials(person.name)}</AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 truncate">{person.name}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`${F.removePerson} ${person.name}`}
+                      onClick={() => setPeople((p) => p.filter((x) => x.id !== person.id))}
+                    >
+                      <X />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-muted-foreground">{F.noPeople}</p>
+            )}
+          </div>
+
+        </div>
       </div>
 
       <DialogFooter>
@@ -324,7 +331,7 @@ export function ProjectDetailsDialog({
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       {children}
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-[min(56rem,calc(100vw-4rem))]">
         <DetailsForm key={controlled ? formKey : innerKey} project={project} onDone={() => setOpen(false)} />
       </DialogContent>
     </Dialog>

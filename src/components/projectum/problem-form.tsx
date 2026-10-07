@@ -87,90 +87,99 @@ function ProblemFormBody({ problem, onDone }: { problem?: Problem; onDone: () =>
         <DialogDescription>{F.description}</DialogDescription>
       </DialogHeader>
 
-      <div className="grid gap-2">
-        <Label htmlFor={`${ids}-title`}>{F.title}</Label>
-        <Input
-          id={`${ids}-title`}
-          value={title}
-          maxLength={LIMITS.title}
-          placeholder={F.titlePlaceholder}
-          aria-invalid={errors.title ? true : undefined}
-          aria-describedby={describe("title")}
-          onChange={(e) => setTitle(e.target.value)}
-        />
-        <FieldError id={`${ids}-title-error`} text={errors.title} />
-      </div>
+      <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+        <div className="grid content-start gap-5">
+          <div className="grid gap-2">
+            <Label htmlFor={`${ids}-title`}>{F.title}</Label>
+            <Input
+              id={`${ids}-title`}
+              value={title}
+              maxLength={LIMITS.title}
+              placeholder={F.titlePlaceholder}
+              aria-invalid={errors.title ? true : undefined}
+              aria-describedby={describe("title")}
+              onChange={(e) => setTitle(e.target.value)}
+            />
+            <FieldError id={`${ids}-title-error`} text={errors.title} />
+          </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor={`${ids}-summary`}>{F.summary}</Label>
-        <Input
-          id={`${ids}-summary`}
-          value={summary}
-          maxLength={LIMITS.summary}
-          placeholder={F.summaryPlaceholder}
-          aria-invalid={errors.summary ? true : undefined}
-          aria-describedby={describe("summary")}
-          onChange={(e) => setSummary(e.target.value)}
-        />
-        <FieldError id={`${ids}-summary-error`} text={errors.summary} />
-      </div>
+          <div className="grid gap-2">
+            <Label htmlFor={`${ids}-summary`}>{F.summary}</Label>
+            <Input
+              id={`${ids}-summary`}
+              value={summary}
+              maxLength={LIMITS.summary}
+              placeholder={F.summaryPlaceholder}
+              aria-invalid={errors.summary ? true : undefined}
+              aria-describedby={describe("summary")}
+              onChange={(e) => setSummary(e.target.value)}
+            />
+            <FieldError id={`${ids}-summary-error`} text={errors.summary} />
+          </div>
 
-      <fieldset className="grid gap-2" aria-describedby={describe("fields", true)}>
-        <legend className="mb-2 text-sm font-medium">{F.fields}</legend>
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          {FIELDS.map((f, i) => (
-            <label key={f} className="flex items-center gap-2 text-sm">
-              <Checkbox
-                id={i === 0 ? `${ids}-fields` : undefined}
-                checked={fields.includes(f)}
-                onCheckedChange={(on) => setFields((list) => (on ? [...list, f] : list.filter((x) => x !== f)))}
-              />
-              {P.fields[f]}
-            </label>
-          ))}
+          <fieldset className="grid gap-2" aria-describedby={describe("fields", true)}>
+            <legend className="mb-2 text-sm font-medium">{F.fields}</legend>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              {FIELDS.map((f, i) => (
+                <label key={f} className="flex items-center gap-2 text-sm">
+                  <Checkbox
+                    id={i === 0 ? `${ids}-fields` : undefined}
+                    checked={fields.includes(f)}
+                    onCheckedChange={(on) => setFields((list) => (on ? [...list, f] : list.filter((x) => x !== f)))}
+                  />
+                  {P.fields[f]}
+                </label>
+              ))}
+            </div>
+            <p id={`${ids}-fields-help`} className="text-xs text-muted-foreground">
+              {F.fieldsHelp}
+            </p>
+            <FieldError id={`${ids}-fields-error`} text={errors.fields} />
+          </fieldset>
+
+          <div className="grid gap-2 sm:max-w-56">
+            <Label htmlFor={`${ids}-deadline`}>{F.deadline}</Label>
+            <Input
+              id={`${ids}-deadline`}
+              type="date"
+              value={deadline}
+              aria-describedby={`${ids}-deadline-help`}
+              onChange={(e) => setDeadline(e.target.value)}
+            />
+            <p id={`${ids}-deadline-help`} className="text-xs text-muted-foreground">
+              {F.deadlineHelp}
+            </p>
+          </div>
+
         </div>
-        <p id={`${ids}-fields-help`} className="text-xs text-muted-foreground">
-          {F.fieldsHelp}
-        </p>
-        <FieldError id={`${ids}-fields-error`} text={errors.fields} />
-      </fieldset>
+        <div className="grid content-start gap-5">
+          <div className="grid gap-2">
+            <Label htmlFor={`${ids}-details`}>{F.details}</Label>
+            <Textarea
+              id={`${ids}-details`}
+              value={details}
+              rows={9}
+              className="min-h-44"
+              maxLength={LIMITS.details}
+              placeholder={F.detailsPlaceholder}
+              onChange={(e) => setDetails(e.target.value)}
+            />
+          </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor={`${ids}-details`}>{F.details}</Label>
-        <Textarea
-          id={`${ids}-details`}
-          value={details}
-          rows={5}
-          maxLength={LIMITS.details}
-          placeholder={F.detailsPlaceholder}
-          onChange={(e) => setDetails(e.target.value)}
-        />
-      </div>
+          <div className="grid gap-2">
+            <Label htmlFor={`${ids}-deliverable`}>{F.deliverable}</Label>
+            <Textarea
+              id={`${ids}-deliverable`}
+              value={deliverable}
+              rows={4}
+              className="min-h-24"
+              maxLength={LIMITS.deliverable}
+              placeholder={F.deliverablePlaceholder}
+              onChange={(e) => setDeliverable(e.target.value)}
+            />
+          </div>
 
-      <div className="grid gap-2">
-        <Label htmlFor={`${ids}-deliverable`}>{F.deliverable}</Label>
-        <Textarea
-          id={`${ids}-deliverable`}
-          value={deliverable}
-          rows={2}
-          maxLength={LIMITS.deliverable}
-          placeholder={F.deliverablePlaceholder}
-          onChange={(e) => setDeliverable(e.target.value)}
-        />
-      </div>
-
-      <div className="grid gap-2 sm:max-w-56">
-        <Label htmlFor={`${ids}-deadline`}>{F.deadline}</Label>
-        <Input
-          id={`${ids}-deadline`}
-          type="date"
-          value={deadline}
-          aria-describedby={`${ids}-deadline-help`}
-          onChange={(e) => setDeadline(e.target.value)}
-        />
-        <p id={`${ids}-deadline-help`} className="text-xs text-muted-foreground">
-          {F.deadlineHelp}
-        </p>
+        </div>
       </div>
 
       {errors.form && (
@@ -201,7 +210,7 @@ export function ProblemFormDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-[min(64rem,calc(100vw-4rem))]">
         {open && <ProblemFormBody problem={problem} onDone={() => onOpenChange(false)} />}
       </DialogContent>
     </Dialog>

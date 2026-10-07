@@ -113,194 +113,208 @@ function ClaimFormBody({ problem, onDone }: { problem?: Problem; onDone: () => v
           <h3 id={`${ids}-h-project`} className="text-base font-medium">
             {PR.heading}
           </h3>
-          <div className="grid gap-2">
-            <Label htmlFor={`${ids}-title`}>{PF.title}</Label>
-            <Input
-              id={`${ids}-title`}
-              value={title}
-              maxLength={LIMITS.title}
-              aria-invalid={error?.field === "title" ? true : undefined}
-              onChange={(e) => setTitle(e.target.value)}
-            />
-            {error?.field === "title" && <p className="text-sm text-destructive">{error.text}</p>}
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor={`${ids}-summary`}>{PF.summary}</Label>
-            <Input
-              id={`${ids}-summary`}
-              value={summary}
-              maxLength={LIMITS.summary}
-              aria-invalid={error?.field === "summary" ? true : undefined}
-              onChange={(e) => setSummary(e.target.value)}
-            />
-            {error?.field === "summary" && <p className="text-sm text-destructive">{error.text}</p>}
-          </div>
-          <fieldset className="grid gap-2">
-            <legend className="mb-2 text-sm font-medium">{PF.fields}</legend>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              {FIELDS.map((f, i) => (
-                <label key={f} className="flex items-center gap-2 text-sm">
-                  <Checkbox
-                    id={i === 0 ? `${ids}-fields` : undefined}
-                    checked={fields.includes(f)}
-                    onCheckedChange={(on) => setFields((list) => (on ? [...list, f] : list.filter((x) => x !== f)))}
-                  />
-                  {P.fields[f]}
-                </label>
-              ))}
+          <div className="grid gap-x-8 gap-y-4 md:grid-cols-2">
+            <div className="grid content-start gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor={`${ids}-title`}>{PF.title}</Label>
+                <Input
+                  id={`${ids}-title`}
+                  value={title}
+                  maxLength={LIMITS.title}
+                  aria-invalid={error?.field === "title" ? true : undefined}
+                  onChange={(e) => setTitle(e.target.value)}
+                />
+                {error?.field === "title" && <p className="text-sm text-destructive">{error.text}</p>}
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor={`${ids}-summary`}>{PF.summary}</Label>
+                <Input
+                  id={`${ids}-summary`}
+                  value={summary}
+                  maxLength={LIMITS.summary}
+                  aria-invalid={error?.field === "summary" ? true : undefined}
+                  onChange={(e) => setSummary(e.target.value)}
+                />
+                {error?.field === "summary" && <p className="text-sm text-destructive">{error.text}</p>}
+              </div>
+              <fieldset className="grid gap-2">
+                <legend className="mb-2 text-sm font-medium">{PF.fields}</legend>
+                <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                  {FIELDS.map((f, i) => (
+                    <label key={f} className="flex items-center gap-2 text-sm">
+                      <Checkbox
+                        id={i === 0 ? `${ids}-fields` : undefined}
+                        checked={fields.includes(f)}
+                        onCheckedChange={(on) => setFields((list) => (on ? [...list, f] : list.filter((x) => x !== f)))}
+                      />
+                      {P.fields[f]}
+                    </label>
+                  ))}
+                </div>
+                {error?.field === "fields" && <p className="text-sm text-destructive">{error.text}</p>}
+              </fieldset>
             </div>
-            {error?.field === "fields" && <p className="text-sm text-destructive">{error.text}</p>}
-          </fieldset>
-          <div className="grid gap-2">
-            <Label htmlFor={`${ids}-details`}>{PF.details}</Label>
-            <Textarea
-              id={`${ids}-details`}
-              rows={3}
-              value={details}
-              maxLength={LIMITS.details}
-              onChange={(e) => setDetails(e.target.value)}
-            />
+            <div className="grid content-start gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor={`${ids}-details`}>{PF.details}</Label>
+                <Textarea
+                  id={`${ids}-details`}
+                  rows={7}
+                  className="min-h-40"
+                  value={details}
+                  maxLength={LIMITS.details}
+                  onChange={(e) => setDetails(e.target.value)}
+                />
+              </div>
+            </div>
           </div>
         </section>
       )}
 
       {!problem && <h3 className="-mb-2 text-base font-medium">{PR.planHeading}</h3>}
 
-      <div className="grid gap-2">
-        <Label htmlFor={`${ids}-approach`}>{F.approach}</Label>
-        <Textarea
-          id={`${ids}-approach`}
-          value={approach}
-          rows={4}
-          maxLength={LIMITS.approach}
-          placeholder={F.approachPlaceholder}
-          aria-invalid={error?.field === "approach" ? true : undefined}
-          aria-describedby={error?.field === "approach" ? `${ids}-approach-error` : undefined}
-          onChange={(e) => setApproach(e.target.value)}
-        />
-        {error?.field === "approach" && (
-          <p id={`${ids}-approach-error`} className="text-sm text-destructive">
-            {error.text}
-          </p>
-        )}
-      </div>
+      <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+        <div className="grid content-start gap-5">
+          <div className="grid gap-2">
+            <Label htmlFor={`${ids}-approach`}>{F.approach}</Label>
+            <Textarea
+              id={`${ids}-approach`}
+              value={approach}
+              rows={8}
+              className="min-h-40"
+              maxLength={LIMITS.approach}
+              placeholder={F.approachPlaceholder}
+              aria-invalid={error?.field === "approach" ? true : undefined}
+              aria-describedby={error?.field === "approach" ? `${ids}-approach-error` : undefined}
+              onChange={(e) => setApproach(e.target.value)}
+            />
+            {error?.field === "approach" && (
+              <p id={`${ids}-approach-error`} className="text-sm text-destructive">
+                {error.text}
+              </p>
+            )}
+          </div>
 
-      <fieldset className="grid gap-3" aria-describedby={`${ids}-m-help`}>
-        <legend className="mb-1 text-sm font-medium">{F.milestones}</legend>
-        <p id={`${ids}-m-help`} className="-mt-2 text-xs text-muted-foreground">
-          {F.milestonesHelp}
-        </p>
-        <ol className="grid gap-3">
-          {milestones.map((m, i) => (
-            <li key={i} className="grid grid-cols-[1.5rem_1fr_auto] items-start gap-2 rounded-lg border p-3">
-              <span className="pt-2 text-sm text-muted-foreground tabular-nums">{i + 1}.</span>
-              <div className="grid gap-2">
-                <Input
-                  id={`${ids}-m${i}-title`}
-                  aria-label={`${F.milestoneTitle} ${i + 1}`}
-                  value={m.title}
-                  maxLength={LIMITS.milestoneTitle}
-                  placeholder={i === 0 ? F.milestoneTitlePlaceholder : F.milestoneTitle}
-                  aria-invalid={error?.field === "milestones" && !m.title.trim() ? true : undefined}
-                  onChange={(e) => setMilestone(i, { title: e.target.value })}
-                />
-                <Input
-                  aria-label={`${F.milestoneCriterion} ${i + 1}`}
-                  value={m.criterion}
-                  maxLength={LIMITS.milestoneCriterion}
-                  placeholder={i === 0 ? F.milestoneCriterionPlaceholder : F.milestoneCriterion}
-                  aria-invalid={error?.field === "milestones" && !m.criterion.trim() ? true : undefined}
-                  onChange={(e) => setMilestone(i, { criterion: e.target.value })}
-                />
-              </div>
+          <div className="grid gap-2 sm:max-w-56">
+            <Label htmlFor={`${ids}-finish`}>{F.finishBy}</Label>
+            <Input id={`${ids}-finish`} type="date" value={finishBy} onChange={(e) => setFinishBy(e.target.value)} />
+            <p className="text-xs text-muted-foreground">{F.finishByHelp}</p>
+          </div>
+
+          <div className="grid gap-2">
+            <div className="flex items-center justify-between gap-2">
+              <span id={`${ids}-team`} className="text-sm font-medium">
+                {F.teammates}
+              </span>
+              <DropdownMenu>
+                <DropdownMenuTrigger
+                  render={
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={!available.length || teammates.length >= LIMITS.teammates}
+                    />
+                  }
+                >
+                  <UserPlus />
+                  {F.addTeammate}
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="max-h-72 min-w-48 overflow-y-auto">
+                  {available.map((p) => (
+                    <DropdownMenuItem key={p.id} onClick={() => setTeammates((t) => [...t, { id: p.id, name: p.name }])}>
+                      <Avatar size="sm">
+                        <AvatarFallback>{initials(p.name)}</AvatarFallback>
+                      </Avatar>
+                      {p.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+            {teammates.length ? (
+              <ul aria-labelledby={`${ids}-team`} className="grid gap-1 rounded-lg border p-1">
+                {teammates.map((t) => (
+                  <li key={t.id} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm">
+                    <Avatar size="sm">
+                      <AvatarFallback>{initials(t.name)}</AvatarFallback>
+                    </Avatar>
+                    <span className="flex-1 truncate">{t.name}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon-sm"
+                      aria-label={`${F.removeTeammate} ${t.name}`}
+                      onClick={() => setTeammates((list) => list.filter((x) => x.id !== t.id))}
+                    >
+                      <X />
+                    </Button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-xs text-muted-foreground">{F.teammatesHelp}</p>
+            )}
+          </div>
+
+        </div>
+        <div className="grid content-start gap-5">
+          <fieldset className="grid gap-3" aria-describedby={`${ids}-m-help`}>
+            <legend className="mb-1 text-sm font-medium">{F.milestones}</legend>
+            <p id={`${ids}-m-help`} className="-mt-2 text-xs text-muted-foreground">
+              {F.milestonesHelp}
+            </p>
+            <ol className="grid gap-3">
+              {milestones.map((m, i) => (
+                <li key={i} className="grid grid-cols-[1.5rem_1fr_auto] items-start gap-2 rounded-lg border p-3">
+                  <span className="pt-2 text-sm text-muted-foreground tabular-nums">{i + 1}.</span>
+                  <div className="grid gap-2">
+                    <Input
+                      id={`${ids}-m${i}-title`}
+                      aria-label={`${F.milestoneTitle} ${i + 1}`}
+                      value={m.title}
+                      maxLength={LIMITS.milestoneTitle}
+                      placeholder={i === 0 ? F.milestoneTitlePlaceholder : F.milestoneTitle}
+                      aria-invalid={error?.field === "milestones" && !m.title.trim() ? true : undefined}
+                      onChange={(e) => setMilestone(i, { title: e.target.value })}
+                    />
+                    <Input
+                      aria-label={`${F.milestoneCriterion} ${i + 1}`}
+                      value={m.criterion}
+                      maxLength={LIMITS.milestoneCriterion}
+                      placeholder={i === 0 ? F.milestoneCriterionPlaceholder : F.milestoneCriterion}
+                      aria-invalid={error?.field === "milestones" && !m.criterion.trim() ? true : undefined}
+                      onChange={(e) => setMilestone(i, { criterion: e.target.value })}
+                    />
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon-sm"
+                    aria-label={`${F.removeMilestone} ${i + 1}`}
+                    disabled={milestones.length === 1}
+                    onClick={() => setMilestones((list) => list.filter((_, j) => j !== i))}
+                  >
+                    <Trash2 />
+                  </Button>
+                </li>
+              ))}
+            </ol>
+            {error?.field === "milestones" && <p className="text-sm text-destructive">{error.text}</p>}
+            {milestones.length < LIMITS.milestones && (
               <Button
                 type="button"
-                variant="ghost"
-                size="icon-sm"
-                aria-label={`${F.removeMilestone} ${i + 1}`}
-                disabled={milestones.length === 1}
-                onClick={() => setMilestones((list) => list.filter((_, j) => j !== i))}
+                variant="outline"
+                size="sm"
+                className="justify-self-start"
+                onClick={() => setMilestones((list) => [...list, { title: "", criterion: "" }])}
               >
-                <Trash2 />
+                <Plus />
+                {F.addMilestone}
               </Button>
-            </li>
-          ))}
-        </ol>
-        {error?.field === "milestones" && <p className="text-sm text-destructive">{error.text}</p>}
-        {milestones.length < LIMITS.milestones && (
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="justify-self-start"
-            onClick={() => setMilestones((list) => [...list, { title: "", criterion: "" }])}
-          >
-            <Plus />
-            {F.addMilestone}
-          </Button>
-        )}
-      </fieldset>
-
-      <div className="grid gap-2 sm:max-w-56">
-        <Label htmlFor={`${ids}-finish`}>{F.finishBy}</Label>
-        <Input id={`${ids}-finish`} type="date" value={finishBy} onChange={(e) => setFinishBy(e.target.value)} />
-        <p className="text-xs text-muted-foreground">{F.finishByHelp}</p>
-      </div>
-
-      <div className="grid gap-2">
-        <div className="flex items-center justify-between gap-2">
-          <span id={`${ids}-team`} className="text-sm font-medium">
-            {F.teammates}
-          </span>
-          <DropdownMenu>
-            <DropdownMenuTrigger
-              render={
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  disabled={!available.length || teammates.length >= LIMITS.teammates}
-                />
-              }
-            >
-              <UserPlus />
-              {F.addTeammate}
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="max-h-72 min-w-48 overflow-y-auto">
-              {available.map((p) => (
-                <DropdownMenuItem key={p.id} onClick={() => setTeammates((t) => [...t, { id: p.id, name: p.name }])}>
-                  <Avatar size="sm">
-                    <AvatarFallback>{initials(p.name)}</AvatarFallback>
-                  </Avatar>
-                  {p.name}
-                </DropdownMenuItem>
-              ))}
-            </DropdownMenuContent>
-          </DropdownMenu>
+            )}
+          </fieldset>
         </div>
-        {teammates.length ? (
-          <ul aria-labelledby={`${ids}-team`} className="grid gap-1 rounded-lg border p-1">
-            {teammates.map((t) => (
-              <li key={t.id} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm">
-                <Avatar size="sm">
-                  <AvatarFallback>{initials(t.name)}</AvatarFallback>
-                </Avatar>
-                <span className="flex-1 truncate">{t.name}</span>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon-sm"
-                  aria-label={`${F.removeTeammate} ${t.name}`}
-                  onClick={() => setTeammates((list) => list.filter((x) => x.id !== t.id))}
-                >
-                  <X />
-                </Button>
-              </li>
-            ))}
-          </ul>
-        ) : (
-          <p className="text-xs text-muted-foreground">{F.teammatesHelp}</p>
-        )}
       </div>
 
       {error && !error.field && (
@@ -330,7 +344,7 @@ export function ClaimFormDialog({
 }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-[min(64rem,calc(100vw-4rem))]">
         {open && <ClaimFormBody problem={problem} onDone={() => onOpenChange(false)} />}
       </DialogContent>
     </Dialog>
@@ -341,7 +355,7 @@ export function ClaimFormDialog({
 export function ProposalDialog({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-2xl">
+      <DialogContent className="sm:max-w-[min(64rem,calc(100vw-4rem))]">
         {open && <ClaimFormBody onDone={() => onOpenChange(false)} />}
       </DialogContent>
     </Dialog>
