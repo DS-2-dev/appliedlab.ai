@@ -26,7 +26,15 @@ The public site is served by GitHub Pages at appliedlab.ai:
 npm run build:pages   # writes out/
 ```
 
-`.github/workflows/pages.yml` runs it and deploys on every push to main.
+`.github/workflows/pages.yml` runs it and deploys on every push to main of
+the live repo, DS-2-dev/appliedlab.ai, which holds only this folder. Publish
+to it with:
+
+```bash
+scripts/publish-live.sh "What changed"
+```
+
+It refuses to push unless the live copy matches this folder exactly.
 
 ## Copy
 
