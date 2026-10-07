@@ -3,15 +3,16 @@
 //
 // - POST /: Ask the Lab's questions, with the shared
 //   validation, instructions and facts (src/lib/ask.ts).
-// - /auth/*, /me and /projects: Projectum accounts and their saved projects,
+// - /auth/*, /me and /people: Projectum accounts,
 //   in the DB D1 database (accounts.ts). GET /approve is the link that
 //   approves a new partner, opened from an email, so it has no origin.
 //   GET /auth/google/start and /auth/google/callback are Google sign-in,
 //   also opened by the browser itself.
-// - /problems, /claims, /queue and /partners: the pipeline (pipeline.ts).
+// - /problems, /claims, /queue, /partners, /proposals and /projects: the
+//   pipeline and the boards it opens (pipeline.ts).
 //
-// For the chat there are
-// two engines. With an ANTHROPIC_API_KEY secret it asks Claude. Without one it uses Cloudflare Workers AI (Llama 3.3
+// For the chat there are two engines. With an ANTHROPIC_API_KEY secret it
+// asks Claude. Without one it uses Cloudflare Workers AI (Llama 3.3
 // 70B), which is free up to Cloudflare's daily allowance (about 70
 // questions a day at this prompt's size); past that, requests fail and the
 // chat shows its email note, and the free plan never bills.

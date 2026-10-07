@@ -11,11 +11,10 @@
 // the site (GitHub Pages) and this Worker are on different domains. Only the
 // token's hash is stored.
 //
-// Who sees what: members and reps see every project, partners only their
-// own. Only a project's owner, or a rep, can change or delete it.
+// Problems, claims and project boards are in pipeline.ts.
 
 import { looksLikeEmail, normalizeEmail, roleForEmail, type AccountRole } from "@/lib/email-rules";
-import { cleanProjects, isThumbnail, type Project } from "@/lib/projects";
+import { isThumbnail } from "@/lib/projects";
 
 export interface AccountEnv {
   DB: D1Database;
@@ -313,65 +312,6 @@ export async function sessionUser(req: Request, env: AccountEnv): Promise<UserRo
   return user && user.status !== "removed" ? user : null;
 }
 
-interface ProjectRow {
-  id: string;
-  owner_id: string;
-  data: string;
-  owner_name: string;
-  owner_email: string;
-  owner_role: AccountRole;
-}
-
-function projectOut(row: ProjectRow) {
-  const [project] = cleanProjects([JSON.parse(row.data)]);
-  if (!project) return null;
-  return {
-    project,
-    owner: { id: row.owner_id, name: row.owner_name, email: row.owner_email, role: row.owner_role },
-  };
-}
-
-async function listProjects(env: AccountEnv, user: UserRow, json: Json): Promise<Response> {
-  const select =
-    "SELECT p.id, p.owner_id, p.data, u.name AS owner_name, u.email AS owner_email, u.role AS owner_role " +
-    "FROM projects p JOIN users u ON u.id = p.owner_id";
-  const { results } =
-    user.role === "partner"
-      ? await env.DB.prepare(`${select} WHERE p.owner_id = ? ORDER BY p.created_at`).bind(user.id).all<ProjectRow>()
-      : await env.DB.prepare(`${select} WHERE u.status = 'active' ORDER BY p.created_at`).all<ProjectRow>();
-  return json({ projects: results.map(projectOut).filter(Boolean) });
-}
-
-async function saveProject(req: Request, env: AccountEnv, user: UserRow, id: string, json: Json): Promise<Response> {
-  if (user.status !== "active") return json({ error: "pending" }, 403);
-  const body = (await req.json().catch(() => null)) as { project?: unknown } | null;
-  const [project] = cleanProjects([body?.project]) as Project[];
-  if (!project || project.id !== id) return json({ error: "project" }, 400);
-
-  const row = await env.DB.prepare("SELECT owner_id FROM projects WHERE id = ?").bind(id).first<{ owner_id: string }>();
-  const now = new Date().toISOString();
-  if (!row) {
-    await env.DB.prepare("INSERT INTO projects (id, owner_id, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?)")
-      .bind(id, user.id, JSON.stringify(project), now, now)
-      .run();
-  } else if (row.owner_id === user.id || user.role === "rep") {
-    await env.DB.prepare("UPDATE projects SET data = ?, updated_at = ? WHERE id = ?")
-      .bind(JSON.stringify(project), now, id)
-      .run();
-  } else {
-    return json({ error: "forbidden" }, 403);
-  }
-  return json({ project });
-}
-
-async function deleteProject(env: AccountEnv, user: UserRow, id: string, json: Json): Promise<Response> {
-  const row = await env.DB.prepare("SELECT owner_id FROM projects WHERE id = ?").bind(id).first<{ owner_id: string }>();
-  if (!row) return json({ ok: true });
-  if (row.owner_id !== user.id && user.role !== "rep") return json({ error: "forbidden" }, 403);
-  await env.DB.prepare("DELETE FROM projects WHERE id = ?").bind(id).run();
-  return json({ ok: true });
-}
-
 async function updateMe(req: Request, env: AccountEnv, user: UserRow, json: Json): Promise<Response> {
   const body = (await req.json().catch(() => null)) as { name?: unknown; avatar?: unknown } | null;
   if (!body) return json({ error: "body" }, 400);
@@ -399,7 +339,7 @@ async function listPeople(env: AccountEnv, user: UserRow, json: Json): Promise<R
   return json({ people: results });
 }
 
-// Everything under /auth/ and /me and /projects. Returns null for any other
+// Everything under /auth/, /me and /people. Returns null for any other
 // path, so the caller can route it elsewhere.
 export async function handleAccounts(
   req: Request,
@@ -414,8 +354,7 @@ export async function handleAccounts(
   if (pathname === "/auth/start" && req.method === "POST") return startLogin(req, env, ip, json);
   if (pathname === "/auth/verify" && req.method === "POST") return verifyLogin(req, env, ip, json);
 
-  const isAccountPath =
-    pathname === "/me" || pathname === "/people" || pathname === "/auth/logout" || pathname.startsWith("/projects");
+  const isAccountPath = pathname === "/me" || pathname === "/people" || pathname === "/auth/logout";
   if (!isAccountPath) return null;
 
   const user = await sessionUser(req, env);
@@ -429,13 +368,6 @@ export async function handleAccounts(
   if (pathname === "/me" && req.method === "GET") return json({ user: publicUser(user, env) });
   if (pathname === "/me" && req.method === "PATCH") return updateMe(req, env, user, json);
   if (pathname === "/people" && req.method === "GET") return listPeople(env, user, json);
-  if (pathname === "/projects" && req.method === "GET") {
-    if (user.status !== "active") return json({ projects: [] });
-    return listProjects(env, user, json);
-  }
-  const match = pathname.match(/^\/projects\/([\w-]{1,64})$/);
-  if (match && req.method === "PUT") return saveProject(req, env, user, match[1], json);
-  if (match && req.method === "DELETE") return deleteProject(env, user, match[1], json);
   return json({ error: "not-found" }, 404);
 }
 

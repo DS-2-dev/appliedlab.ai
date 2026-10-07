@@ -9,10 +9,18 @@
 // - Approvers (reps and the Lab's approver, isApprover) see the queue,
 //   approve or deny claims, and approve new partners. Reps can also post and
 //   edit any problem.
+// - Members can also propose their own project: a problem of their own with
+//   a plan, kept off the Notice Board, that the approver approves like any
+//   claim.
+// An approved claim opens its team's board, a project (src/lib/projects.ts)
+// that starts in Solidifying with the approved plan. The team works on it;
+// approvers can too; everyone else can read it, and partners only for their
+// own problems.
 // The approver hears about each new claim by email, and the team hears the
 // decision.
 
 import { type AccountEnv, type Json, type UserRow, isApprover, sendEmail, sessionUser } from "./accounts";
+import { cleanDescription, cleanName, cleanProjects, type Project } from "@/lib/projects";
 import {
   type ClaimDraft,
   type ClaimStatus,
@@ -38,6 +46,7 @@ interface ProblemRow {
   deliverable: string;
   deadline: string;
   status: ProblemStatus;
+  origin: "partner" | "member";
   created_at: string;
   approved: number;
   pending: number;
@@ -52,6 +61,7 @@ interface ClaimRow {
   review_note: string;
   reviewed_at: string | null;
   created_at: string;
+  project_id: string | null;
 }
 
 type Person = { id: string; name: string };
@@ -77,6 +87,7 @@ function problemOut(row: ProblemRow) {
     deliverable: row.deliverable,
     deadline: row.deadline,
     status: row.status,
+    origin: row.origin,
     createdAt: row.created_at,
     owner: { id: row.owner_id, name: row.owner_name },
     counts: { approved: row.approved, pending: row.pending },
@@ -85,7 +96,7 @@ function problemOut(row: ProblemRow) {
 
 const PROBLEM_SELECT =
   "SELECT p.id, p.owner_id, u.name AS owner_name, p.title, p.summary, p.details, p.fields, p.deliverable, p.deadline, " +
-  "p.status, p.created_at, " +
+  "p.status, p.origin, p.created_at, " +
   "(SELECT COUNT(*) FROM claims c WHERE c.problem_id = p.id AND c.status = 'approved') AS approved, " +
   "(SELECT COUNT(*) FROM claims c WHERE c.problem_id = p.id AND c.status = 'pending') AS pending " +
   "FROM problems p JOIN users u ON u.id = p.owner_id";
@@ -122,12 +133,14 @@ function claimOut(row: ClaimRow, team: Person[]) {
     reviewedAt: row.reviewed_at,
     createdAt: row.created_at,
     plan: { approach: plan.approach, milestones: plan.milestones, finishBy: plan.finishBy },
+    projectId: row.project_id,
     team,
   };
 }
 
 const CLAIM_SELECT =
-  "SELECT c.id, c.problem_id, c.owner_id, c.plan, c.status, c.review_note, c.reviewed_at, c.created_at FROM claims c";
+  "SELECT c.id, c.problem_id, c.owner_id, c.plan, c.status, c.review_note, c.reviewed_at, c.created_at, " +
+  "(SELECT pj.id FROM projects pj WHERE pj.claim_id = c.id) AS project_id FROM claims c";
 
 // --- Problems ------------------------------------------------------------------
 
@@ -135,7 +148,9 @@ async function listProblems(env: AccountEnv, user: UserRow, json: Json): Promise
   const { results } =
     user.role === "partner"
       ? await env.DB.prepare(`${PROBLEM_SELECT} WHERE p.owner_id = ? ORDER BY p.created_at DESC`).bind(user.id).all<ProblemRow>()
-      : await env.DB.prepare(`${PROBLEM_SELECT} WHERE p.status = 'open' AND u.status = 'active' ORDER BY p.created_at DESC`).all<ProblemRow>();
+      : await env.DB.prepare(
+          `${PROBLEM_SELECT} WHERE p.status = 'open' AND p.origin = 'partner' AND u.status = 'active' ORDER BY p.created_at DESC`,
+        ).all<ProblemRow>();
   // The signed-in member's own claims, so the board can mark them.
   const mine = await env.DB.prepare(
     "SELECT c.problem_id, c.status FROM claims c JOIN claim_members m ON m.claim_id = c.id WHERE m.user_id = ? AND c.status IN ('pending', 'approved')",
@@ -203,12 +218,36 @@ async function createClaim(req: Request, env: AccountEnv, user: UserRow, problem
   const row = await getProblem(env, problemId);
   if (!row) return json({ error: "not-found" }, 404);
   if (row.status !== "open") return json({ error: "closed" }, 409);
+  // A member's own project is theirs; only partners' problems are claimed.
+  if (row.origin !== "partner") return json({ error: "forbidden" }, 403);
 
   const draft: ClaimDraft = cleanClaim(await req.json().catch(() => null));
   const issues = claimIssues(draft);
   if (issues.length) return json({ error: "plan", issues }, 400);
 
-  // The team: the claimant plus active members they named.
+  const made = await insertClaim(env, user, problemId, draft, json);
+  if (made instanceof Response) return made;
+  await sendEmail(
+    env,
+    env.APPROVER_EMAIL,
+    `New claim on "${row.title}"`,
+    `${user.name} claimed "${row.title}" (${row.owner_name}) with an action plan of ${draft.milestones.length} milestone${
+      draft.milestones.length === 1 ? "" : "s"
+    }.\n\nReview it in Approvals:\n${env.SITE_URL}/projectum?view=queue\n\nApplied AI Lab`,
+  );
+  return json({ id: made }, 201);
+}
+
+// The claim and its team, once the plan has been checked. The team is the
+// claimant plus active members they named, and nobody on it may already
+// have a claim in play on the problem. Returns the new claim's id.
+async function insertClaim(
+  env: AccountEnv,
+  user: UserRow,
+  problemId: string,
+  draft: ClaimDraft,
+  json: Json,
+): Promise<string | Response> {
   const others = draft.teammates.filter((t) => t !== user.id);
   if (others.length) {
     const marks = others.map(() => "?").join(",");
@@ -221,7 +260,6 @@ async function createClaim(req: Request, env: AccountEnv, user: UserRow, problem
   }
   const team = [user.id, ...others];
 
-  // One claim in play per person per problem.
   const marks = team.map(() => "?").join(",");
   const busy = await env.DB.prepare(
     `SELECT m.user_id FROM claims c JOIN claim_members m ON m.claim_id = c.id WHERE c.problem_id = ? AND c.status IN ('pending', 'approved') AND m.user_id IN (${marks}) LIMIT 1`,
@@ -241,16 +279,41 @@ async function createClaim(req: Request, env: AccountEnv, user: UserRow, problem
     ),
     ...team.map((m) => env.DB.prepare("INSERT INTO claim_members (claim_id, user_id) VALUES (?, ?)").bind(id, m)),
   ]);
+  return id;
+}
 
+// A member's own project: a problem of their own, kept off the Notice Board,
+// and the claim on it, both in one go. The approver approves it like any
+// claim.
+async function propose(req: Request, env: AccountEnv, user: UserRow, json: Json): Promise<Response> {
+  if (user.status !== "active" || user.role !== "member") return json({ error: "forbidden" }, 403);
+  const body = ((await req.json().catch(() => null)) ?? {}) as Record<string, unknown>;
+  const problem = cleanProblem(body.problem);
+  const plan = cleanClaim(body.plan);
+  const issues = [...problemIssues(problem), ...claimIssues(plan)];
+  if (issues.length) return json({ error: "proposal", issues }, 400);
+  const problemId = crypto.randomUUID();
+  const at = now();
+  await env.DB.prepare(
+    "INSERT INTO problems (id, owner_id, title, summary, details, fields, deliverable, deadline, status, origin, created_at, updated_at) " +
+      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'open', 'member', ?, ?)",
+  )
+    .bind(problemId, user.id, problem.title, problem.summary, problem.details, JSON.stringify(problem.fields), problem.deliverable, problem.deadline, at, at)
+    .run();
+  const made = await insertClaim(env, user, problemId, plan, json);
+  if (made instanceof Response) {
+    await env.DB.prepare("DELETE FROM problems WHERE id = ?").bind(problemId).run();
+    return made;
+  }
   await sendEmail(
     env,
     env.APPROVER_EMAIL,
-    `New claim on "${row.title}"`,
-    `${user.name} claimed "${row.title}" (${row.owner_name}) with an action plan of ${draft.milestones.length} milestone${
-      draft.milestones.length === 1 ? "" : "s"
-    }.\n\nReview it in the queue:\n${env.SITE_URL}/projectum?view=queue\n\nApplied AI Lab`,
+    `New project proposal: "${problem.title}"`,
+    `${user.name} proposed their own project, "${problem.title}", with an action plan of ${plan.milestones.length} milestone${
+      plan.milestones.length === 1 ? "" : "s"
+    }.\n\nReview it in Approvals:\n${env.SITE_URL}/projectum?view=queue\n\nApplied AI Lab`,
   );
-  return json({ id }, 201);
+  return json({ id: made, problemId }, 201);
 }
 
 async function myClaims(env: AccountEnv, user: UserRow, json: Json): Promise<Response> {
@@ -313,6 +376,7 @@ async function reviewClaim(req: Request, env: AccountEnv, user: UserRow, id: str
     .run();
 
   const problem = await getProblem(env, claim.problem_id);
+  if (decision === "approved" && problem) await openBoard(env, claim, problem);
   const { results } = await env.DB.prepare(
     "SELECT u.email, u.name FROM claim_members m JOIN users u ON u.id = m.user_id WHERE m.claim_id = ?",
   )
@@ -352,16 +416,129 @@ async function approvePartnerInApp(env: AccountEnv, id: string, json: Json): Pro
   return json({ ok: true });
 }
 
+// --- Boards --------------------------------------------------------------------
+
+// The board an approved claim opens: a project in Solidifying, named after
+// the problem, with the team on it and the approved plan as its plan, each
+// milestone a step the claimant owns until the team hands them out.
+async function openBoard(env: AccountEnv, claim: ClaimRow, problem: ProblemRow): Promise<void> {
+  const exists = await env.DB.prepare("SELECT 1 FROM projects WHERE claim_id = ?").bind(claim.id).first();
+  if (exists) return;
+  const plan = cleanClaim(JSON.parse(claim.plan));
+  const team = (await teams(env, [claim.id])).get(claim.id) ?? [];
+  const id = crypto.randomUUID();
+  const draft: Project = {
+    id,
+    name: cleanName(problem.title),
+    description: cleanDescription(problem.summary),
+    thumbnail: null,
+    notesUrl: "",
+    color: null,
+    people: team.map((p) => ({ id: p.id, name: p.name, role: null })),
+    stage: "solidifying",
+    plan: {
+      thesis: plan.approach,
+      reasoning: problem.details || problem.summary,
+      techStack: "",
+      steps: plan.milestones.map((m, i) => ({ id: `m${i + 1}`, text: `${m.title}. ${m.criterion}`, ownerId: claim.owner_id })),
+    },
+    prototype: null,
+    builds: [],
+    history: {},
+    launch: null,
+    roleMeanings: {},
+  };
+  const [project] = cleanProjects([draft]);
+  if (!project) return;
+  const at = now();
+  await env.DB.prepare("INSERT INTO projects (id, owner_id, claim_id, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?)")
+    .bind(id, claim.owner_id, claim.id, JSON.stringify(project), at, at)
+    .run();
+}
+
+interface BoardRow {
+  id: string;
+  owner_id: string;
+  owner_name: string;
+  owner_email: string;
+  owner_role: string;
+  data: string;
+  problem_id: string;
+  on_team: number | null;
+}
+
+// Every board the account can see: partners those on their own problems,
+// everyone else all of them. `onTeam` marks its own team's, and `editable`
+// the ones it can change: its team's, or any for an approver.
+async function listBoards(env: AccountEnv, user: UserRow, json: Json): Promise<Response> {
+  const select =
+    "SELECT pj.id, pj.owner_id, u.name AS owner_name, u.email AS owner_email, u.role AS owner_role, pj.data, c.problem_id, " +
+    "(SELECT 1 FROM claim_members m WHERE m.claim_id = c.id AND m.user_id = ?) AS on_team " +
+    "FROM projects pj JOIN claims c ON c.id = pj.claim_id JOIN problems pr ON pr.id = c.problem_id JOIN users u ON u.id = pj.owner_id " +
+    "WHERE c.status = 'approved'";
+  const { results } =
+    user.role === "partner"
+      ? await env.DB.prepare(`${select} AND pr.owner_id = ? ORDER BY pj.created_at`).bind(user.id, user.id).all<BoardRow>()
+      : await env.DB.prepare(`${select} ORDER BY pj.created_at`).bind(user.id).all<BoardRow>();
+  const approver = isApprover(env, user);
+  return json({
+    projects: results.flatMap((r) => {
+      const [project] = cleanProjects([JSON.parse(r.data)]);
+      return project
+        ? [
+            {
+              project,
+              owner: { id: r.owner_id, name: r.owner_name, email: r.owner_email, role: r.owner_role },
+              problemId: r.problem_id,
+              onTeam: Boolean(r.on_team),
+              editable: Boolean(r.on_team) || approver,
+            },
+          ]
+        : [];
+    }),
+  });
+}
+
+async function boardAccess(env: AccountEnv, user: UserRow, id: string): Promise<"edit" | "none" | "missing"> {
+  const row = await env.DB.prepare(
+    "SELECT pj.claim_id, (SELECT 1 FROM claim_members m WHERE m.claim_id = pj.claim_id AND m.user_id = ?) AS on_team FROM projects pj WHERE pj.id = ?",
+  )
+    .bind(user.id, id)
+    .first<{ claim_id: string; on_team: number | null }>();
+  if (!row) return "missing";
+  return row.on_team || isApprover(env, user) ? "edit" : "none";
+}
+
+async function saveBoard(req: Request, env: AccountEnv, user: UserRow, id: string, json: Json): Promise<Response> {
+  const access = await boardAccess(env, user, id);
+  if (access === "missing") return json({ error: "not-found" }, 404);
+  if (access === "none") return json({ error: "forbidden" }, 403);
+  const body = (await req.json().catch(() => null)) as { project?: unknown } | null;
+  const [project] = cleanProjects([body?.project]);
+  if (!project || project.id !== id) return json({ error: "project" }, 400);
+  await env.DB.prepare("UPDATE projects SET data = ?, updated_at = ? WHERE id = ?").bind(JSON.stringify(project), now(), id).run();
+  return json({ project });
+}
+
+// Only an approver removes a board; a team leaves one by withdrawing its
+// claim.
+async function deleteBoard(env: AccountEnv, user: UserRow, id: string, json: Json): Promise<Response> {
+  if (!isApprover(env, user)) return json({ error: "forbidden" }, 403);
+  await env.DB.prepare("DELETE FROM projects WHERE id = ?").bind(id).run();
+  return json({ ok: true });
+}
+
 // --- Routes --------------------------------------------------------------------
 
-// /problems, /claims, /queue and /partners. Null for any other path.
+// /problems, /claims, /queue, /partners, /proposals and /projects. Null for
+// any other path.
 export async function handlePipeline(
   req: Request,
   env: AccountEnv,
   headers: Record<string, string>,
 ): Promise<Response | null> {
   const { pathname } = new URL(req.url);
-  if (!/^\/(problems|claims|queue|partners)(\/|$)/.test(pathname)) return null;
+  if (!/^\/(problems|claims|queue|partners|proposals|projects)(\/|$)/.test(pathname)) return null;
   const json: Json = (body, status = 200) =>
     Response.json(body, { status, headers: { ...headers, "cache-control": "no-store" } });
 
@@ -378,6 +555,12 @@ export async function handlePipeline(
   if (match && m === "PATCH") return updateProblem(req, env, user, match[1], json);
   match = pathname.match(/^\/problems\/([\w-]{1,64})\/claims$/);
   if (match && m === "POST") return createClaim(req, env, user, match[1], json);
+
+  if (pathname === "/proposals" && m === "POST") return propose(req, env, user, json);
+  if (pathname === "/projects" && m === "GET") return listBoards(env, user, json);
+  match = pathname.match(/^\/projects\/([\w-]{1,64})$/);
+  if (match && m === "PUT") return saveBoard(req, env, user, match[1], json);
+  if (match && m === "DELETE") return deleteBoard(env, user, match[1], json);
 
   if (pathname === "/claims/mine" && m === "GET") return myClaims(env, user, json);
   match = pathname.match(/^\/claims\/([\w-]{1,64})\/withdraw$/);
