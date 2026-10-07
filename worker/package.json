@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "wrangler dev",
-    "deploy": "wrangler deploy",
+    "deploy": "wrangler d1 migrations apply appliedlab-projectum --remote && wrangler deploy",
     "check": "tsc --noEmit && wrangler deploy --dry-run --outdir dist"
   },
   "devDependencies": {

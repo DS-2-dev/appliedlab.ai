@@ -16,7 +16,6 @@ every project; partners see only their own. Data is in the
 One-time setup, from `worker/`:
 
 ```bash
-npx wrangler d1 migrations apply appliedlab-projectum --remote
 openssl rand -hex 32 | npx wrangler secret put AUTH_SECRET
 npx wrangler secret put RESEND_API_KEY      # from resend.com, see below
 npm run deploy
@@ -99,6 +98,9 @@ The Worker is deployed at `https://appliedlab-ask.now-playing.workers.dev`,
 and `src/lib/site.ts` points the static site at that address. If it ever
 moves, update it there, or set the repo variable `ASK_URL` (Settings > Secrets and variables >
 Actions > Variables) to the new address and re-run the workflow.
+
+`npm run deploy` applies any new database migrations first and deploys only
+if they succeed, so the Worker never runs ahead of its tables.
 
 ## After that
 
