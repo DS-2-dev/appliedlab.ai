@@ -11,6 +11,7 @@ import { useRouter } from "next/navigation";
 import {
   Bell,
   BellRing,
+  AlarmClock,
   CalendarCheck,
   CircleCheck,
   CircleX,
@@ -44,6 +45,7 @@ const ICONS: Record<string, LucideIcon> = {
   "meeting-requested": CalendarCheck,
   selected: Handshake,
   complete: CircleCheck,
+  reminder: AlarmClock,
 };
 
 // "5m", "3h", "2d", then the date.

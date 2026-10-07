@@ -114,6 +114,19 @@ if they succeed, so the Worker never runs ahead of its tables.
 - Allowed sites are `ALLOWED_ORIGINS` in `wrangler.jsonc`; the rate limit
   is `ratelimits` there too.
 
+## Reminders
+
+Once a day, with the health check, `src/reminders.ts`:
+
+- emails `APPROVER_EMAIL` a summary when a claim, submission, meeting
+  request or new partner has waited more than 3 days, and puts it in every
+  approver's bell,
+- tells a team 3 days or less before its deadline (the partner's or its own
+  finish date, whichever comes first),
+- tells a team when its board hasn't changed in 14 days.
+
+Each is sent once, recorded in `reminders_sent`.
+
 ## When something breaks
 
 `ALERT_EMAIL` (in `wrangler.jsonc`) gets an email, from `src/alerts.ts`, when:

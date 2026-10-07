@@ -19,7 +19,8 @@ export type NotificationKind =
   | "meeting-requested"
   | "selected"
   | "complete"
-  | "team-submitted";
+  | "team-submitted"
+  | "reminder";
 
 export async function notify(
   env: AccountEnv,
