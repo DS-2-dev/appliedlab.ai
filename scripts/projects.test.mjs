@@ -31,7 +31,6 @@ import {
   removeProject,
   recolorProject,
   renameProject,
-  sampleProject,
   solidifyProblems,
   solidifyProject,
 } from "../src/lib/projects.ts";
@@ -359,22 +358,6 @@ test("a Live project without a complete launch goes back to Prototype", () => {
   assert.equal(cleanProjects([{ ...live, launch: { ...live.launch, contributions: {} } }])[0].stage, "prototype");
   assert.equal(cleanProjects([{ ...live, stage: "prototype" }])[0].launch, null, "no launch before Live");
   assert.equal(cleanProjects([{ ...live, history: {} }])[0].history.prototype.prototype.githubUrl, GH, "a missing Prototype record is rebuilt");
-});
-
-test("every sample project keeps its stage and what that stage needs", async () => {
-  const { copy } = await import("../src/content/copy.ts");
-  const data = copy.projectum.demo.samples;
-  const samples = data.map(sampleProject);
-  assert.equal(new Set(samples.map((s) => s.id)).size, samples.length, "ids are unique");
-  for (const [i, s] of samples.entries()) {
-    const name = data[i].name;
-    assert.equal(s.stage, data[i].stage, `${name} stays in ${data[i].stage}`);
-    if (s.stage !== "brainstorming") assert.ok(s.plan && s.people.every((p) => p.role), `${name} has a plan and roles`);
-    if (s.stage === "prototype" || s.stage === "live") assert.ok(s.prototype && s.builds.length >= 1, `${name} has builds`);
-    if (s.stage === "live") assert.ok(s.launch, `${name} has a launch`);
-    assert.ok(isNotesUrl(s.notesUrl), `${name} has a notes doc`);
-  }
-  assert.deepEqual([...new Set(samples.map((s) => s.stage))].sort(), ["brainstorming", "live", "prototype", "solidifying"]);
 });
 
 test("stored lists are cleaned before they render", () => {

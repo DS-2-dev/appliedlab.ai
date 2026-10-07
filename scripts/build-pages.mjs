@@ -1,10 +1,8 @@
 // Builds the static copy of the site that GitHub Pages serves, into out/.
 //
-// Pages serves plain files: no server, so no API routes, server actions or
-// proxy. This copies the project into .pages-build/, takes those out, marks
-// the remaining pages static, and runs `next build` there with
-// GITHUB_PAGES=1, which also swaps the server actions for auth-static.ts
-// (see next.config.ts). The source tree is not touched.
+// Pages serves plain files. This copies the project into .pages-build/ and
+// runs `next build` there with GITHUB_PAGES=1, a static export (see
+// next.config.ts). The source tree is not touched.
 //
 //   npm run build:pages
 
@@ -15,10 +13,6 @@ import path from "node:path";
 const root = path.resolve(import.meta.dirname, "..");
 const stage = path.join(root, ".pages-build");
 
-// Routes and files that need a server. The pages that stay (Log in, Sign
-// up, Projectum) switch on STATIC_SITE themselves.
-const SERVER_ONLY = ["src/proxy.ts", "src/app/api", "src/app/reset-password"];
-
 const SKIP = new Set([".git", "package-lock.json", ".next", ".pages-build", "node_modules", "out", "worker"]);
 
 fs.rmSync(stage, { recursive: true, force: true });
@@ -27,22 +21,10 @@ for (const entry of fs.readdirSync(root)) {
 }
 fs.symlinkSync(path.join(root, "node_modules"), path.join(stage, "node_modules"), "dir");
 
-for (const p of SERVER_ONLY) fs.rmSync(path.join(stage, p), { recursive: true, force: true });
-
-// Pages are built once, so "render on every request" becomes "render now".
-for (const file of fs.readdirSync(path.join(stage, "src/app"), { recursive: true })) {
-  if (!/\.(tsx?)$/.test(file)) continue;
-  const full = path.join(stage, "src/app", file);
-  const text = fs.readFileSync(full, "utf8");
-  if (text.includes('dynamic = "force-dynamic"')) {
-    fs.writeFileSync(full, text.replaceAll('dynamic = "force-dynamic"', 'dynamic = "force-static"'));
-  }
-}
-
 execFileSync("npx", ["next", "build"], {
   cwd: stage,
   stdio: "inherit",
-  env: { ...process.env, GITHUB_PAGES: "1", NEXT_PUBLIC_SUPABASE_URL: "", NEXT_PUBLIC_SUPABASE_ANON_KEY: "" },
+  env: { ...process.env, GITHUB_PAGES: "1" },
 });
 
 fs.rmSync(path.join(root, "out"), { recursive: true, force: true });

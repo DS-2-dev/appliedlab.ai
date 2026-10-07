@@ -1,39 +1,22 @@
 // Projectum's Settings, a dialog opened from the profile at the bottom of
-// the sidebar (app-sidebar.tsx). Each section is made here, on the server,
-// and settings-tabs.tsx lays them out, a nav at the left and the chosen one
-// at the right. The account's name, email and picture are read in the
-// browser (profile-fields.tsx, profile-photo.tsx), and so is Log out
-// (account-gate.tsx), since the account lives on the Worker.
+// the sidebar (app-sidebar.tsx). settings-tabs.tsx lays the sections out, a
+// nav at the left and the chosen one at the right. The account's name,
+// email and picture are read in the browser (profile-fields.tsx,
+// profile-photo.tsx), and so is Log out (account-gate.tsx), since the
+// account lives on the Worker.
 
-import { Bot, CalendarCheck, KeyRound, SlidersHorizontal, UserRound } from "lucide-react";
+import { KeyRound, SlidersHorizontal, UserRound } from "lucide-react";
 import { copy } from "@/content/copy";
-import { getSettings } from "@/lib/data";
 import { LogoutButton } from "@/components/projectum/account-gate";
-import { AttendanceGraph } from "@/components/projectum/attendance-graph";
-import { CONNECTOR_LOGOS } from "@/components/projectum/connector-logos";
 import { ProfileFields } from "@/components/projectum/profile-fields";
 import { ProfilePhoto } from "@/components/projectum/profile-photo";
 import { type SettingsSection, SettingsTabs } from "@/components/projectum/settings-tabs";
 import { DarkModeSwitch } from "@/components/projectum/theme-switch";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 
 const P = copy.projectum.settingsPage;
 
-function account(): SettingsSection {
-  return {
-    id: "account",
-    title: P.accountTitle,
-    description: P.accountDescription,
-    icon: <KeyRound />,
-    content: <LogoutButton />,
-  };
-}
-
-export async function SettingsPanel({ dark }: { dark: boolean }) {
-  const { meeting_schedule: schedule } = await getSettings();
-
+export function SettingsPanel({ dark }: { dark: boolean }) {
   const sections: SettingsSection[] = [
     {
       id: "profile",
@@ -63,49 +46,12 @@ export async function SettingsPanel({ dark }: { dark: boolean }) {
       ),
     },
     {
-      // A row per connector with its real mark, each marked Planned with its
-      // Connect button off until the connector exists.
-      id: "agents",
-      title: P.agentsTitle,
-      description: P.agentsDescription,
-      icon: <Bot />,
-      content: (
-        <div data-agent-access="" className="grid gap-2">
-          {P.connectors.map((connector) => {
-            const Logo = CONNECTOR_LOGOS[connector.id];
-            return (
-              <div
-                key={connector.id}
-                data-connector={connector.id}
-                className="flex items-center gap-3 rounded-lg border p-3"
-              >
-                <div className="grid size-9 shrink-0 place-items-center rounded-md border bg-background text-foreground">
-                  <Logo data-connector-logo="" className="size-5" />
-                </div>
-                <div className="grid min-w-0 flex-1 gap-0.5">
-                  <span className="text-sm font-medium">{connector.name}</span>
-                  <span className="text-xs text-muted-foreground">{connector.description}</span>
-                </div>
-                <Badge variant="outline">{P.planned}</Badge>
-                <Button variant="outline" size="sm" disabled aria-label={`${P.connect} ${connector.name}`}>
-                  {P.connect}
-                </Button>
-              </div>
-            );
-          })}
-        </div>
-      ),
+      id: "account",
+      title: P.accountTitle,
+      description: P.accountDescription,
+      icon: <KeyRound />,
+      content: <LogoutButton />,
     },
-    {
-      id: "attendance",
-      title: P.attendanceTitle,
-      description: schedule
-        ? `${P.attendanceDescription} ${P.attendanceSchedule(schedule)}`
-        : P.attendanceDescription,
-      icon: <CalendarCheck />,
-      content: <AttendanceGraph schedule={schedule} />,
-    },
-    account(),
   ];
 
   return <SettingsTabs sections={sections} />;

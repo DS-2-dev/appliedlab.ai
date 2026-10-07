@@ -225,7 +225,7 @@ function ProjectActions({
   );
 }
 
-export function ProjectFolders({ email, activeId }: { email: string; activeId: string | null }) {
+export function ProjectFolders({ activeId }: { activeId: string | null }) {
   const router = useRouter();
   const [list, update] = useProjects();
   const [renaming, setRenaming] = React.useState<string | null>(null);
@@ -333,7 +333,7 @@ export function ProjectFolders({ email, activeId }: { email: string; activeId: s
       <SidebarGroup className={list.length > 0 ? "pt-1" : "pt-0"}>
         <SidebarMenu>
           <SidebarMenuItem>
-            <ProjectDetailsDialog email={email}>
+            <ProjectDetailsDialog>
               <SidebarMenuButton
                 tooltip={S.addProject}
                 render={<DialogTrigger />}

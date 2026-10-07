@@ -375,6 +375,16 @@ async function updateMe(req: Request, env: AccountEnv, user: UserRow, json: Json
   return json({ user: publicUser(next) });
 }
 
+// The Lab's people, for adding teammates: active members and reps, by name.
+// Partners get none, since they add no teammates.
+async function listPeople(env: AccountEnv, user: UserRow, json: Json): Promise<Response> {
+  if (user.role === "partner" || user.status !== "active") return json({ people: [] });
+  const { results } = await env.DB.prepare(
+    "SELECT id, name, role FROM users WHERE status = 'active' AND role IN ('member', 'rep') ORDER BY name COLLATE NOCASE",
+  ).all<{ id: string; name: string; role: AccountRole }>();
+  return json({ people: results });
+}
+
 // Everything under /auth/ and /me and /projects. Returns null for any other
 // path, so the caller can route it elsewhere.
 export async function handleAccounts(
@@ -390,7 +400,8 @@ export async function handleAccounts(
   if (pathname === "/auth/start" && req.method === "POST") return startLogin(req, env, ip, json);
   if (pathname === "/auth/verify" && req.method === "POST") return verifyLogin(req, env, ip, json);
 
-  const isAccountPath = pathname === "/me" || pathname === "/auth/logout" || pathname.startsWith("/projects");
+  const isAccountPath =
+    pathname === "/me" || pathname === "/people" || pathname === "/auth/logout" || pathname.startsWith("/projects");
   if (!isAccountPath) return null;
 
   const user = await sessionUser(req, env);
@@ -403,6 +414,7 @@ export async function handleAccounts(
   }
   if (pathname === "/me" && req.method === "GET") return json({ user: publicUser(user) });
   if (pathname === "/me" && req.method === "PATCH") return updateMe(req, env, user, json);
+  if (pathname === "/people" && req.method === "GET") return listPeople(env, user, json);
   if (pathname === "/projects" && req.method === "GET") {
     if (user.status !== "active") return json({ projects: [] });
     return listProjects(env, user, json);

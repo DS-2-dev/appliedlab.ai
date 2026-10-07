@@ -585,7 +585,7 @@ export function ProjectCard({
   );
 }
 
-export function ProjectBoard({ email, projectId }: { email: string; projectId: string }) {
+export function ProjectBoard({ projectId }: { projectId: string }) {
   const [list, update] = useProjects();
   const project = list.find((p) => p.id === projectId) ?? null;
   const [planOpen, setPlanOpen] = React.useState(false);
@@ -732,7 +732,7 @@ export function ProjectBoard({ email, projectId }: { email: string; projectId: s
           setPlanOpen(false);
         }}
       />
-      <ProjectDetailsDialog email={email} project={project} open={detailsOpen} onOpenChange={setDetailsOpen} formKey={formKey} />
+      <ProjectDetailsDialog project={project} open={detailsOpen} onOpenChange={setDetailsOpen} formKey={formKey} />
       <NewBuildDialog
         project={project}
         open={buildOpen}

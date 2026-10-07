@@ -49,3 +49,4 @@ next-env.d.ts
 
 # GitHub Pages build staging (scripts/build-pages.mjs)
 /.pages-build/
+.claude/settings.local.json

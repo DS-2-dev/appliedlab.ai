@@ -68,29 +68,6 @@ export function AuthAlert({ message }: { message?: string }) {
   );
 }
 
-// Shown in place of a form once it has done its job: an email sent, or a
-// Join the Lab form received.
-export function Sent({ heading, body, children }: { heading: string; body: string; children?: ReactNode }) {
-  return (
-    <div role="status" className="rounded-3xl border border-black/10 p-7 text-center animate-in fade-in-0 zoom-in-95 duration-300">
-      <h2 className="text-2xl font-light tracking-tight">{heading}</h2>
-      <p className="mt-2 text-[15px] leading-relaxed font-light text-black/55">{body}</p>
-      {children}
-    </div>
-  );
-}
-
-// On the static site, where accounts are not open, the way into Projectum.
-export function DemoLink() {
-  return (
-    <p className="mt-5 text-center text-sm">
-      <Link href="/projectum" className={authLink}>
-        {copy.auth.staticDemo}
-      </Link>
-    </p>
-  );
-}
-
 // Link styling for the small switches under each form.
 export const authLink =
   "font-medium text-ink underline decoration-black/20 underline-offset-4 transition hover:decoration-black";

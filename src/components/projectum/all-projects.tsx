@@ -4,9 +4,7 @@
 // in one grid, filtered by stage with a count on each tab. Members and reps
 // see every account's projects, partners only their own (the Worker
 // decides). Yours come first, marked Yours, then everyone else's, marked
-// with the owner's name. For members and reps, the Lab's sample projects
-// fill the list after them, marked Sample. Samples are whole projects, with what
-// their stage needs. Every card's View opens a brief of its project to view
+// with the owner's name. Every card's View opens a brief of its project to view
 // only (its stage, links, team, latest build and plan), and your own cards
 // also open their board.
 
@@ -14,22 +12,10 @@ import * as React from "react";
 import Image from "next/image";
 import Link from "next/link";
 import { AnimatePresence, MotionConfig, motion } from "framer-motion";
-import {
-  Boxes,
-  CalendarDays,
-  Car,
-  Clock,
-  Eye,
-  FileText,
-  Lightbulb,
-  type LucideIcon,
-  MapPin,
-  ShoppingBasket,
-  Users,
-} from "lucide-react";
+import { Eye, Lightbulb } from "lucide-react";
 import { copy } from "@/content/copy";
 import { initials } from "@/lib/initials";
-import { type Project, STAGES, type Stage, sampleProject } from "@/lib/projects";
+import { type Project, STAGES, type Stage } from "@/lib/projects";
 import { ProjectCard } from "@/components/projectum/project-board";
 import { useVisibleProjects } from "@/components/projectum/project-store";
 import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount } from "@/components/ui/avatar";
@@ -56,28 +42,11 @@ const TILE_MOTION = {
   transition: { duration: 0.28, ease: EASE },
 };
 
-// Sample cards have no thumbnail; an icon stands in.
-const ICONS: Record<string, LucideIcon> = {
-  map: MapPin,
-  clock: Clock,
-  boxes: Boxes,
-  calendar: CalendarDays,
-  basket: ShoppingBasket,
-  users: Users,
-  car: Car,
-  file: FileText,
-};
-
-// `owner` is null for a sample, or the owner's name for someone else's.
-type Entry = { project: Project; icon: LucideIcon; own: boolean; owner: string | null };
-
-const SAMPLES: Entry[] = copy.projectum.demo.samples.flatMap((data) => {
-  const project = sampleProject(data);
-  return project ? [{ project, icon: ICONS[data.icon] ?? Lightbulb, own: false, owner: null }] : [];
-});
+// `owner` is null for your own, or the owner's name for someone else's.
+type Entry = { project: Project; own: boolean; owner: string | null };
 
 function ProjectTile({ entry, onView }: { entry: Entry; onView: () => void }) {
-  const { project, icon: Icon, own, owner } = entry;
+  const { project, own, owner } = entry;
   const extra = project.people.length - SHOWN_PEOPLE;
   return (
     <Card data-project-tile="" size="sm" className="h-full gap-0 py-0">
@@ -93,7 +62,7 @@ function ProjectTile({ entry, onView }: { entry: Entry; onView: () => void }) {
           />
         ) : (
           <div className="flex aspect-video w-full items-center justify-center bg-muted text-muted-foreground">
-            <Icon className="size-8" />
+            <Lightbulb className="size-8" />
           </div>
         )}
         <div className="absolute inset-x-2 top-2 flex items-center justify-between gap-2">
@@ -101,7 +70,7 @@ function ProjectTile({ entry, onView }: { entry: Entry; onView: () => void }) {
             {B.stages[project.stage]}
           </Badge>
           <Badge variant="outline" className="min-w-0 shrink justify-start bg-background">
-            <span className="truncate">{own ? A.yours : owner ? A.by(owner) : A.sample}</span>
+            <span className="truncate">{own ? A.yours : A.by(owner ?? "")}</span>
           </Badge>
         </div>
       </div>
@@ -149,9 +118,8 @@ export function AllProjects() {
   const mine = visible.filter((e) => e.owner.id === me?.id);
   const others = visible.filter((e) => e.owner.id !== me?.id);
   const entries: Entry[] = [
-    ...mine.map(({ project }) => ({ project, icon: Lightbulb, own: true, owner: null })),
-    ...others.map(({ project, owner }) => ({ project, icon: Lightbulb, own: false, owner: owner.name })),
-    ...(me?.role === "partner" ? [] : SAMPLES),
+    ...mine.map(({ project }) => ({ project, own: true, owner: null })),
+    ...others.map(({ project, owner }) => ({ project, own: false, owner: owner.name })),
   ];
   const inFilter = (f: Filter) => (f === "all" ? entries : entries.filter((e) => e.project.stage === f));
   const shown = inFilter(filter);

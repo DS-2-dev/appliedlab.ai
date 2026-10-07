@@ -24,17 +24,12 @@ function readCookie(name: string): string | undefined {
 
 const subscribeNever = () => () => {};
 
-export function ProjectumView({ settings, agents }: { settings: React.ReactNode; agents: React.ReactNode }) {
-  const { name, email, role } = useAccount();
+export function ProjectumView({ settings }: { settings: React.ReactNode }) {
+  const { name, email } = useAccount();
   const params = useSearchParams();
   const project = params.get("project");
   const projectId = project ? project : null;
-  // Partners have no Agents view.
-  const view: ProjectumView = projectId
-    ? "project"
-    : params.get("view") === "agents" && role !== "partner"
-      ? "agents"
-      : "projects";
+  const view: ProjectumView = projectId ? "project" : "projects";
 
   // Cookies only exist in the browser; the build renders the defaults.
   const dark = React.useSyncExternalStore(
@@ -52,7 +47,7 @@ export function ProjectumView({ settings, agents }: { settings: React.ReactNode;
     <>
       <ThemeSync dark={dark} />
       <SidebarProvider key={String(defaultOpen)} defaultOpen={defaultOpen} className="projectum-ui">
-        <AppSidebar name={name} email={email} role={role} view={view} projectId={projectId} settings={settings} />
+        <AppSidebar name={name} email={email} view={view} projectId={projectId} settings={settings} />
         <SidebarInset>
           <div
             key={view === "project" ? `project-${projectId}` : view}
@@ -60,9 +55,7 @@ export function ProjectumView({ settings, agents }: { settings: React.ReactNode;
             className="flex min-h-0 flex-1 flex-col animate-in duration-300 ease-out fade-in-0 slide-in-from-bottom-2 motion-reduce:animate-none"
           >
             {view === "project" && projectId ? (
-              <ProjectBoard email={email} projectId={projectId} />
-            ) : view === "agents" ? (
-              agents
+              <ProjectBoard projectId={projectId} />
             ) : (
               <AllProjects />
             )}

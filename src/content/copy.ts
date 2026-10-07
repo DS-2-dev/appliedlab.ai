@@ -7,7 +7,6 @@
   is the mechanical arm. Write to the skill, then run the lint.
 */
 
-import { join } from "./join";
 
 export const copy = {
   meta: {
@@ -287,66 +286,19 @@ export const copy = {
   },
 
   // Join the Lab (2026-09-17), in its own file (join.ts).
-  join,
 
   // Accounts (2026-09-11). Open to Weber State addresses, by Google or by
   // email and password. Microcopy throughout, so fragments are fine; the
   // bans still apply.
   auth: {
-    login: {
-      title: "Log in",
-      heading: "Log in to the Lab",
-      body: "Use your Weber State Google account, or the email and password you signed up with.",
-      submit: "Log in",
-      pending: "Logging in",
-      forgot: "Forgot your password?",
-      switchPrompt: "New to the Lab?",
-      switchCta: "Join the Lab",
-    },
-    // Under Join the Lab, the way back to Log in.
-    signup: {
-      switchPrompt: "Already have an account?",
-      switchCta: "Log in",
-    },
-    forgot: {
-      title: "Reset your password",
-      heading: "Reset your password",
-      body: "Enter the email on your account and we'll send a link to choose a new password.",
-      submit: "Send reset link",
-      pending: "Sending",
-      sentHeading: "Check your inbox",
-      sentBody: "If an account uses {email}, a reset link is on its way.",
-      back: "Back to log in",
-      // Local preview only: nothing sends email, so the link is shown instead.
-      devNote: "This is the local preview, so no email goes out.",
-      devLink: "Open the reset link",
-    },
-    reset: {
-      title: "Choose a new password",
-      heading: "Choose a new password",
-      body: "Pick something you haven't used here before.",
-      submit: "Save password",
-      pending: "Saving",
-      expired: "That reset link has expired or was already used.",
-      requestNew: "Request a new link",
-    },
+    // Page titles for the browser tab.
+    loginTitle: "Log in",
+    signupTitle: "Join the Lab",
     fields: {
       email: { label: "Email" },
-      password: { label: "Password" },
-      newPassword: { label: "New password", help: "At least 8 characters." },
-      show: "Show password",
-      hide: "Hide password",
     },
     google: "Continue with Google",
-    googleUnavailable:
-      "Google sign-in turns on once the Lab's Supabase project is connected. Email and password work in this preview.",
     divider: "or",
-    projectumDemo: "Projectum demo",
-    // The GitHub Pages site, which runs no server, so accounts wait for the
-    // platform launch.
-    staticGoogle: "Google sign-in opens with the platform launch.",
-    staticForm: "Accounts open with the platform launch. The Projectum demo is open now.",
-    staticDemo: "Try the Projectum demo",
     // Projectum sign-in by emailed code (src/lib/account.ts). One form for
     // logging in and signing up: a new address is asked for a name once.
     code: {
@@ -403,49 +355,19 @@ export const copy = {
     errors: {
       emailRequired: "Enter your email.",
       emailInvalid: "Enter a valid email address.",
-      emailDomain: "Use your Weber State email, ending in @weber.edu or @mail.weber.edu.",
-      passwordRequired: "Enter your password.",
-      passwordShort: "Use at least 8 characters.",
-      passwordLong: "Use 72 characters or fewer.",
-      badCredentials: "That email and password don't match an account.",
-      unconfirmed: "Confirm your email first. The link is in your inbox.",
       rateLimited: "Too many attempts. Wait a few minutes and try again.",
       generic: "Something went wrong on our end. Try again in a moment.",
-      googleDomain: "Google sign-in is for Weber State accounts. Choose your university account and try again.",
-      googleFailed: "Google sign-in didn't finish. Try again.",
-      linkExpired: "That link has expired or was already used. Request a new one.",
-      samePassword: "Choose a password you haven't used here before.",
       removed: "This account has been turned off. Write to ailab@weber.edu if that looks wrong.",
-      googleUnavailable: "Google sign-in isn't connected in this preview yet. Use email and password.",
     },
   },
 
-  // The one signed-in page, a placeholder until its contents are decided.
+  // The one signed-in page.
   projectum: {
     title: "Projectum",
     // Beside the logo at the top of the sidebar.
     brandName: "Projectum",
-    // Two cards at the foot of the sidebar, above the profile. Resources
-    // leaves Projectum, so its arrow points out. Attendance holds the QR
-    // code members scan at meetings, a placeholder until the code exists.
-    resources: {
-      title: "Resources",
-      description: "Guides, practice and reading to strengthen your skills with AI.",
-      href: "/handbook",
-    },
-    attendance: {
-      title: "Meeting attendance",
-      description: "Scan at each meeting to check in.",
-      placeholder: "QR code placeholder",
-    },
     projects: "All Projects",
     yourProjects: "Your Projects",
-    // The Agents tab, below All Projects, empty until agents arrive.
-    agents: {
-      title: "Agents",
-      description: "The agents you build, in one place.",
-      empty: "Agents you build will show up here.",
-    },
     addProject: "Add Project",
     addProjectDescription: "Name the idea, give it a thumbnail, link its meeting notes doc and add the people working on it.",
     createProject: "Create project",
@@ -480,262 +402,13 @@ export const copy = {
       },
     },
     // The people Add person offers until accounts can be searched. Made up.
-    demo: {
-      directory: ["Avery Chen", "Jordan Patel", "Sam Rivera", "Taylor Brooks", "Riley Nguyen", "Morgan Lee"],
-      // Sample projects for All Projects, shown until more teams add theirs.
-      // Made up, and marked Sample on their cards. Each carries what its
-      // stage needs, in the shape a real project takes: people by name with
-      // a role once past Brainstorming, step owners and credits by name,
-      // builds oldest first. Placeholder links only.
-      samples: [
-        {
-          name: "Quiet Room Map",
-          stage: "live",
-          icon: "map",
-          notesUrl: "https://docs.google.com/document/d/sample-quiet-room-map",
-          description: "A campus map of open study rooms, updated from the library's room sensors.",
-          people: [
-            { name: "Avery Chen", role: "manager" },
-            { name: "Jordan Patel", role: "backend" },
-            { name: "Sam Rivera", role: "uiux" },
-          ],
-          plan: {
-            thesis:
-              "Students walk between buildings looking for a free study room. Quiet Room Map shows which rooms are open right now, using the occupancy sensors the library already runs.",
-            reasoning:
-              "The sensor data already exists, so the work is a clear map and a reliable feed. A small team can ship it in a semester and test it in one building first.",
-            techStack: "Next.js, Supabase, Library sensor feed",
-            steps: [
-              { text: "Map the rooms in the main library", owner: "Avery Chen" },
-              { text: "Connect the sensor feed", owner: "Jordan Patel" },
-              { text: "Design and test the map screen", owner: "Sam Rivera" },
-            ],
-          },
-          prototype: {
-            githubUrl: "https://github.com/sample-lab/quiet-room-map",
-            supabase: true,
-            builds: [
-              { note: "", techStack: "Next.js, Postgres, Library sensor feed", at: "2026-06-02T16:00:00.000Z" },
-              {
-                note: "Moved room status to Supabase realtime, so the map updates without a refresh.",
-                techStack: "Next.js, Supabase, Library sensor feed",
-                at: "2026-06-23T16:00:00.000Z",
-              },
-              {
-                note: "Added filters for rooms with outlets and whiteboards after student testing.",
-                techStack: "Next.js, Supabase, Library sensor feed",
-                at: "2026-07-14T16:00:00.000Z",
-              },
-            ],
-          },
-          launch: {
-            siteUrl: "https://quiet-room-map.example.edu",
-            slidesUrl: "https://slides.example.com/quiet-room-map",
-            demoUrl: "https://video.example.com/quiet-room-map",
-            at: "2026-08-04T16:00:00.000Z",
-            contributions: {
-              "Avery Chen": "Ran the plan and check-ins and presented the launch.",
-              "Jordan Patel": "Connected the sensor feed and built the realtime room service.",
-              "Sam Rivera": "Designed the map screen and ran two rounds of student testing.",
-            },
-          },
-        },
-        {
-          name: "Advising Queue",
-          stage: "prototype",
-          icon: "clock",
-          notesUrl: "https://docs.google.com/document/d/sample-advising-queue",
-          description: "Students join the advising line from their phone and get a text when their turn comes.",
-          people: [
-            { name: "Taylor Brooks", role: "manager" },
-            { name: "Riley Nguyen", role: "frontend" },
-          ],
-          plan: {
-            thesis:
-              "Students wait in the advising hallway with no sense of how long the line is. Advising Queue lets them join from their phone and texts them when their turn comes.",
-            reasoning:
-              "The advising office already logs every visit in a spreadsheet. A text alert frees students to study while they wait, and staff see the whole line at once.",
-            techStack: "Next.js, Postgres, SMS gateway",
-            steps: [
-              { text: "Interview advising staff about peak hours", owner: "Taylor Brooks" },
-              { text: "Build the join screen and the queue view", owner: "Riley Nguyen" },
-            ],
-          },
-          prototype: {
-            githubUrl: "https://github.com/sample-lab/advising-queue",
-            supabase: false,
-            builds: [
-              { note: "", techStack: "Next.js, Postgres, SMS gateway", at: "2026-07-20T16:00:00.000Z" },
-              {
-                note: "Added the staff view that calls the next student and sends the text.",
-                techStack: "Next.js, Postgres, SMS gateway",
-                at: "2026-08-10T16:00:00.000Z",
-              },
-            ],
-          },
-        },
-        {
-          name: "Lab Inventory Assistant",
-          stage: "solidifying",
-          icon: "boxes",
-          notesUrl: "https://docs.google.com/document/d/sample-lab-inventory-assistant",
-          description: "A chat assistant that tells members which lab equipment is free and where it is kept.",
-          people: [
-            { name: "Morgan Lee", role: "data" },
-            { name: "Jordan Patel", role: "backend" },
-          ],
-          plan: {
-            thesis:
-              "Members spend time hunting for lab equipment that someone else has checked out. A chat assistant answers where each item is and who has it, straight from the inventory sheet.",
-            reasoning:
-              "The inventory sheet is already kept up to date, so the assistant only has to read it well. Equipment questions are the most common messages in the lab channel.",
-            techStack: "Python, FastAPI, Inventory sheet",
-            steps: [
-              { text: "Clean up the inventory sheet columns", owner: "Morgan Lee" },
-              { text: "Build the chat endpoint", owner: "Jordan Patel" },
-            ],
-          },
-        },
-        {
-          name: "Syllabus to Calendar",
-          stage: "brainstorming",
-          icon: "calendar",
-          notesUrl: "https://docs.google.com/document/d/sample-syllabus-to-calendar",
-          description: "Turns a course syllabus into calendar events for every due date and exam.",
-          people: [{ name: "Riley Nguyen" }],
-        },
-        {
-          name: "Pantry Stock Tracker",
-          stage: "prototype",
-          icon: "basket",
-          notesUrl: "https://docs.google.com/document/d/sample-pantry-stock-tracker",
-          description: "Tracks food pantry stock and flags items likely to run out before the next delivery.",
-          people: [
-            { name: "Sam Rivera", role: "uiux" },
-            { name: "Morgan Lee", role: "data" },
-            { name: "Avery Chen", role: "manager" },
-          ],
-          plan: {
-            thesis:
-              "The campus food pantry runs short of staples between deliveries because stock is counted by hand. The tracker logs what goes out and flags items likely to run out.",
-            reasoning:
-              "Volunteers already record every checkout on paper. Moving that log to a tablet turns the same effort into a forecast for the next order.",
-            techStack: "Next.js, Supabase, Tablet checkout form",
-            steps: [
-              { text: "Design the tablet checkout form", owner: "Sam Rivera" },
-              { text: "Build the run-out forecast", owner: "Morgan Lee" },
-              { text: "Set up weekly check-ins with the pantry lead", owner: "Avery Chen" },
-            ],
-          },
-          prototype: {
-            githubUrl: "https://github.com/sample-lab/pantry-stock-tracker",
-            supabase: true,
-            builds: [
-              { note: "", techStack: "Next.js, Supabase", at: "2026-07-01T16:00:00.000Z" },
-              {
-                note: "Replaced the paper log with the tablet form at the pantry desk.",
-                techStack: "Next.js, Supabase, Tablet checkout form",
-                at: "2026-07-22T16:00:00.000Z",
-              },
-              {
-                note: "Added a weekly forecast email for the pantry lead.",
-                techStack: "Next.js, Supabase, Tablet checkout form",
-                at: "2026-08-12T16:00:00.000Z",
-              },
-            ],
-          },
-        },
-        {
-          name: "Tutor Match",
-          stage: "brainstorming",
-          icon: "users",
-          notesUrl: "https://docs.google.com/document/d/sample-tutor-match",
-          description: "Pairs students with peer tutors by course, schedule and how they like to meet.",
-          people: [{ name: "Taylor Brooks" }, { name: "Avery Chen" }],
-        },
-        {
-          name: "Parking Pulse",
-          stage: "live",
-          icon: "car",
-          notesUrl: "https://docs.google.com/document/d/sample-parking-pulse",
-          description: "Shows how full each campus lot is from gate counts, so students know before they drive in.",
-          people: [
-            { name: "Jordan Patel", role: "backend" },
-            { name: "Riley Nguyen", role: "frontend" },
-            { name: "Taylor Brooks", role: "communication" },
-            { name: "Morgan Lee", role: "qa" },
-          ],
-          plan: {
-            thesis:
-              "Commuters circle full lots before class while open spaces sit elsewhere on campus. Parking Pulse shows how full each lot is, using the gate counters already installed.",
-            reasoning:
-              "Parking services shared the gate counts, which update every minute. A page that loads fast on a phone gives drivers what they need before they leave home.",
-            techStack: "Astro, Cloudflare Workers, Gate counter feed",
-            steps: [
-              { text: "Get access to the gate counter feed", owner: "Taylor Brooks" },
-              { text: "Build the lot status service", owner: "Jordan Patel" },
-              { text: "Build the lot map page", owner: "Riley Nguyen" },
-              { text: "Check the counts against a manual tally", owner: "Morgan Lee" },
-            ],
-          },
-          prototype: {
-            githubUrl: "https://github.com/sample-lab/parking-pulse",
-            supabase: false,
-            builds: [
-              { note: "", techStack: "Astro, Cloudflare Workers, Gate counter feed", at: "2026-05-12T16:00:00.000Z" },
-              {
-                note: "Cached the gate counts so the page loads in under a second on campus Wi-Fi.",
-                techStack: "Astro, Cloudflare Workers, Gate counter feed",
-                at: "2026-06-09T16:00:00.000Z",
-              },
-            ],
-          },
-          launch: {
-            siteUrl: "https://parking-pulse.example.edu",
-            slidesUrl: "https://slides.example.com/parking-pulse",
-            demoUrl: "https://video.example.com/parking-pulse",
-            at: "2026-07-01T16:00:00.000Z",
-            contributions: {
-              "Jordan Patel": "Built the lot status service and its cache.",
-              "Riley Nguyen": "Built the lot map page.",
-              "Taylor Brooks": "Worked with parking services and wrote the launch updates.",
-              "Morgan Lee": "Checked the counts against manual tallies across two weeks.",
-            },
-          },
-        },
-        {
-          name: "Grant Draft Helper",
-          stage: "solidifying",
-          icon: "file",
-          notesUrl: "https://docs.google.com/document/d/sample-grant-draft-helper",
-          description: "Drafts a first version of a small grant application from a partner's notes.",
-          people: [
-            { name: "Morgan Lee", role: "data" },
-            { name: "Sam Rivera", role: "communication" },
-          ],
-          plan: {
-            thesis:
-              "Small nonprofits partnering with the Lab spend hours on short grant applications. The helper drafts a first version from a partner's notes for them to edit.",
-            reasoning:
-              "Most small grants ask the same handful of questions. A draft that answers them gives a partner something to react to on day one.",
-            techStack: "Next.js, Postgres, Document templates",
-            steps: [
-              { text: "Collect five past applications as examples", owner: "Sam Rivera" },
-              { text: "Build the draft generator", owner: "Morgan Lee" },
-            ],
-          },
-        },
-      ],
-    },
     // The All Projects view: every project in one grid, filtered by stage.
     allProjects: {
       title: "All Projects",
-      description:
-        "Projects appear here at every stage, from first idea to launch. Sample projects fill the list until more teams add theirs.",
+      description: "Projects appear here at every stage, from first idea to launch.",
       filterLabel: "Filter by stage",
       all: "All",
       yours: "Yours",
-      sample: "Sample",
       // Another account's project, marked with its owner's name.
       by: (name: string) => `By ${name}`,
       empty: "No projects at this stage yet.",
@@ -931,15 +604,14 @@ export const copy = {
     },
     // Placeholder Settings view until what it controls is decided.
     settingsPage: {
-      description: "Placeholder text. Account settings will live here.",
+      description: "Your profile, how Projectum looks, and your account.",
       // The dialog's nav, one entry per section.
       sectionsLabel: "Settings sections",
       profileTitle: "Profile",
-      profileDescription: "Placeholder text for your name and email.",
+      profileDescription: "Your name and email, and the picture others see.",
       nameLabel: "Name",
       emailLabel: "Email",
-      // The profile picture, kept in this browser until profiles are stored
-      // with the account.
+      // The profile picture, saved with the account.
       photoLabel: "Profile picture",
       photoUpload: "Upload photo",
       photoChange: "Change photo",
@@ -953,28 +625,6 @@ export const copy = {
       preferencesDescription: "How Projectum looks in this browser.",
       darkMode: "Dark mode",
       darkModeHelp: "Switch Projectum to dark colors.",
-      // Agent access: one row per connector, placeholders until they exist.
-      agentsTitle: "Agent access",
-      agentsDescription: "Connect an AI assistant so it can work with your projects.",
-      connectors: [
-        { id: "claude", name: "Claude", description: "Placeholder text for the Claude connector." },
-        { id: "chatgpt", name: "ChatGPT", description: "Placeholder text for the ChatGPT connector." },
-      ],
-      connect: "Connect",
-      planned: "Planned",
-      // Attended meetings, drawn like GitHub's contribution graph with one
-      // square per weekly meeting. Sample data until check-ins are
-      // recorded. The schedule itself renders from data/settings.json.
-      attendanceTitle: "Attended meetings",
-      attendanceDescription: "Sample data until check-ins are recorded.",
-      attendanceSchedule: (schedule: string) => `Meetings run ${schedule}.`,
-      attendanceSummary: (attended: number, held: number) =>
-        `${attended} of ${held} meetings attended in the last year`,
-      attendanceStates: {
-        attended: "Attended",
-        missed: "Missed",
-        upcoming: "Upcoming",
-      },
       accountTitle: "Account",
       accountDescription: "Log out of Projectum on this device.",
     },

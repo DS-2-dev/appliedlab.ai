@@ -4,23 +4,19 @@
 // (components/ui/sidebar.tsx, avatar). Neutral throughout, no brand purple,
 // lucide icons only.
 //
-// Just the bar: a logo placeholder and the collapse toggle at the top, then
-// the All Projects and Agents tabs, then Your Projects. At the bottom sit
-// two cards, Resources and the meeting attendance QR code (a placeholder
-// for now), over the profile, which opens Settings in a dialog, where Log
-// out also lives. Folded to icons, the cards hide.
+// Just the bar: the mark and the collapse toggle at the top, then All
+// Projects, then Your Projects. At the bottom sits the profile, which opens
+// Settings in a dialog, where Log out also lives.
 
 import * as React from "react";
 import Link from "next/link";
-import { ArrowUpRight, Bot, FolderKanban, PanelLeft, QrCode } from "lucide-react";
+import { FolderKanban, PanelLeft } from "lucide-react";
 import { copy } from "@/content/copy";
-import type { AccountRole } from "@/lib/account";
 import { initials } from "@/lib/initials";
 import { useAvatar } from "@/components/projectum/profile-store";
 import { ProjectFolders } from "@/components/projectum/project-folders";
 import { ProjectumLogo } from "@/components/projectum/projectum-logo";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Card, CardAction, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import {
   Sidebar,
@@ -37,7 +33,7 @@ import { Button } from "@/components/ui/button";
 
 const S = copy.projectum;
 
-export type ProjectumView = "projects" | "agents" | "project";
+export type ProjectumView = "projects" | "project";
 
 // The collapse toggle, one for each state of the bar. Open, it sits at the
 // right as the sidebar icon. Folded, a second one takes the mark's own spot
@@ -84,22 +80,18 @@ function SidebarToggle({ folded }: { folded: boolean }) {
 export function AppSidebar({
   name,
   email,
-  role,
   view,
   projectId,
   settings,
 }: {
   name: string;
   email: string;
-  // Partners see their projects only, without Agents or attendance.
-  role: AccountRole;
   view: ProjectumView;
   projectId: string | null;
   // The Settings dialog's inside, made on the server (settings-panel.tsx).
   settings: React.ReactNode;
 }) {
   const [avatar] = useAvatar();
-  const partner = role === "partner";
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   return (
     <Sidebar collapsible="icon">
@@ -126,8 +118,7 @@ export function AppSidebar({
 
       <SidebarContent>
         <SidebarGroup>
-          {/* Hovered or focused, each icon plays once (globals.css): the
-              folder hops, the bot shakes its head. */}
+          {/* Hovered or focused, the folder hops once (globals.css). */}
           <SidebarMenu>
             <SidebarMenuItem>
               <SidebarMenuButton
@@ -140,78 +131,13 @@ export function AppSidebar({
                 <span>{S.projects}</span>
               </SidebarMenuButton>
             </SidebarMenuItem>
-            {!partner && (
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  tooltip={S.agents.title}
-                  isActive={view === "agents"}
-                  render={<Link href="/projectum?view=agents" />}
-                  className="motion-safe:hover:[&>svg]:animate-[projectum-wiggle_500ms_ease-in-out] motion-safe:focus-visible:[&>svg]:animate-[projectum-wiggle_500ms_ease-in-out]"
-                >
-                  <Bot />
-                  <span>{S.agents.title}</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            )}
           </SidebarMenu>
         </SidebarGroup>
-        <ProjectFolders email={email} activeId={projectId} />
+        <ProjectFolders activeId={projectId} />
       </SidebarContent>
 
       {/* The profile is the way into Settings, a dialog over the view. */}
       <SidebarFooter>
-        {/* Laid out at the open bar's width even while it widens, so the
-            text never rewraps, and held back until the bar has finished
-            opening (its width takes 200ms), then faded in. Folding hides
-            them at once. */}
-        <div
-          data-sidebar-cards=""
-          className="grid w-[calc(var(--sidebar-width)-1rem)] gap-2 animate-in duration-200 ease-out fade-in-0 delay-200 fill-mode-[backwards] motion-reduce:animate-none group-data-[collapsible=icon]:hidden"
-        >
-          <Link
-            href={S.resources.href}
-            className="group/resources block rounded-xl outline-none focus-visible:ring-3 focus-visible:ring-ring/50"
-          >
-            <Card size="sm" className="gap-1 bg-background">
-              <CardHeader>
-                <CardTitle>{S.resources.title}</CardTitle>
-                <CardAction>
-                  {/* On hover or focus the arrow leaves the way it points and
-                      a second one slides in behind it from the opposite
-                      corner. Reduced motion swaps them without the slide. */}
-                  <span
-                    data-resources-arrow=""
-                    aria-hidden
-                    className="relative block size-4 overflow-hidden text-muted-foreground transition-colors duration-300 group-hover/resources:text-foreground group-focus-visible/resources:text-foreground"
-                  >
-                    <ArrowUpRight className="absolute inset-0 size-4 transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/resources:translate-x-full group-hover/resources:-translate-y-full group-focus-visible/resources:translate-x-full group-focus-visible/resources:-translate-y-full motion-reduce:transition-none" />
-                    <ArrowUpRight className="absolute inset-0 size-4 -translate-x-full translate-y-full transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] group-hover/resources:translate-0 group-focus-visible/resources:translate-0 motion-reduce:transition-none" />
-                  </span>
-                </CardAction>
-                <CardDescription className="text-pretty">{S.resources.description}</CardDescription>
-              </CardHeader>
-            </Card>
-          </Link>
-          {/* Members scan this at meetings. Until the real code exists, a
-              dashed square marks where it goes. */}
-          {!partner && (
-            <Card data-attendance="" size="sm" className="gap-2 bg-background">
-              <CardHeader>
-                <CardTitle>{S.attendance.title}</CardTitle>
-                <CardDescription className="text-pretty">{S.attendance.description}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div
-                  role="img"
-                  aria-label={S.attendance.placeholder}
-                  className="mx-auto grid aspect-square w-28 place-items-center rounded-lg border border-dashed text-muted-foreground"
-                >
-                  <QrCode className="size-10" />
-                </div>
-              </CardContent>
-            </Card>
-          )}
-        </div>
         <SidebarMenu>
           <SidebarMenuItem>
             {/* Already tucked in: the avatar sits where the folded bar puts

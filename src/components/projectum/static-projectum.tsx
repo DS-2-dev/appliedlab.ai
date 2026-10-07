@@ -5,7 +5,6 @@
 
 import { Suspense } from "react";
 import { AccountGate } from "@/components/projectum/account-gate";
-import { AgentsPanel } from "@/components/projectum/agents-panel";
 import { ProjectumView } from "@/components/projectum/projectum-view";
 import { SettingsPanel } from "@/components/projectum/settings-panel";
 import { DARK_FIRST_PAINT, THEME_COOKIE } from "@/components/projectum/theme";
@@ -21,7 +20,7 @@ export function StaticProjectum() {
       <script dangerouslySetInnerHTML={{ __html: DARK_IF_SAVED }} />
       <AccountGate>
         <Suspense>
-          <ProjectumView settings={<SettingsPanel dark={false} />} agents={<AgentsPanel />} />
+          <ProjectumView settings={<SettingsPanel dark={false} />} />
         </Suspense>
       </AccountGate>
     </TooltipProvider>

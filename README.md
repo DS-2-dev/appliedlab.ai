@@ -1,49 +1,32 @@
 # Applied AI Lab website
 
 The Lab's site: the landing (a star hero, How it works, and the Ask the Lab
-chat), Projectum (the project workspace) and the sign-in screens.
+chat), Projectum (the signed-in app) and the sign-in screens.
 
 ## Running it
 
 ```bash
 npm install
-npm run dev
+npm run dev                                   # the site on :3000
+cd worker && npm install && npm run dev       # the Worker on :8787
+NEXT_PUBLIC_ASK_URL=http://localhost:8787 npm run dev   # site using it
 ```
 
-`npm run dev` previews the live site as it is: the static mode
-(`NEXT_PUBLIC_STATIC_SITE=1`), where Log in and Sign up say accounts open
-with the platform launch, Projectum opens as its demo, and Ask the Lab calls
-the Cloudflare Worker.
-
-`npm run dev:server` runs the full version instead. With no env vars it uses
-the local JSON store in `data/` (events, settings, local accounts) and offers
-a dev-preview Projectum sign-in. Add `ANTHROPIC_API_KEY` to `.env.local` for
-Ask the Lab to answer through `/api/ask` (see `.env.example`).
-
-## Accounts
-
-Create the club Supabase project (owned by ailab@weber.edu), run the SQL in
-`supabase/`, enable Google auth, and set the two Supabase env vars. The data
-layer and sign-in switch to Supabase automatically.
+The site is static. Everything server-side, Ask the Lab and Projectum
+accounts, lives in the Cloudflare Worker (`worker/`, setup and deploy steps
+in `worker/README.md`). Its address is in `src/lib/site.ts`, and
+`NEXT_PUBLIC_ASK_URL` (the repo variable `ASK_URL` in the Pages build)
+overrides it.
 
 ## GitHub Pages
 
-The public site is a static build served by GitHub Pages at appliedlab.ai:
+The public site is served by GitHub Pages at appliedlab.ai:
 
 ```bash
 npm run build:pages   # writes out/
 ```
 
-`scripts/build-pages.mjs` builds the same static mode `npm run dev` shows. It
-leaves out what needs a server (API routes, the password reset, proxy), and
-`next.config.ts` points the server actions at `src/lib/auth-static.ts`.
-`.github/workflows/pages.yml` runs it and deploys on
-every push to main.
-
-Ask the Lab and Join the Lab need a server, which Pages lacks, so on the
-static site they call a Cloudflare Worker (`worker/`, deploy steps in
-`worker/README.md`). Its address is in `src/lib/site.ts`, and the repo
-variable `ASK_URL` overrides it.
+`.github/workflows/pages.yml` runs it and deploys on every push to main.
 
 ## Copy
 
@@ -58,11 +41,11 @@ node scripts/copy-lint.mjs
 ## Layout of things
 
 - `src/content/copy.ts`: all public copy, one file.
-- `src/lib/site.ts`: what differs between the full and static builds.
-- `src/lib/ask.ts`: the Ask the Lab request, shared by the route and the Worker.
-- `src/lib/data/`: the data seam. `local.ts` (JSON in `data/`) or
-  `supabase.ts`, chosen by env vars in `index.ts`.
-- `src/lib/auth.ts`: who is signed in, for Projectum and the sign-in pages.
+- `src/lib/site.ts`: links and the Worker's address.
+- `src/lib/account.ts`: the signed-in account, in the browser.
+- `src/lib/projects.ts`: Projectum's project rules, pure and tested.
+- `src/lib/ask.ts`: the Ask the Lab request, used by the Worker.
+- `worker/`: accounts, projects and the chat, on Cloudflare.
 - `design/`: the style rules (`STYLE.md`) and reference tokens.
 - `src/app/globals.css`: tokens, the `kicker` and `short` helpers, and
   Projectum's surface.

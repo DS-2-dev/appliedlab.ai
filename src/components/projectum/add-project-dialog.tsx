@@ -54,7 +54,7 @@ const F = copy.projectum.form;
 
 type Errors = { name?: string; thumbnail?: string; notes?: string };
 
-function DetailsForm({ email, project, onDone }: { email: string; project?: Project; onDone: () => void }) {
+function DetailsForm({ project, onDone }: { project?: Project; onDone: () => void }) {
   const router = useRouter();
   const [, update] = useProjects();
   const editing = Boolean(project);
@@ -292,14 +292,12 @@ function DetailsForm({ email, project, onDone }: { email: string; project?: Proj
 }
 
 export function ProjectDetailsDialog({
-  email,
   project,
   open: openProp,
   onOpenChange,
   formKey,
   children,
 }: {
-  email: string;
   // Present when editing; absent when adding.
   project?: Project;
   // Controlled when editing, from the board.
@@ -327,7 +325,7 @@ export function ProjectDetailsDialog({
     <Dialog open={open} onOpenChange={setOpen}>
       {children}
       <DialogContent className="sm:max-w-lg">
-        <DetailsForm key={controlled ? formKey : innerKey} email={email} project={project} onDone={() => setOpen(false)} />
+        <DetailsForm key={controlled ? formKey : innerKey} project={project} onDone={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );

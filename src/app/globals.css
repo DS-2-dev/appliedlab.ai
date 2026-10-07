@@ -293,7 +293,7 @@ html.theme-fade::view-transition-new(theme-switch) {
   animation: none;
 }
 /* The sidebar's icons on hover (app-sidebar.tsx): the All Projects folder
-   and each of Your Projects' folders hop, the Agents bot shakes its head,
+   and each of Your Projects' folders hop,
    and the collapse toggle nudges the
    way the bar will go (--nudge, negative to fold, positive to open). Each
    plays once and ends where it started. */
@@ -320,21 +320,6 @@ html.theme-fade::view-transition-new(theme-switch) {
   }
   78% {
     translate: 0 -1px;
-  }
-}
-@keyframes projectum-wiggle {
-  0%,
-  100% {
-    rotate: 0deg;
-  }
-  20% {
-    rotate: -14deg;
-  }
-  45% {
-    rotate: 12deg;
-  }
-  70% {
-    rotate: -6deg;
   }
 }
 /* The site's body colours are unlayered too, so they beat shadcn's

@@ -8,7 +8,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { CodeLoginRoute } from "@/components/auth/CodeLoginRoute";
 
 export const metadata: Metadata = {
-  title: `${copy.join.title} | ${copy.meta.title}`,
+  title: `${copy.auth.signupTitle} | ${copy.meta.title}`,
 };
 
 export default function SignupPage() {

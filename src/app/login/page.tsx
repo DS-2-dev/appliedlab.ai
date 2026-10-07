@@ -9,7 +9,7 @@ import { AuthShell } from "@/components/auth/AuthShell";
 import { CodeLoginRoute } from "@/components/auth/CodeLoginRoute";
 
 export const metadata: Metadata = {
-  title: `${copy.auth.login.title} | ${copy.meta.title}`,
+  title: `${copy.auth.loginTitle} | ${copy.meta.title}`,
 };
 
 export default function LoginPage() {
