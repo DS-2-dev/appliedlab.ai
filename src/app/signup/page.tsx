@@ -15,7 +15,7 @@ export default function SignupPage() {
   return (
     <AuthShell heading={copy.auth.code.signupHeading} body={copy.auth.code.body}>
       <Suspense>
-        <CodeLoginRoute />
+        <CodeLoginRoute signup />
       </Suspense>
     </AuthShell>
   );

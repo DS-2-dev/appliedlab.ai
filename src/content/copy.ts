@@ -352,7 +352,7 @@ export const copy = {
     code: {
       heading: "Log in to the Lab",
       signupHeading: "Join the Lab",
-      body: "Enter your email and we'll send you a 6-digit code. Students, faculty and partner organizations all sign in here.",
+      body: "Continue with Google, or get a 6-digit code by email. Students, faculty and partner organizations all sign in here.",
       emailSubmit: "Send code",
       emailPending: "Sending",
       codeLabel: "Code",
@@ -363,6 +363,23 @@ export const copy = {
       nameLabel: "Your name",
       nameHelp: "Partner organizations can use the organization's name.",
       nameSubmit: "Create account",
+      // Sign up asks who is joining first, so people use the right email.
+      // The role still comes from the email itself.
+      rolePrompt: "I'm joining as",
+      roles: {
+        member: { label: "Student", hint: "Sign up with your @mail.weber.edu email." },
+        rep: { label: "Faculty", hint: "Sign up with your @weber.edu email." },
+        partner: {
+          label: "Business or organization",
+          hint: "Sign up with your work email. The Lab approves each new organization.",
+        },
+      },
+      changeRole: "Change",
+      wrongEmail: {
+        member: "Students sign up with an @mail.weber.edu email.",
+        rep: "Faculty sign up with an @weber.edu email.",
+        partner: "Weber State emails sign up as a student or faculty. Use your organization's email.",
+      },
       otherEmail: "Use a different email",
       resend: "Send a new code",
       resent: "A new code is on its way.",
@@ -374,6 +391,8 @@ export const copy = {
         name: "Enter your name.",
         emailUnavailable: "Sign-in email is still being set up. Write to ailab@weber.edu for access.",
         network: "We couldn't reach the Lab. Check your connection and try again.",
+        googleFailed: "Google sign-in didn't finish. Try again, or use a code.",
+        googleUnavailable: "Google sign-in is still being set up. Use a code for now.",
       },
     },
     // A partner organization's account before the Lab approves it.

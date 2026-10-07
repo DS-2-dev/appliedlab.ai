@@ -1,18 +1,18 @@
-// "Continue with Google". A plain link, not a script: the route it points at
-// sets the PKCE cookie and hands the browser to Google, so this works before
-// any JavaScript loads.
+"use client";
+
+// "Continue with Google". A plain link to the Worker, which sends the browser
+// to Google and back to the login page with a session (account.ts). Built
+// in the browser, since the link carries this site's address.
 //
 // The multicolour G is Google's own mark, which its branding rules require on
-// a sign-in button. Without a Supabase project there is nowhere for Google to
-// send anyone back to, so the button renders visibly off, with the reason
-// under it, rather than as a link that fails after the click.
+// a sign-in button.
 
+import * as React from "react";
 import { copy } from "@/content/copy";
-import { hasSupabase } from "@/lib/data/supabase";
-import { STATIC_SITE } from "@/lib/site";
+import { type AccountRole, googleStartUrl } from "@/lib/account";
 import { authButton } from "./AuthShell";
 
-const BUTTON = `${authButton} border border-black/10 bg-white text-ink`;
+const BUTTON = `${authButton} border border-black/10 bg-white text-ink hover:border-black/20 hover:bg-black/[0.03]`;
 
 function GoogleMark() {
   return (
@@ -25,27 +25,12 @@ function GoogleMark() {
   );
 }
 
-// Off on the static site, where accounts are not open, and on a server
-// with no Supabase project.
-export function GoogleButton({ next }: { next: string }) {
-  if (STATIC_SITE || !hasSupabase()) {
-    return (
-      <div>
-        <span aria-disabled="true" className={`${BUTTON} cursor-not-allowed opacity-50`}>
-          <GoogleMark />
-          {copy.auth.google}
-        </span>
-        <p className="mt-2 text-center text-xs leading-snug text-black/45">{STATIC_SITE ? copy.auth.staticGoogle : copy.auth.googleUnavailable}</p>
-      </div>
-    );
-  }
+// `role` is Sign up's pick, checked against the Google address on the Worker.
+export function GoogleButton({ next, role = null }: { next: string; role?: AccountRole | null }) {
   return (
-    <a
-      href={`/api/auth/google?next=${encodeURIComponent(next)}`}
-      className={`${BUTTON} hover:border-black/20 hover:bg-black/[0.03]`}
-    >
+    <button type="button" className={BUTTON} onClick={() => window.location.assign(googleStartUrl(next, role))}>
       <GoogleMark />
       {copy.auth.google}
-    </a>
+    </button>
   );
 }

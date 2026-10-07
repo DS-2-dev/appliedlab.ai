@@ -160,6 +160,23 @@ export async function verifyLogin(email: string, code: string, name?: string): P
   return "signed-in";
 }
 
+// A session handed over by Google sign-in (the login page reads it from the
+// URL fragment). Kept like any other, then checked with the Worker.
+export async function adoptToken(t: string): Promise<boolean> {
+  memoryToken = t;
+  writeToken(t);
+  await refresh();
+  return state.status === "signed-in";
+}
+
+// Where "Continue with Google" starts: the Worker sends the browser on to
+// Google and back to this site's login page.
+export function googleStartUrl(next: string, role: AccountRole | null = null): string {
+  const params = new URLSearchParams({ origin: window.location.origin, next });
+  if (role) params.set("role", role);
+  return `${ACCOUNT_URL}/auth/google/start?${params}`;
+}
+
 export async function logout(): Promise<void> {
   try {
     await api("/auth/logout", { method: "POST" });

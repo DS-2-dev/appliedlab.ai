@@ -9,6 +9,8 @@
 // - /auth/*, /me and /projects: Projectum accounts and their saved projects,
 //   in the DB D1 database (accounts.ts). GET /approve is the link that
 //   approves a new partner, opened from an email, so it has no origin.
+//   GET /auth/google/start and /auth/google/callback are Google sign-in,
+//   also opened by the browser itself.
 //
 // For the chat there are
 // two engines. With an ANTHROPIC_API_KEY secret it asks Claude, exactly as
@@ -33,14 +35,14 @@ import {
   type Turn,
 } from "@/lib/ask";
 import { checkInterest } from "@/lib/interest";
-import { type AccountEnv, approvePartner, handleAccounts } from "./accounts";
+import { type GoogleEnv, approvePartner, handleAccounts, handleGoogle } from "./accounts";
 import { DEFAULT_SETTINGS, type LabEvent, type Settings } from "@/lib/types";
 import events from "../../data/events.json";
 import settings from "../../data/settings.json";
 
 const FREE_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
 
-interface Env extends AccountEnv {
+interface Env extends GoogleEnv {
   ANTHROPIC_API_KEY?: string;
   ALLOWED_ORIGINS: string;
   ASK_LIMITER: RateLimit;
@@ -125,6 +127,8 @@ async function saveInterest(req: Request, env: Env, ip: string, headers: Record<
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
     if (req.method === "GET" && new URL(req.url).pathname === "/approve") return approvePartner(req, env);
+    const google = await handleGoogle(req, env);
+    if (google) return google;
 
     const headers = cors(req.headers.get("origin"), env);
     // Only the Lab's own pages may call.

@@ -183,32 +183,50 @@ async function verifyLogin(req: Request, env: AccountEnv, ip: string, json: Json
     // and send it again.
     const name = cleanPersonName(body?.name);
     if (!name) return json({ needsName: true });
-    const role = roleForEmail(email);
-    user = {
-      id: crypto.randomUUID(),
-      email,
-      name,
-      role,
-      status: role === "partner" ? "pending" : "active",
-      avatar: null,
-    };
-    await env.DB.prepare("INSERT INTO users (id, email, name, role, status, created_at) VALUES (?, ?, ?, ?, ?, ?)")
-      .bind(user.id, email, name, role, user.status, new Date().toISOString())
-      .run();
-    if (role === "partner") await askApproval(env, req, user);
+    user = await createUser(env, req, email, name, null);
   }
 
   await env.DB.prepare("DELETE FROM login_codes WHERE email = ?").bind(email).run();
+  return json({ token: await issueSession(env, user.id), user: publicUser(user) });
+}
+
+// A new account, with the role its address gives it. Partners start pending
+// and the approver is asked.
+async function createUser(
+  env: AccountEnv,
+  req: Request,
+  email: string,
+  name: string,
+  avatar: string | null,
+): Promise<UserRow> {
+  const role = roleForEmail(email);
+  const user: UserRow = {
+    id: crypto.randomUUID(),
+    email,
+    name,
+    role,
+    status: role === "partner" ? "pending" : "active",
+    avatar,
+  };
+  await env.DB.prepare("INSERT INTO users (id, email, name, role, status, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
+    .bind(user.id, email, name, role, user.status, avatar, new Date().toISOString())
+    .run();
+  if (role === "partner") await askApproval(env, req, user);
+  return user;
+}
+
+// A session for the account; the token goes to the browser, its hash here.
+async function issueSession(env: AccountEnv, userId: string): Promise<string> {
   const token = randomToken();
   await env.DB.batch([
     env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(Date.now()),
     env.DB.prepare("INSERT INTO sessions (token_hash, user_id, expires_at) VALUES (?, ?, ?)").bind(
       await sha256(token),
-      user.id,
+      userId,
       Date.now() + SESSION_TTL_MS,
     ),
   ]);
-  return json({ token, user: publicUser(user) });
+  return token;
 }
 
 // --- Partner approval ------------------------------------------------------
@@ -393,4 +411,173 @@ export async function handleAccounts(
   if (match && req.method === "PUT") return saveProject(req, env, user, match[1], json);
   if (match && req.method === "DELETE") return deleteProject(env, user, match[1], json);
   return json({ error: "not-found" }, 404);
+}
+
+// --- Google ---------------------------------------------------------------
+//
+// "Continue with Google" is a plain link to /auth/google/start, which sends
+// the browser to Google and back to /auth/google/callback here. Google has
+// proven the address, so the role comes from it just as with a code, and a
+// first sign-in takes the name (and picture) from the Google account. The
+// session token goes back to the site in the URL fragment, which never
+// reaches a server, and the login page keeps it.
+//
+// The state Google carries is signed and tied to a cookie on this Worker,
+// so a callback can only finish a sign-in this browser started.
+
+export interface GoogleEnv extends AccountEnv {
+  GOOGLE_CLIENT_ID?: string;
+  GOOGLE_CLIENT_SECRET?: string;
+  ALLOWED_ORIGINS: string;
+}
+
+const NONCE_COOKIE = "g_nonce";
+const STATE_TTL_MS = 10 * 60 * 1000;
+
+const b64url = (text: string) => btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const unb64url = (text: string) => atob(text.replace(/-/g, "+").replace(/_/g, "/"));
+
+function back(origin: string, fragment: Record<string, string>, clearCookie = false): Response {
+  const headers = new Headers({ location: `${origin}/login/#${new URLSearchParams(fragment)}` });
+  if (clearCookie) headers.append("set-cookie", `${NONCE_COOKIE}=; Path=/auth/google; Max-Age=0; HttpOnly; Secure; SameSite=Lax`);
+  return new Response(null, { status: 302, headers });
+}
+
+// Only the Lab's own sites, and only a same-site path to go on to.
+function allowedOrigin(env: GoogleEnv, origin: string | null): string | null {
+  const list = env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
+  return origin && list.includes(origin) ? origin : null;
+}
+
+function cleanNext(next: string | null): string {
+  return next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next.slice(0, 300) : "/projectum";
+}
+
+function readCookie(req: Request, name: string): string | null {
+  const found = (req.headers.get("cookie") ?? "").split(/;\s*/).find((c) => c.startsWith(`${name}=`));
+  return found ? found.slice(name.length + 1) : null;
+}
+
+// The Google picture, downsized by Google and kept inline like an upload.
+// Best effort: no picture is fine.
+async function googlePicture(url: unknown): Promise<string | null> {
+  if (typeof url !== "string" || !url.startsWith("https://")) return null;
+  try {
+    const res = await fetch(url.replace(/=s\d+(-c)?$/, "=s256-c"));
+    const type = res.headers.get("content-type") ?? "";
+    if (!res.ok || !/^image\/(png|jpeg|webp|gif)$/.test(type)) return null;
+    const bytes = new Uint8Array(await res.arrayBuffer());
+    if (bytes.length > 280_000) return null;
+    let binary = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    const data = `data:${type};base64,${btoa(binary)}`;
+    return isThumbnail(data) ? data : null;
+  } catch {
+    return null;
+  }
+}
+
+async function googleStart(req: Request, env: GoogleEnv): Promise<Response> {
+  const url = new URL(req.url);
+  const origin = allowedOrigin(env, url.searchParams.get("origin"));
+  if (!origin) return page("That link doesn't work", "Start from the Lab's login page.", 400);
+  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return back(origin, { error: "google-unavailable" });
+
+  // From Sign up, the role the person picked. A new account whose Google
+  // address gives a different role is turned back with a note on which
+  // address to use. The role itself still comes from the address.
+  const picked = url.searchParams.get("role");
+  const role = picked === "rep" || picked === "member" || picked === "partner" ? picked : null;
+  const nonce = randomToken();
+  const payload = b64url(
+    JSON.stringify({ o: origin, n: cleanNext(url.searchParams.get("next")), r: role, nonce, exp: Date.now() + STATE_TTL_MS }),
+  );
+  const state = `${payload}.${await hmac(env.AUTH_SECRET, `google:${payload}`)}`;
+  const google = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+  google.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
+  google.searchParams.set("redirect_uri", new URL("/auth/google/callback", req.url).toString());
+  google.searchParams.set("response_type", "code");
+  google.searchParams.set("scope", "openid email profile");
+  google.searchParams.set("state", state);
+  google.searchParams.set("prompt", "select_account");
+  return new Response(null, {
+    status: 302,
+    headers: {
+      location: google.toString(),
+      "set-cookie": `${NONCE_COOKIE}=${nonce}; Path=/auth/google; Max-Age=600; HttpOnly; Secure; SameSite=Lax`,
+    },
+  });
+}
+
+async function googleCallback(req: Request, env: GoogleEnv): Promise<Response> {
+  const url = new URL(req.url);
+  const [payload, sig] = (url.searchParams.get("state") ?? "").split(".");
+  if (!payload || !sig || !same(sig, await hmac(env.AUTH_SECRET, `google:${payload}`))) {
+    return page("That sign-in didn't finish", "Start again from the Lab's login page.", 400);
+  }
+  let state: { o: string; n: string; r: AccountRole | null; nonce: string; exp: number };
+  try {
+    state = JSON.parse(unb64url(payload));
+  } catch {
+    return page("That sign-in didn't finish", "Start again from the Lab's login page.", 400);
+  }
+  const origin = allowedOrigin(env, state.o);
+  if (!origin) return page("That sign-in didn't finish", "Start again from the Lab's login page.", 400);
+  const fail = (error: string) => back(origin, { error }, true);
+
+  const cookie = readCookie(req, NONCE_COOKIE);
+  if (state.exp < Date.now() || !cookie || !same(cookie, state.nonce)) return fail("google-failed");
+  const code = url.searchParams.get("code");
+  if (!code || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return fail("google-failed");
+
+  // The ID token comes straight from Google over TLS, so its claims can be
+  // read without checking its signature (OpenID Connect Core 3.1.3.7).
+  const res = await fetch("https://oauth2.googleapis.com/token", {
+    method: "POST",
+    headers: { "content-type": "application/x-www-form-urlencoded" },
+    body: new URLSearchParams({
+      code,
+      client_id: env.GOOGLE_CLIENT_ID,
+      client_secret: env.GOOGLE_CLIENT_SECRET,
+      redirect_uri: new URL("/auth/google/callback", req.url).toString(),
+      grant_type: "authorization_code",
+    }),
+  });
+  const tokens = (await res.json().catch(() => ({}))) as { id_token?: string };
+  if (!res.ok || !tokens.id_token) return fail("google-failed");
+  let claims: Record<string, unknown>;
+  try {
+    claims = JSON.parse(unb64url(tokens.id_token.split(".")[1]));
+  } catch {
+    return fail("google-failed");
+  }
+  const issuerOk = claims.iss === "https://accounts.google.com" || claims.iss === "accounts.google.com";
+  if (!issuerOk || claims.aud !== env.GOOGLE_CLIENT_ID || claims.email_verified !== true || typeof claims.email !== "string") {
+    return fail("google-failed");
+  }
+
+  const email = normalizeEmail(claims.email);
+  let user = await env.DB.prepare("SELECT id, email, name, role, status, avatar FROM users WHERE email = ?")
+    .bind(email)
+    .first<UserRow>();
+  if (user?.status === "removed") return fail("removed");
+  if (!user && state.r && roleForEmail(email) !== state.r) return back(origin, { error: "wrong-email", role: state.r }, true);
+  if (!user) {
+    const name = cleanPersonName(claims.name) || email.split("@")[0];
+    user = await createUser(env, req, email, name, await googlePicture(claims.picture));
+  } else if (!user.avatar) {
+    const avatar = await googlePicture(claims.picture);
+    if (avatar) await env.DB.prepare("UPDATE users SET avatar = ? WHERE id = ?").bind(avatar, user.id).run();
+  }
+  return back(origin, { token: await issueSession(env, user.id), next: state.n }, true);
+}
+
+// The two Google routes, opened by the browser itself rather than called by
+// the site, so they come before the origin check. Null for any other path.
+export async function handleGoogle(req: Request, env: GoogleEnv): Promise<Response | null> {
+  if (req.method !== "GET") return null;
+  const { pathname } = new URL(req.url);
+  if (pathname === "/auth/google/start") return googleStart(req, env);
+  if (pathname === "/auth/google/callback") return googleCallback(req, env);
+  return null;
 }

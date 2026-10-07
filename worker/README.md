@@ -35,6 +35,31 @@ shows the code on the login form in place of an email. Run
 `npm run dev`, and run the site with
 `NEXT_PUBLIC_ASK_URL=http://localhost:8787`.
 
+### Google sign-in
+
+"Continue with Google" goes through `/auth/google/start` and
+`/auth/google/callback` here. Google proves the address, so the role comes
+from it as with a code. Sign up's role pick travels along, and a new
+account whose address doesn't match it is sent back with a note. Setup, in
+the Google Cloud console:
+
+1. Make a project, then open Google Auth Platform and set it up as an
+   External app named Applied AI Lab. Under Audience, publish it. The
+   `openid email profile` scopes need no Google review.
+2. Under Clients, create a Web application client with these redirect URIs:
+   - `https://appliedlab-ask.now-playing.workers.dev/auth/google/callback`
+   - `http://localhost:8787/auth/google/callback`
+3. From `worker/`:
+
+```bash
+npx wrangler secret put GOOGLE_CLIENT_ID
+npx wrangler secret put GOOGLE_CLIENT_SECRET
+npm run deploy
+```
+
+Until both are set, the button answers that Google sign-in is still being
+set up. Locally, put both in `.dev.vars`.
+
 To look at accounts:
 
 ```bash
