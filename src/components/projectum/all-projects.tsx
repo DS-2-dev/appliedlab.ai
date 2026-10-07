@@ -126,7 +126,7 @@ export function AllProjects() {
   const shown = inFilter(filter);
 
   return (
-    <div className="mx-auto grid w-full max-w-6xl content-start gap-6 p-6">
+    <div className="mx-auto grid w-full min-w-0 max-w-6xl content-start [overflow-wrap:anywhere] gap-6 p-6">
       <div className="grid gap-1">
         <h1 className="text-xl font-medium">{A.title}</h1>
         <p className="text-sm text-muted-foreground">{A.description}</p>

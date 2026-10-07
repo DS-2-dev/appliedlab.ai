@@ -28,8 +28,10 @@ settings. Once Resend shows the domain verified, codes send from
 `MAIL_FROM` in `wrangler.jsonc`. Until the key is set, sign-in answers that
 email is still being set up.
 
-Locally, `worker/.dev.vars` holds `AUTH_SECRET=...` and `DEV_CODES=1`, which
-shows the code on the login form in place of an email. Run
+Locally, `worker/.dev.vars` holds `AUTH_SECRET=...`, `DEV_CODES=1`, which
+shows the code on the login form in place of an email, and
+`ALLOWED_ORIGINS=https://appliedlab.ai,http://localhost:3000,http://localhost:3100`
+(the live Worker allows only appliedlab.ai). Run
 `npx wrangler d1 migrations apply appliedlab-projectum --local` once, then
 `npm run dev`, and run the site with
 `NEXT_PUBLIC_ASK_URL=http://localhost:8787`.

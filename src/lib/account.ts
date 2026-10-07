@@ -166,6 +166,19 @@ export async function verifyLogin(email: string, code: string, name?: string): P
   return "signed-in";
 }
 
+// Whether a session handed back by Google sign-in is one this tab asked for.
+// The nonce is used once.
+export function takeGoogleSession(nonce: string | null): boolean {
+  let expected: string | null = null;
+  try {
+    expected = window.sessionStorage.getItem(GOOGLE_NONCE);
+    window.sessionStorage.removeItem(GOOGLE_NONCE);
+  } catch {
+    return false;
+  }
+  return Boolean(nonce && expected && nonce === expected);
+}
+
 // A session handed over by Google sign-in (the login page reads it from the
 // URL fragment). Kept like any other, then checked with the Worker.
 export async function adoptToken(t: string): Promise<boolean> {
@@ -177,8 +190,18 @@ export async function adoptToken(t: string): Promise<boolean> {
 
 // Where "Continue with Google" starts: the Worker sends the browser on to
 // Google and back to this site's login page.
+const GOOGLE_NONCE = "projectum:google-nonce";
+
 export function googleStartUrl(next: string, role: AccountRole | null = null): string {
-  const params = new URLSearchParams({ origin: window.location.origin, next });
+  // Remembered for the return trip: the login page only takes a session
+  // that comes back with this nonce (takeGoogleSession).
+  const nonce = crypto.randomUUID();
+  try {
+    window.sessionStorage.setItem(GOOGLE_NONCE, nonce);
+  } catch {
+    // Without storage the return is refused, and the code still works.
+  }
+  const params = new URLSearchParams({ origin: window.location.origin, next, nonce });
   if (role) params.set("role", role);
   return `${ACCOUNT_URL}/auth/google/start?${params}`;
 }

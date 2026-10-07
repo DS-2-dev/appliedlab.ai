@@ -8,7 +8,9 @@
   "compatibility_flags": ["nodejs_compat"],
   // Sites allowed to call the Worker.
   "vars": {
-    "ALLOWED_ORIGINS": "https://appliedlab.ai,https://www.appliedlab.ai,http://localhost:3000,http://localhost:3100",
+    // Local sites are added in .dev.vars, so the live Worker never hands a
+    // session to a page on someone's own machine.
+    "ALLOWED_ORIGINS": "https://appliedlab.ai,https://www.appliedlab.ai",
     // Gets an email with an approve link for every new partner account.
     "APPROVER_EMAIL": "kylarvierra@mail.weber.edu",
     // The site, for links in emails.

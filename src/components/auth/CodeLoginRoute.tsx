@@ -11,7 +11,7 @@
 import * as React from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import { copy } from "@/content/copy";
-import { adoptToken } from "@/lib/account";
+import { adoptToken, takeGoogleSession } from "@/lib/account";
 import type { AccountRole } from "@/lib/email-rules";
 import { CodeLoginForm } from "./CodeLoginForm";
 
@@ -60,6 +60,10 @@ export function CodeLoginRoute({ signup = false }: { signup?: boolean }) {
 
   React.useEffect(() => {
     if (!token) return;
+    if (!takeGoogleSession(hash.get("nonce"))) {
+      queueMicrotask(() => setTokenFailed(true));
+      return;
+    }
     void adoptToken(token).then((ok) => {
       if (ok) router.replace(safeNext(hash.get("next")));
       else setTokenFailed(true);

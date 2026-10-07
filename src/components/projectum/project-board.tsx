@@ -651,7 +651,7 @@ export function ProjectBoard({ projectId }: { projectId: string }) {
   const save = (saved: Project) => update((l) => replaceProject(l, saved));
 
   return (
-    <div data-board="" data-stage={project.stage} className="mx-auto grid w-full max-w-6xl content-start gap-6 p-6">
+    <div data-board="" data-stage={project.stage} className="mx-auto grid w-full min-w-0 max-w-6xl content-start [overflow-wrap:anywhere] gap-6 p-6">
       <div className="flex min-h-9 items-center gap-8">
         <StageTrack
           stage={project.stage}

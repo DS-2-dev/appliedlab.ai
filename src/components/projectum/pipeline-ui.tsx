@@ -114,7 +114,7 @@ export function ViewFrame({
   children: React.ReactNode;
 }) {
   return (
-    <div className="mx-auto grid w-full max-w-6xl content-start gap-6 p-6">
+    <div className="mx-auto grid w-full min-w-0 max-w-6xl content-start [overflow-wrap:anywhere] gap-6 p-6">
       <div className="flex items-start justify-between gap-4">
         <div className="grid gap-1">
           <h1 className="text-xl font-medium">{title}</h1>

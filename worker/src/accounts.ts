@@ -147,9 +147,12 @@ async function startLogin(req: Request, env: AccountEnv, ip: string, json: Json)
   const code = randomCode();
   await env.DB.prepare(
     "INSERT INTO login_codes (email, code_hash, expires_at, attempts) VALUES (?, ?, ?, 0) " +
-      "ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, attempts = 0",
+      "ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, " +
+      // Wrong guesses carry over to a fresh code until the last one would
+      // have expired, so asking again doesn't buy more guesses.
+      "attempts = CASE WHEN login_codes.expires_at > ? THEN login_codes.attempts ELSE 0 END",
   )
-    .bind(email, await sha256(`${env.AUTH_SECRET}:${email}:${code}`), Date.now() + CODE_TTL_MS)
+    .bind(email, await sha256(`${env.AUTH_SECRET}:${email}:${code}`), Date.now() + CODE_TTL_MS, Date.now())
     .run();
 
   if (env.DEV_CODES === "1" && !env.RESEND_API_KEY) {
@@ -176,17 +179,15 @@ async function verifyLogin(req: Request, env: AccountEnv, ip: string, json: Json
   const byEmail = await env.LOGIN_LIMITER.limit({ key: `verify:${email}` });
   if (!byIp.success || !byEmail.success) return json({ error: "limited" }, 429);
 
-  const row = await env.DB.prepare("SELECT code_hash, expires_at, attempts FROM login_codes WHERE email = ?")
-    .bind(email)
-    .first<{ code_hash: string; expires_at: number; attempts: number }>();
-  if (!row || row.expires_at < Date.now() || row.attempts >= MAX_ATTEMPTS) {
-    if (row) await env.DB.prepare("DELETE FROM login_codes WHERE email = ?").bind(email).run();
-    return json({ error: "expired" }, 400);
-  }
-  if (!same(row.code_hash, await sha256(`${env.AUTH_SECRET}:${email}:${code}`))) {
-    await env.DB.prepare("UPDATE login_codes SET attempts = attempts + 1 WHERE email = ?").bind(email).run();
-    return json({ error: "code" }, 400);
-  }
+  // Each guess is counted before it's checked, in one step, so guesses sent
+  // at once can't share an attempt.
+  const row = await env.DB.prepare(
+    "UPDATE login_codes SET attempts = attempts + 1 WHERE email = ? AND expires_at > ? AND attempts < ? RETURNING code_hash, attempts",
+  )
+    .bind(email, Date.now(), MAX_ATTEMPTS)
+    .first<{ code_hash: string; attempts: number }>();
+  if (!row) return json({ error: "expired" }, 400);
+  if (!same(row.code_hash, await sha256(`${env.AUTH_SECRET}:${email}:${code}`))) return json({ error: "code" }, 400);
 
   let user = await env.DB.prepare("SELECT id, email, name, role, status, avatar FROM users WHERE email = ?")
     .bind(email)
@@ -197,7 +198,11 @@ async function verifyLogin(req: Request, env: AccountEnv, ip: string, json: Json
     // A new account needs a name. The code stays good, so the form can ask
     // and send it again.
     const name = cleanPersonName(body?.name);
-    if (!name) return json({ needsName: true });
+    if (!name) {
+      // A right code that only lacked a name doesn't count as a guess.
+      await env.DB.prepare("UPDATE login_codes SET attempts = attempts - 1 WHERE email = ?").bind(email).run();
+      return json({ needsName: true });
+    }
     user = await createUser(env, req, email, name, null);
   }
 
@@ -246,10 +251,15 @@ async function issueSession(env: AccountEnv, userId: string): Promise<string> {
 
 // --- Partner approval ------------------------------------------------------
 
+const APPROVAL_TTL_MS = 30 * 24 * 60 * 60 * 1000;
+
+// The emailed link to approve a partner, signed and good for 30 days.
 async function approvalLink(env: AccountEnv, req: Request, userId: string): Promise<string> {
+  const exp = String(Date.now() + APPROVAL_TTL_MS);
   const url = new URL("/approve", req.url);
   url.searchParams.set("u", userId);
-  url.searchParams.set("t", await hmac(env.AUTH_SECRET, `approve:${userId}`));
+  url.searchParams.set("e", exp);
+  url.searchParams.set("t", await hmac(env.AUTH_SECRET, `approve:${userId}:${exp}`));
   return url.toString();
 }
 
@@ -276,17 +286,30 @@ export function page(title: string, body: string, status = 200): Response {
   );
 }
 
+// Opening the emailed link shows who is asking and an Approve button; only
+// the button, a POST, approves. Mail scanners open links on their own, and
+// opening alone must change nothing.
 export async function approvePartner(req: Request, env: AccountEnv): Promise<Response> {
   const url = new URL(req.url);
   const id = url.searchParams.get("u") ?? "";
+  const exp = url.searchParams.get("e") ?? "";
   const token = url.searchParams.get("t") ?? "";
-  if (!id || !same(token, await hmac(env.AUTH_SECRET, `approve:${id}`))) {
+  if (!id || !/^\d+$/.test(exp) || !same(token, await hmac(env.AUTH_SECRET, `approve:${id}:${exp}`))) {
     return page("That link doesn't work", "It may have been copied incompletely.", 400);
   }
+  if (Number(exp) < Date.now()) return page("That link has expired", "Approve them in Approvals on Projectum instead.", 400);
   const user = await env.DB.prepare("SELECT id, email, name, role, status, avatar FROM users WHERE id = ?")
     .bind(id)
     .first<UserRow>();
   if (!user) return page("No such account", "It may have been deleted.", 404);
+  if (req.method !== "POST") {
+    if (user.status !== "pending") return page("Already approved", `${escapeHtml(user.name)} can post problems.`);
+    return page(
+      `Approve ${user.name}?`,
+      `${escapeHtml(user.name)} (${escapeHtml(user.email)}) signed up as a partner organization. Once approved, they can post problems for students.` +
+        `</p><form method="post"><button style="font:inherit;padding:.6rem 1.2rem;border-radius:999px;border:0;background:#111;color:#fff;cursor:pointer">Approve</button></form><p>`,
+    );
+  }
   if (user.status === "pending") {
     await env.DB.prepare("UPDATE users SET status = 'active' WHERE id = ?").bind(id).run();
     await sendEmail(
@@ -316,7 +339,7 @@ export async function sessionUser(req: Request, env: AccountEnv): Promise<UserRo
 
 async function updateMe(req: Request, env: AccountEnv, user: UserRow, json: Json): Promise<Response> {
   const body = (await req.json().catch(() => null)) as { name?: unknown; avatar?: unknown } | null;
-  if (!body) return json({ error: "body" }, 400);
+  if (!body || typeof body !== "object" || Array.isArray(body)) return json({ error: "body" }, 400);
   const next = { ...user };
   if ("name" in body) {
     const name = cleanPersonName(body.name);
@@ -449,8 +472,13 @@ async function googleStart(req: Request, env: GoogleEnv): Promise<Response> {
   const picked = url.searchParams.get("role");
   const role = picked === "rep" || picked === "member" || picked === "partner" ? picked : null;
   const nonce = randomToken();
+  // The page's own nonce, handed back with the session so the login page
+  // only takes a session it asked for: a link carrying someone else's
+  // session can't sign a visitor in as them.
+  const pageNonce = url.searchParams.get("nonce") ?? "";
+  if (!/^[\w-]{16,64}$/.test(pageNonce)) return back(origin, { error: "google-failed" });
   const payload = b64url(
-    JSON.stringify({ o: origin, n: cleanNext(url.searchParams.get("next")), r: role, nonce, exp: Date.now() + STATE_TTL_MS }),
+    JSON.stringify({ o: origin, n: cleanNext(url.searchParams.get("next")), r: role, c: pageNonce, nonce, exp: Date.now() + STATE_TTL_MS }),
   );
   const state = `${payload}.${await hmac(env.AUTH_SECRET, `google:${payload}`)}`;
   const google = new URL("https://accounts.google.com/o/oauth2/v2/auth");
@@ -475,7 +503,7 @@ async function googleCallback(req: Request, env: GoogleEnv): Promise<Response> {
   if (!payload || !sig || !same(sig, await hmac(env.AUTH_SECRET, `google:${payload}`))) {
     return page("That sign-in didn't finish", "Start again from the Lab's login page.", 400);
   }
-  let state: { o: string; n: string; r: AccountRole | null; nonce: string; exp: number };
+  let state: { o: string; n: string; r: AccountRole | null; c: string; nonce: string; exp: number };
   try {
     state = JSON.parse(unb64url(payload));
   } catch {
@@ -529,7 +557,7 @@ async function googleCallback(req: Request, env: GoogleEnv): Promise<Response> {
     const avatar = await googlePicture(claims.picture);
     if (avatar) await env.DB.prepare("UPDATE users SET avatar = ? WHERE id = ?").bind(avatar, user.id).run();
   }
-  return back(origin, { token: await issueSession(env, user.id), next: state.n }, true);
+  return back(origin, { token: await issueSession(env, user.id), next: state.n, nonce: state.c }, true);
 }
 
 // The two Google routes, opened by the browser itself rather than called by

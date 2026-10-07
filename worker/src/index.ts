@@ -100,7 +100,11 @@ function streamFree(env: Env, turns: Turn[], schedule: string): ReadableStream<U
 
 export default {
   async fetch(req: Request, env: Env): Promise<Response> {
-    if (req.method === "GET" && new URL(req.url).pathname === "/approve") return approvePartner(req, env);
+    if ((req.method === "GET" || req.method === "POST") && new URL(req.url).pathname === "/approve") return approvePartner(req, env);
+    // Nothing the site sends is this big, apart from a report (pipeline.ts
+    // checks those against their own limit).
+    const size = Number(req.headers.get("content-length") ?? 0);
+    if (size > 256 * 1024 && !/\/submissions$/.test(new URL(req.url).pathname)) return new Response(null, { status: 413 });
     const google = await handleGoogle(req, env);
     if (google) return google;
 

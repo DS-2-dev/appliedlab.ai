@@ -119,15 +119,28 @@ async function getProblem(env: AccountEnv, id: string): Promise<ProblemRow | nul
 const canSee = (user: UserRow, row: { owner_id: string }) => user.role !== "partner" || row.owner_id === user.id;
 const canEdit = (user: UserRow, row: { owner_id: string }) => row.owner_id === user.id || user.role === "rep";
 
+// Rows for a list of claim ids. D1 binds at most 100 values a query, so the
+// ids go in batches; each claim's rows stay in one batch, in order.
+async function byClaims<T>(env: AccountEnv, sql: (marks: string) => string, claimIds: string[]): Promise<T[]> {
+  const out: T[] = [];
+  for (let i = 0; i < claimIds.length; i += 90) {
+    const chunk = claimIds.slice(i, i + 90);
+    const { results } = await env.DB.prepare(sql(chunk.map(() => "?").join(",")))
+      .bind(...chunk)
+      .all<T>();
+    out.push(...results);
+  }
+  return out;
+}
+
 async function teams(env: AccountEnv, claimIds: string[]): Promise<Map<string, Person[]>> {
   const map = new Map<string, Person[]>();
-  if (!claimIds.length) return map;
-  const marks = claimIds.map(() => "?").join(",");
-  const { results } = await env.DB.prepare(
-    `SELECT m.claim_id, u.id, u.name FROM claim_members m JOIN users u ON u.id = m.user_id WHERE m.claim_id IN (${marks}) ORDER BY u.name COLLATE NOCASE`,
-  )
-    .bind(...claimIds)
-    .all<{ claim_id: string; id: string; name: string }>();
+  const results = await byClaims<{ claim_id: string; id: string; name: string }>(
+    env,
+    (marks) =>
+      `SELECT m.claim_id, u.id, u.name FROM claim_members m JOIN users u ON u.id = m.user_id WHERE m.claim_id IN (${marks}) ORDER BY u.name COLLATE NOCASE`,
+    claimIds,
+  );
   for (const r of results) map.set(r.claim_id, [...(map.get(r.claim_id) ?? []), { id: r.id, name: r.name }]);
   return map;
 }
@@ -161,16 +174,16 @@ async function latestSubmissions(
   acceptedOnly = false,
 ): Promise<Map<string, ReturnType<typeof submissionOut>>> {
   const map = new Map<string, ReturnType<typeof submissionOut>>();
-  if (!claimIds.length) return map;
-  const marks = claimIds.map(() => "?").join(",");
-  const { results } = await env.DB.prepare(
-    `SELECT id, claim_id, project_id, report_name, report_size, status, review_note, created_at FROM submissions WHERE claim_id IN (${marks})${
-      acceptedOnly ? " AND status = 'accepted'" : ""
-    } ORDER BY created_at`,
-  )
-    .bind(...claimIds)
-    .all<SubmissionRow>();
-  for (const r of results) map.set(r.claim_id, submissionOut(r));
+  const results = await byClaims<SubmissionRow>(
+    env,
+    (marks) =>
+      `SELECT id, claim_id, project_id, report_name, report_size, status, review_note, created_at FROM submissions WHERE claim_id IN (${marks})${
+        acceptedOnly ? " AND status = 'accepted'" : ""
+      } ORDER BY created_at`,
+    claimIds,
+  );
+  // A partner gets the work, not the Lab's notes to the team.
+  for (const r of results) map.set(r.claim_id, acceptedOnly ? { ...submissionOut(r), reviewNote: "" } : submissionOut(r));
   return map;
 }
 
@@ -181,20 +194,18 @@ async function phaseInfo(env: AccountEnv, claimIds: string[]) {
     string,
     { message: string; milestones: ReturnType<typeof cleanPhaseMilestones>; completedAt: string | null; createdAt: string }
   >();
-  if (!claimIds.length) return { meetings, selections };
-  const marks = claimIds.map(() => "?").join(",");
-  const m = await env.DB.prepare(
-    `SELECT id, claim_id, status, message, created_at FROM meetings WHERE claim_id IN (${marks}) ORDER BY created_at`,
-  )
-    .bind(...claimIds)
-    .all<{ id: string; claim_id: string; status: "requested" | "arranged"; message: string; created_at: string }>();
-  for (const r of m.results) meetings.set(r.claim_id, { id: r.id, status: r.status, message: r.message, createdAt: r.created_at });
-  const sel = await env.DB.prepare(
-    `SELECT claim_id, message, milestones, completed_at, created_at FROM selections WHERE claim_id IN (${marks})`,
-  )
-    .bind(...claimIds)
-    .all<{ claim_id: string; message: string; milestones: string; completed_at: string | null; created_at: string }>();
-  for (const r of sel.results) {
+  const m = await byClaims<{ id: string; claim_id: string; status: "requested" | "arranged"; message: string; created_at: string }>(
+    env,
+    (marks) => `SELECT id, claim_id, status, message, created_at FROM meetings WHERE claim_id IN (${marks}) ORDER BY created_at`,
+    claimIds,
+  );
+  for (const r of m) meetings.set(r.claim_id, { id: r.id, status: r.status, message: r.message, createdAt: r.created_at });
+  const sel = await byClaims<{ claim_id: string; message: string; milestones: string; completed_at: string | null; created_at: string }>(
+    env,
+    (marks) => `SELECT claim_id, message, milestones, completed_at, created_at FROM selections WHERE claim_id IN (${marks})`,
+    claimIds,
+  );
+  for (const r of sel) {
     selections.set(r.claim_id, {
       message: r.message,
       milestones: cleanPhaseMilestones(JSON.parse(r.milestones)),
@@ -224,6 +235,10 @@ function claimOut(row: ClaimRow, team: Person[]) {
 const CLAIM_SELECT =
   "SELECT c.id, c.problem_id, c.owner_id, c.plan, c.status, c.review_note, c.reviewed_at, c.created_at, " +
   "(SELECT pj.id FROM projects pj WHERE pj.claim_id = c.id) AS project_id FROM claims c";
+
+async function onTeam(env: AccountEnv, claimId: string, userId: string): Promise<boolean> {
+  return Boolean(await env.DB.prepare("SELECT 1 FROM claim_members WHERE claim_id = ? AND user_id = ?").bind(claimId, userId).first());
+}
 
 // --- Problems ------------------------------------------------------------------
 
@@ -260,6 +275,8 @@ async function showProblem(env: AccountEnv, user: UserRow, id: string, json: Jso
     problem: problemOut(row),
     claims: results.map((c) => ({
       ...claimOut(c, team.get(c.id) ?? []),
+      // The Lab's notes are for the team, not the partner.
+      ...(user.role === "partner" ? { reviewNote: "" } : {}),
       submission: subs.get(c.id) ?? null,
       meeting: phase.meetings.get(c.id) ?? null,
       selection: phase.selections.get(c.id) ?? null,
@@ -359,7 +376,7 @@ async function insertClaim(
   if (busy) return json({ error: "already-claimed" }, 409);
 
   const id = crypto.randomUUID();
-  await env.DB.batch([
+  const made = await env.DB.batch([
     env.DB.prepare("INSERT INTO claims (id, problem_id, owner_id, plan, status, created_at) VALUES (?, ?, ?, ?, 'pending', ?)").bind(
       id,
       problemId,
@@ -368,7 +385,10 @@ async function insertClaim(
       now(),
     ),
     ...team.map((m) => env.DB.prepare("INSERT INTO claim_members (claim_id, user_id) VALUES (?, ?)").bind(id, m)),
-  ]);
+  ]).catch((e: unknown) => e);
+  // The database's one_active_claim trigger catches a claim sent at the same
+  // moment as another; the batch rolls back whole.
+  if (made instanceof Error) return json({ error: /already-claimed/.test(made.message) ? "already-claimed" : "error" }, 409);
   return id;
 }
 
@@ -438,7 +458,14 @@ async function withdrawClaim(env: AccountEnv, user: UserRow, id: string, json: J
   const member = await env.DB.prepare("SELECT 1 FROM claim_members WHERE claim_id = ? AND user_id = ?").bind(id, user.id).first();
   if (!member) return json({ error: "forbidden" }, 403);
   if (claim.status !== "pending" && claim.status !== "approved") return json({ error: "state" }, 409);
-  await env.DB.prepare("UPDATE claims SET status = 'withdrawn' WHERE id = ?").bind(id).run();
+  // Accepted work stays: a partner may already be meeting or hiring the team.
+  const done = await env.DB.prepare(
+    "SELECT 1 FROM submissions WHERE claim_id = ? AND status = 'accepted' UNION SELECT 1 FROM selections WHERE claim_id = ?",
+  )
+    .bind(id, id)
+    .first();
+  if (done) return json({ error: "accepted" }, 409);
+  await env.DB.prepare("UPDATE claims SET status = 'withdrawn' WHERE id = ? AND status IN ('pending', 'approved')").bind(id).run();
   return json({ ok: true });
 }
 
@@ -507,9 +534,14 @@ async function reviewClaim(req: Request, env: AccountEnv, user: UserRow, id: str
   const claim = await env.DB.prepare(`${CLAIM_SELECT} WHERE c.id = ?`).bind(id).first<ClaimRow>();
   if (!claim) return json({ error: "not-found" }, 404);
   if (claim.status !== "pending") return json({ error: "state" }, 409);
-  await env.DB.prepare("UPDATE claims SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?")
+  if (await onTeam(env, id, user.id)) return json({ error: "own-claim" }, 403);
+  // Only the first decision lands, however many are sent at once.
+  const r = await env.DB.prepare(
+    "UPDATE claims SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'",
+  )
     .bind(decision, note, user.id, now(), id)
     .run();
+  if (!r.meta.changes) return json({ error: "state" }, 409);
 
   const problem = await getProblem(env, claim.problem_id);
   if (decision === "approved" && problem) await openBoard(env, claim, problem);
@@ -596,7 +628,6 @@ interface BoardRow {
   id: string;
   owner_id: string;
   owner_name: string;
-  owner_email: string;
   owner_role: string;
   data: string;
   problem_id: string;
@@ -604,18 +635,22 @@ interface BoardRow {
   on_team: number | null;
 }
 
-// Every board the account can see: partners those on their own problems,
-// everyone else all of them. `onTeam` marks its own team's, and `editable`
+// Every board the account can see: partners those on their own problems
+// whose work the Lab accepted, everyone else all of them. No emails. `onTeam` marks its own team's, and `editable`
 // the ones it can change: its team's, or any for an approver.
 async function listBoards(env: AccountEnv, user: UserRow, json: Json): Promise<Response> {
   const select =
-    "SELECT pj.id, pj.owner_id, u.name AS owner_name, u.email AS owner_email, u.role AS owner_role, pj.data, c.problem_id, c.id AS claim_id, " +
+    "SELECT pj.id, pj.owner_id, u.name AS owner_name, u.role AS owner_role, pj.data, c.problem_id, c.id AS claim_id, " +
     "(SELECT 1 FROM claim_members m WHERE m.claim_id = c.id AND m.user_id = ?) AS on_team " +
     "FROM projects pj JOIN claims c ON c.id = pj.claim_id JOIN problems pr ON pr.id = c.problem_id JOIN users u ON u.id = pj.owner_id " +
     "WHERE c.status = 'approved'";
   const { results } =
     user.role === "partner"
-      ? await env.DB.prepare(`${select} AND pr.owner_id = ? ORDER BY pj.created_at`).bind(user.id, user.id).all<BoardRow>()
+      ? await env.DB.prepare(
+          `${select} AND pr.owner_id = ? AND EXISTS (SELECT 1 FROM submissions s WHERE s.claim_id = c.id AND s.status = 'accepted') ORDER BY pj.created_at`,
+        )
+          .bind(user.id, user.id)
+          .all<BoardRow>()
       : await env.DB.prepare(`${select} ORDER BY pj.created_at`).bind(user.id).all<BoardRow>();
   const approver = isApprover(env, user);
   const subs = await latestSubmissions(env, results.map((r) => r.claim_id), user.role === "partner");
@@ -627,7 +662,7 @@ async function listBoards(env: AccountEnv, user: UserRow, json: Json): Promise<R
         ? [
             {
               project,
-              owner: { id: r.owner_id, name: r.owner_name, email: r.owner_email, role: r.owner_role },
+              owner: { id: r.owner_id, name: r.owner_name, role: r.owner_role },
               problemId: r.problem_id,
               onTeam: Boolean(r.on_team),
               editable: Boolean(r.on_team) || approver,
@@ -641,20 +676,30 @@ async function listBoards(env: AccountEnv, user: UserRow, json: Json): Promise<R
   });
 }
 
-async function boardAccess(env: AccountEnv, user: UserRow, id: string): Promise<"edit" | "none" | "missing"> {
+// Who may change a board: its team, or an approver, and only while its
+// claim is approved. Once the team submits, the board holds still for
+// everyone but approvers until the submission is sent back, so the Lab and
+// the partner review what was submitted.
+async function boardAccess(env: AccountEnv, user: UserRow, id: string): Promise<"edit" | "none" | "locked" | "missing"> {
   const row = await env.DB.prepare(
-    "SELECT pj.claim_id, (SELECT 1 FROM claim_members m WHERE m.claim_id = pj.claim_id AND m.user_id = ?) AS on_team FROM projects pj WHERE pj.id = ?",
+    "SELECT pj.claim_id, c.status, " +
+      "(SELECT 1 FROM claim_members m WHERE m.claim_id = pj.claim_id AND m.user_id = ?) AS on_team, " +
+      "(SELECT 1 FROM submissions s WHERE s.claim_id = pj.claim_id AND s.status IN ('pending', 'accepted')) AS submitted " +
+      "FROM projects pj JOIN claims c ON c.id = pj.claim_id WHERE pj.id = ?",
   )
     .bind(user.id, id)
-    .first<{ claim_id: string; on_team: number | null }>();
+    .first<{ claim_id: string; status: ClaimStatus; on_team: number | null; submitted: number | null }>();
   if (!row) return "missing";
-  return row.on_team || isApprover(env, user) ? "edit" : "none";
+  if (isApprover(env, user)) return "edit";
+  if (!row.on_team || row.status !== "approved") return "none";
+  return row.submitted ? "locked" : "edit";
 }
 
 async function saveBoard(req: Request, env: AccountEnv, user: UserRow, id: string, json: Json): Promise<Response> {
   const access = await boardAccess(env, user, id);
   if (access === "missing") return json({ error: "not-found" }, 404);
   if (access === "none") return json({ error: "forbidden" }, 403);
+  if (access === "locked") return json({ error: "submitted" }, 409);
   const body = (await req.json().catch(() => null)) as { project?: unknown } | null;
   const [project] = cleanProjects([body?.project]);
   if (!project || project.id !== id) return json({ error: "project" }, 400);
@@ -666,7 +711,9 @@ async function saveBoard(req: Request, env: AccountEnv, user: UserRow, id: strin
 // claim.
 async function deleteBoard(env: AccountEnv, user: UserRow, id: string, json: Json): Promise<Response> {
   if (!isApprover(env, user)) return json({ error: "forbidden" }, 403);
+  const { results } = await env.DB.prepare("SELECT id FROM submissions WHERE project_id = ?").bind(id).all<{ id: string }>();
   await env.DB.prepare("DELETE FROM projects WHERE id = ?").bind(id).run();
+  for (const r of results) await env.REPORTS.delete(r.id);
   return json({ ok: true });
 }
 
@@ -685,6 +732,8 @@ async function submit(req: Request, env: AccountEnv, user: UserRow, projectId: s
   const access = await boardAccess(env, user, projectId);
   if (access === "missing") return json({ error: "not-found" }, 404);
   if (access === "none") return json({ error: "forbidden" }, 403);
+  const tooBig = Number(req.headers.get("content-length") ?? 0) > MAX_REPORT + 1024 * 1024;
+  if (tooBig) return json({ error: "report-size" }, 413);
   const row = await env.DB.prepare(`${CLAIM_SELECT} JOIN projects pj ON pj.claim_id = c.id WHERE pj.id = ?`)
     .bind(projectId)
     .first<ClaimRow>();
@@ -713,12 +762,17 @@ async function submit(req: Request, env: AccountEnv, user: UserRow, projectId: s
   const id = crypto.randomUUID();
   const name = cleanLine(file.name, 120).replace(/[^\w .()-]/g, "_") || "report.pdf";
   await env.REPORTS.put(id, bytes, { metadata: { name } });
-  await env.DB.batch([
+  const saved = await env.DB.batch([
     env.DB.prepare(
       "INSERT INTO submissions (id, claim_id, project_id, submitted_by, report_name, report_size, status, created_at) VALUES (?, ?, ?, ?, ?, ?, 'pending', ?)",
     ).bind(id, row.id, projectId, user.id, name, bytes.length, now()),
     env.DB.prepare("UPDATE projects SET data = ?, updated_at = ? WHERE id = ?").bind(JSON.stringify(project), now(), projectId),
-  ]);
+  ]).catch((e: unknown) => e);
+  // Another submission landed first (submissions_open): drop this report.
+  if (saved instanceof Error) {
+    await env.REPORTS.delete(id);
+    return json({ error: "pending" }, 409);
+  }
 
   const problem = await getProblem(env, row.problem_id);
   await sendEmail(
@@ -765,16 +819,15 @@ async function reviewSubmission(req: Request, env: AccountEnv, user: UserRow, id
     .first<{ id: string; claim_id: string; project_id: string; status: string }>();
   if (!sub) return json({ error: "not-found" }, 404);
   if (sub.status !== "pending") return json({ error: "state" }, 409);
-
-  const writes = [
-    env.DB.prepare("UPDATE submissions SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ?").bind(
-      decision,
-      note,
-      user.id,
-      now(),
-      id,
-    ),
-  ];
+  if (await onTeam(env, sub.claim_id, user.id)) return json({ error: "own-claim" }, 403);
+  // Only the first decision lands, however many are sent at once.
+  const claimed = await env.DB.prepare(
+    "UPDATE submissions SET status = ?, review_note = ?, reviewed_by = ?, reviewed_at = ? WHERE id = ? AND status = 'pending'",
+  )
+    .bind(decision, note, user.id, now(), id)
+    .run();
+  if (!claimed.meta.changes) return json({ error: "state" }, 409);
+  const writes: D1PreparedStatement[] = [];
   if (decision === "returned") {
     const pj = await env.DB.prepare("SELECT data FROM projects WHERE id = ?").bind(sub.project_id).first<{ data: string }>();
     const [current] = pj ? cleanProjects([JSON.parse(pj.data)]) : [];
@@ -785,7 +838,7 @@ async function reviewSubmission(req: Request, env: AccountEnv, user: UserRow, id
       if (back) writes.push(env.DB.prepare("UPDATE projects SET data = ?, updated_at = ? WHERE id = ?").bind(JSON.stringify(back), now(), sub.project_id));
     }
   }
-  await env.DB.batch(writes);
+  if (writes.length) await env.DB.batch(writes);
 
   const claim = await env.DB.prepare(`${CLAIM_SELECT} WHERE c.id = ?`).bind(sub.claim_id).first<ClaimRow>();
   const problem = claim ? await getProblem(env, claim.problem_id) : null;
@@ -832,13 +885,15 @@ interface PhaseClaim {
   partner_email: string;
 }
 
-// A claim with an accepted submission, on a problem the given partner owns
-// (or any, for an approver).
+// An approved claim with an accepted submission, on a partner's problem that
+// the given partner owns (or any, for an approver). A member's own project
+// has no partner, so nobody meets or hires on it.
 async function acceptedClaim(env: AccountEnv, user: UserRow, claimId: string): Promise<PhaseClaim | null> {
   const row = await env.DB.prepare(
     "SELECT c.id, c.problem_id, pr.title, pr.owner_id AS problem_owner, u.name AS partner_name, u.email AS partner_email " +
       "FROM claims c JOIN problems pr ON pr.id = c.problem_id JOIN users u ON u.id = pr.owner_id " +
-      "WHERE c.id = ? AND EXISTS (SELECT 1 FROM submissions s WHERE s.claim_id = c.id AND s.status = 'accepted')",
+      "WHERE c.id = ? AND c.status = 'approved' AND pr.origin = 'partner' " +
+      "AND EXISTS (SELECT 1 FROM submissions s WHERE s.claim_id = c.id AND s.status = 'accepted')",
   )
     .bind(claimId)
     .first<PhaseClaim>();
@@ -864,9 +919,13 @@ async function requestMeeting(req: Request, env: AccountEnv, user: UserRow, clai
   if (open) return json({ error: "requested" }, 409);
   const body = ((await req.json().catch(() => null)) ?? {}) as Record<string, unknown>;
   const message = cleanLine(body.message, LIMITS.note);
-  await env.DB.prepare("INSERT INTO meetings (id, claim_id, requested_by, message, status, created_at) VALUES (?, ?, ?, ?, 'requested', ?)")
+  const asked = await env.DB.prepare(
+    "INSERT INTO meetings (id, claim_id, requested_by, message, status, created_at) VALUES (?, ?, ?, ?, 'requested', ?)",
+  )
     .bind(crypto.randomUUID(), claimId, user.id, message, now())
-    .run();
+    .run()
+    .catch((e: unknown) => e);
+  if (asked instanceof Error) return json({ error: "requested" }, 409);
   const team = await teamContacts(env, claimId);
   await sendEmail(
     env,
@@ -934,8 +993,9 @@ async function selectionFor(env: AccountEnv, claimId: string) {
 
 // The team (or the approver) updates its implementation milestones.
 async function savePhase(req: Request, env: AccountEnv, user: UserRow, claimId: string, json: Json): Promise<Response> {
-  const onTeam = await env.DB.prepare("SELECT 1 FROM claim_members WHERE claim_id = ? AND user_id = ?").bind(claimId, user.id).first();
-  if (!onTeam && !isApprover(env, user)) return json({ error: "forbidden" }, 403);
+  const claim = await env.DB.prepare("SELECT status FROM claims WHERE id = ?").bind(claimId).first<{ status: ClaimStatus }>();
+  if (!claim || claim.status !== "approved") return json({ error: "not-found" }, 404);
+  if (!(await onTeam(env, claimId, user.id)) && !isApprover(env, user)) return json({ error: "forbidden" }, 403);
   const sel = await selectionFor(env, claimId);
   if (!sel) return json({ error: "not-found" }, 404);
   if (sel.completed_at) return json({ error: "complete" }, 409);

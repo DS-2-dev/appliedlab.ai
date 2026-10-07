@@ -117,7 +117,7 @@ export function ProblemView({ id }: { id: string }) {
 
   if (error && !data) {
     return (
-      <div className="mx-auto grid w-full max-w-4xl content-start gap-4 p-6">
+      <div className="mx-auto grid w-full min-w-0 max-w-4xl content-start [overflow-wrap:anywhere] gap-4 p-6">
         {back}
         <LoadError retry={retry} />
       </div>
@@ -125,7 +125,7 @@ export function ProblemView({ id }: { id: string }) {
   }
   if (!data) {
     return (
-      <div className="mx-auto grid w-full max-w-4xl content-start gap-4 p-6">
+      <div className="mx-auto grid w-full min-w-0 max-w-4xl content-start [overflow-wrap:anywhere] gap-4 p-6">
         {back}
         <Loading />
       </div>
@@ -146,7 +146,7 @@ export function ProblemView({ id }: { id: string }) {
   };
 
   return (
-    <div className="mx-auto grid w-full max-w-4xl content-start gap-6 p-6" data-problem-view="">
+    <div className="mx-auto grid w-full min-w-0 max-w-4xl content-start [overflow-wrap:anywhere] gap-6 p-6" data-problem-view="">
       {back}
 
       <header className="grid gap-3">
