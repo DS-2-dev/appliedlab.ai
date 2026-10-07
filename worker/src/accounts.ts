@@ -42,7 +42,7 @@ const MAX_PERSON_NAME = 80;
 
 type Status = "active" | "pending" | "removed";
 
-interface UserRow {
+export interface UserRow {
   id: string;
   email: string;
   name: string;
@@ -51,9 +51,23 @@ interface UserRow {
   avatar: string | null;
 }
 
+// Who approves claims and new partners: reps, and the Lab's approver
+// (APPROVER_EMAIL), whatever their own role.
+export function isApprover(env: AccountEnv, u: { email: string; role: AccountRole; status: string }): boolean {
+  return u.status === "active" && (u.role === "rep" || u.email === normalizeEmail(env.APPROVER_EMAIL));
+}
+
 // What the browser gets about the signed-in person.
-function publicUser(u: UserRow) {
-  return { id: u.id, email: u.email, name: u.name, role: u.role, status: u.status, avatar: u.avatar };
+function publicUser(u: UserRow, env: AccountEnv) {
+  return {
+    id: u.id,
+    email: u.email,
+    name: u.name,
+    role: u.role,
+    status: u.status,
+    avatar: u.avatar,
+    approver: isApprover(env, u),
+  };
 }
 
 const enc = new TextEncoder();
@@ -93,11 +107,11 @@ function cleanPersonName(value: unknown): string {
   return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, MAX_PERSON_NAME) : "";
 }
 
-function escapeHtml(text: string): string {
+export function escapeHtml(text: string): string {
   return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
 }
 
-async function sendEmail(env: AccountEnv, to: string, subject: string, text: string): Promise<boolean> {
+export async function sendEmail(env: AccountEnv, to: string, subject: string, text: string): Promise<boolean> {
   if (!env.RESEND_API_KEY) return false;
   const res = await fetch("https://api.resend.com/emails", {
     method: "POST",
@@ -113,7 +127,7 @@ async function sendEmail(env: AccountEnv, to: string, subject: string, text: str
   return res.ok;
 }
 
-type Json = (body: unknown, status?: number) => Response;
+export type Json = (body: unknown, status?: number) => Response;
 
 // --- Sign in --------------------------------------------------------------
 
@@ -187,7 +201,7 @@ async function verifyLogin(req: Request, env: AccountEnv, ip: string, json: Json
   }
 
   await env.DB.prepare("DELETE FROM login_codes WHERE email = ?").bind(email).run();
-  return json({ token: await issueSession(env, user.id), user: publicUser(user) });
+  return json({ token: await issueSession(env, user.id), user: publicUser(user, env) });
 }
 
 // A new account, with the role its address gives it. Partners start pending
@@ -252,7 +266,7 @@ async function askApproval(env: AccountEnv, req: Request, user: UserRow): Promis
   );
 }
 
-function page(title: string, body: string, status = 200): Response {
+export function page(title: string, body: string, status = 200): Response {
   return new Response(
     `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title>` +
       `<body style="font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1rem;color:#111">` +
@@ -286,7 +300,7 @@ export async function approvePartner(req: Request, env: AccountEnv): Promise<Res
 
 // --- Signed-in requests ----------------------------------------------------
 
-async function sessionUser(req: Request, env: AccountEnv): Promise<UserRow | null> {
+export async function sessionUser(req: Request, env: AccountEnv): Promise<UserRow | null> {
   const auth = req.headers.get("authorization") ?? "";
   const token = auth.startsWith("Bearer ") ? auth.slice(7).trim() : "";
   if (!token || token.length > 100) return null;
@@ -372,7 +386,7 @@ async function updateMe(req: Request, env: AccountEnv, user: UserRow, json: Json
     next.avatar = body.avatar as string | null;
   }
   await env.DB.prepare("UPDATE users SET name = ?, avatar = ? WHERE id = ?").bind(next.name, next.avatar, user.id).run();
-  return json({ user: publicUser(next) });
+  return json({ user: publicUser(next, env) });
 }
 
 // The Lab's people, for adding teammates: active members and reps, by name.
@@ -412,7 +426,7 @@ export async function handleAccounts(
     await env.DB.prepare("DELETE FROM sessions WHERE token_hash = ?").bind(await sha256(token)).run();
     return json({ ok: true });
   }
-  if (pathname === "/me" && req.method === "GET") return json({ user: publicUser(user) });
+  if (pathname === "/me" && req.method === "GET") return json({ user: publicUser(user, env) });
   if (pathname === "/me" && req.method === "PATCH") return updateMe(req, env, user, json);
   if (pathname === "/people" && req.method === "GET") return listPeople(env, user, json);
   if (pathname === "/projects" && req.method === "GET") {

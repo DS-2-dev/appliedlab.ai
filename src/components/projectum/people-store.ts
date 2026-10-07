@@ -6,7 +6,7 @@
 import * as React from "react";
 import { api } from "@/lib/account";
 
-export type LabPerson = { id: string; name: string };
+export type LabPerson = { id: string; name: string; role: "member" | "rep" };
 
 let people: LabPerson[] | null = null;
 let loading: Promise<void> | null = null;

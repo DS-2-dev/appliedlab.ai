@@ -20,6 +20,8 @@ export interface Account {
   role: AccountRole;
   status: "active" | "pending";
   avatar: string | null;
+  // Approves claims and new partners: reps, and the Lab's approver.
+  approver: boolean;
 }
 
 export type AccountState =

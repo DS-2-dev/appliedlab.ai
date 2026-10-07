@@ -8,6 +8,7 @@
 //   approves a new partner, opened from an email, so it has no origin.
 //   GET /auth/google/start and /auth/google/callback are Google sign-in,
 //   also opened by the browser itself.
+// - /problems, /claims, /queue and /partners: the pipeline (pipeline.ts).
 //
 // For the chat there are
 // two engines. With an ANTHROPIC_API_KEY secret it asks Claude. Without one it uses Cloudflare Workers AI (Llama 3.3
@@ -31,6 +32,7 @@ import {
   type Turn,
 } from "@/lib/ask";
 import { type GoogleEnv, approvePartner, handleAccounts, handleGoogle } from "./accounts";
+import { handlePipeline } from "./pipeline";
 import { DEFAULT_SETTINGS, type LabEvent, type Settings } from "@/lib/types";
 import events from "../../data/events.json";
 import settings from "../../data/settings.json";
@@ -107,7 +109,7 @@ export default {
     if (req.method === "OPTIONS") return new Response(null, { status: 204, headers });
 
     const ip = req.headers.get("cf-connecting-ip") ?? "unknown";
-    const account = await handleAccounts(req, env, ip, headers);
+    const account = (await handleAccounts(req, env, ip, headers)) ?? (await handlePipeline(req, env, headers));
     if (account) return account;
     if (req.method !== "POST") return text("Method not allowed.", 405, headers);
 

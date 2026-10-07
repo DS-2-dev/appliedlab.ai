@@ -9,6 +9,7 @@ import { useRouter } from "next/navigation";
 import { LogOut } from "lucide-react";
 import { copy } from "@/content/copy";
 import { logout, useAccountState } from "@/lib/account";
+import { clearPipeline } from "@/components/projectum/pipeline-store";
 import { Button } from "@/components/ui/button";
 
 const P = copy.auth.pending;
@@ -24,6 +25,7 @@ export function LogoutButton() {
       onClick={async () => {
         setPending(true);
         await logout();
+        clearPipeline();
         router.replace("/login");
       }}
     >

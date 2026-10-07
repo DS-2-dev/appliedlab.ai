@@ -4,15 +4,20 @@
 // (components/ui/sidebar.tsx, avatar). Neutral throughout, no brand purple,
 // lucide icons only.
 //
-// Just the bar: the mark and the collapse toggle at the top, then All
-// Projects, then Your Projects. At the bottom sits the profile, which opens
-// Settings in a dialog, where Log out also lives.
+// Just the bar: the mark and the collapse toggle at the top, then the
+// account's views, which depend on its role. Partners get My Problems.
+// Members get the Notice Board, My Claims and All Projects with Your
+// Projects under it; reps get the Notice Board and All Projects; and
+// approvers also get Approvals, with how many are waiting. At the bottom sits
+// the profile, which opens Settings in a dialog, where Log out also lives.
 
 import * as React from "react";
 import Link from "next/link";
-import { FolderKanban, PanelLeft } from "lucide-react";
+import { ClipboardCheck, FolderKanban, Inbox, type LucideIcon, Megaphone, PanelLeft } from "lucide-react";
 import { copy } from "@/content/copy";
+import { useAccount } from "@/lib/account";
 import { initials } from "@/lib/initials";
+import { useApi } from "@/components/projectum/pipeline-store";
 import { useAvatar } from "@/components/projectum/profile-store";
 import { ProjectFolders } from "@/components/projectum/project-folders";
 import { ProjectumLogo } from "@/components/projectum/projectum-logo";
@@ -25,6 +30,7 @@ import {
   SidebarGroup,
   SidebarHeader,
   SidebarMenu,
+  SidebarMenuBadge,
   SidebarMenuButton,
   SidebarMenuItem,
   useSidebar,
@@ -33,7 +39,7 @@ import { Button } from "@/components/ui/button";
 
 const S = copy.projectum;
 
-export type ProjectumView = "projects" | "project";
+export type ProjectumView = "board" | "mine" | "problem" | "claims" | "queue" | "projects" | "project";
 
 // The collapse toggle, one for each state of the bar. Open, it sits at the
 // right as the sidebar icon. Folded, a second one takes the mark's own spot
@@ -77,6 +83,29 @@ function SidebarToggle({ folded }: { folded: boolean }) {
   );
 }
 
+const P = copy.projectum.pipeline;
+
+// Hovered or focused, the folder hops once (globals.css).
+const HOP =
+  "motion-safe:hover:[&>svg]:animate-[projectum-hop_450ms_ease-out] motion-safe:focus-visible:[&>svg]:animate-[projectum-hop_450ms_ease-out]";
+
+type NavItem = { view: ProjectumView; label: string; href: string; icon: LucideIcon; badge?: number; className?: string };
+
+function navItems(role: string, approver: boolean, waiting: number): NavItem[] {
+  if (role === "partner") return [{ view: "mine", label: P.nav.myProblems, href: "/projectum", icon: Megaphone }];
+  const items: NavItem[] = [{ view: "board", label: P.nav.board, href: "/projectum", icon: Megaphone }];
+  if (role === "member") items.push({ view: "claims", label: P.nav.myClaims, href: "/projectum?view=claims", icon: ClipboardCheck });
+  if (approver) items.push({ view: "queue", label: P.nav.queue, href: "/projectum?view=queue", icon: Inbox, badge: waiting });
+  items.push({ view: "projects", label: S.projects, href: "/projectum?view=projects", icon: FolderKanban, className: HOP });
+  return items;
+}
+
+// How many claims and partners wait for an approver.
+function useWaiting(approver: boolean): number {
+  const { data } = useApi<{ claims: unknown[]; partners: unknown[] }>(approver ? "/queue" : null);
+  return data ? data.claims.length + data.partners.length : 0;
+}
+
 export function AppSidebar({
   name,
   email,
@@ -92,6 +121,9 @@ export function AppSidebar({
   settings: React.ReactNode;
 }) {
   const [avatar] = useAvatar();
+  const me = useAccount();
+  const waiting = useWaiting(me.approver);
+  const items = navItems(me.role, me.approver, waiting);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   return (
     <Sidebar collapsible="icon">
@@ -118,22 +150,24 @@ export function AppSidebar({
 
       <SidebarContent>
         <SidebarGroup>
-          {/* Hovered or focused, the folder hops once (globals.css). */}
           <SidebarMenu>
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                tooltip={S.projects}
-                isActive={view === "projects"}
-                render={<Link href="/projectum" />}
-                className="motion-safe:hover:[&>svg]:animate-[projectum-hop_450ms_ease-out] motion-safe:focus-visible:[&>svg]:animate-[projectum-hop_450ms_ease-out]"
-              >
-                <FolderKanban />
-                <span>{S.projects}</span>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
+            {items.map((item) => (
+              <SidebarMenuItem key={item.view}>
+                <SidebarMenuButton
+                  tooltip={item.label}
+                  isActive={view === item.view}
+                  render={<Link href={item.href} />}
+                  className={item.className}
+                >
+                  <item.icon />
+                  <span>{item.label}</span>
+                </SidebarMenuButton>
+                {item.badge ? <SidebarMenuBadge>{item.badge}</SidebarMenuBadge> : null}
+              </SidebarMenuItem>
+            ))}
           </SidebarMenu>
         </SidebarGroup>
-        <ProjectFolders activeId={projectId} />
+        {me.role !== "partner" && <ProjectFolders activeId={projectId} />}
       </SidebarContent>
 
       {/* The profile is the way into Settings, a dialog over the view. */}

@@ -9,6 +9,9 @@ import * as React from "react";
 import { useSearchParams } from "next/navigation";
 import { useAccount } from "@/lib/account";
 import { AllProjects } from "@/components/projectum/all-projects";
+import { Approvals, MyClaims } from "@/components/projectum/claims-view";
+import { ProblemView } from "@/components/projectum/problem-view";
+import { MyProblems, NoticeBoard } from "@/components/projectum/problems-view";
 import { AppSidebar, type ProjectumView } from "@/components/projectum/app-sidebar";
 import { ProjectBoard } from "@/components/projectum/project-board";
 import { THEME_COOKIE } from "@/components/projectum/theme";
@@ -24,12 +27,27 @@ function readCookie(name: string): string | undefined {
 
 const subscribeNever = () => () => {};
 
+// Which view the address asks for, held to what the account may open. A
+// partner's home is My Problems, everyone else's the Notice Board.
+function pickView(
+  asked: string | null,
+  { projectId, problemId, role, approver }: { projectId: string | null; problemId: string | null; role: string; approver: boolean },
+): ProjectumView {
+  const partner = role === "partner";
+  if (problemId) return "problem";
+  if (projectId && !partner) return "project";
+  if (asked === "claims" && role === "member") return "claims";
+  if (asked === "queue" && approver) return "queue";
+  if (asked === "projects" && !partner) return "projects";
+  return partner ? "mine" : "board";
+}
+
 export function ProjectumView({ settings }: { settings: React.ReactNode }) {
-  const { name, email } = useAccount();
+  const { name, email, role, approver } = useAccount();
   const params = useSearchParams();
-  const project = params.get("project");
-  const projectId = project ? project : null;
-  const view: ProjectumView = projectId ? "project" : "projects";
+  const projectId = params.get("project") || null;
+  const problemId = params.get("problem") || null;
+  const view = pickView(params.get("view"), { projectId, problemId, role, approver });
 
   // Cookies only exist in the browser; the build renders the defaults.
   const dark = React.useSyncExternalStore(
@@ -50,14 +68,24 @@ export function ProjectumView({ settings }: { settings: React.ReactNode }) {
         <AppSidebar name={name} email={email} view={view} projectId={projectId} settings={settings} />
         <SidebarInset>
           <div
-            key={view === "project" ? `project-${projectId}` : view}
+            key={view === "project" ? `project-${projectId}` : view === "problem" ? `problem-${problemId}` : view}
             data-view={view}
             className="flex min-h-0 flex-1 flex-col animate-in duration-300 ease-out fade-in-0 slide-in-from-bottom-2 motion-reduce:animate-none"
           >
             {view === "project" && projectId ? (
               <ProjectBoard projectId={projectId} />
-            ) : (
+            ) : view === "problem" && problemId ? (
+              <ProblemView id={problemId} />
+            ) : view === "claims" ? (
+              <MyClaims />
+            ) : view === "queue" ? (
+              <Approvals />
+            ) : view === "projects" ? (
               <AllProjects />
+            ) : view === "mine" ? (
+              <MyProblems />
+            ) : (
+              <NoticeBoard />
             )}
           </div>
         </SidebarInset>
