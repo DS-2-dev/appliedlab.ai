@@ -4,7 +4,8 @@
 // its badge, opening a panel beside the bar with what happened that concerns
 // this account (worker/src/notify.ts). Folded to icons, it is the bell with
 // the count. Clicking a notification marks it read and opens its page.
-// Checked every minute while the tab is in view, and again on opening.
+// The count and the latest notifications come with the polled shell
+// (shell-store.ts), asked for again on opening.
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -23,14 +24,15 @@ import {
   UserPlus,
 } from "lucide-react";
 import { copy } from "@/content/copy";
-import { send, useApi } from "@/components/projectum/pipeline-store";
+import { notificationDot } from "@/components/projectum/court-helpers";
+import { type NotificationOut, markRead, pollShell, useShell } from "@/components/projectum/shell-store";
 import { Button } from "@/components/ui/button";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem } from "@/components/ui/sidebar";
 
 const N = copy.projectum.notifications;
 
-type Notification = { id: string; kind: string; title: string; href: string; read: boolean; createdAt: string };
+type Notification = NotificationOut;
 
 const ICONS: Record<string, LucideIcon> = {
   "claim-new": Inbox,
@@ -60,26 +62,13 @@ function ago(iso: string): string {
 
 export function NotificationsMenu() {
   const router = useRouter();
-  const { data, retry } = useApi<{ unread: number; notifications: Notification[] }>("/notifications");
+  const data = useShell();
   const [open, setOpen] = React.useState(false);
-  const unread = data?.unread ?? 0;
-
-  // A fresh look every minute while the tab is visible, and on coming back.
-  React.useEffect(() => {
-    const tick = () => {
-      if (document.visibilityState === "visible") retry();
-    };
-    const timer = window.setInterval(tick, 60_000);
-    document.addEventListener("visibilitychange", tick);
-    return () => {
-      window.clearInterval(timer);
-      document.removeEventListener("visibilitychange", tick);
-    };
-  }, [retry]);
+  const unread = data.unread;
 
   const openOne = (n: Notification) => {
     setOpen(false);
-    if (!n.read) void send("/notifications/read", "POST", { ids: [n.id] }).catch(() => {});
+    if (!n.read) void markRead([n.id]).catch(() => {});
     if (n.href) router.push(n.href);
   };
 
@@ -89,7 +78,7 @@ export function NotificationsMenu() {
         open={open}
         onOpenChange={(next) => {
           setOpen(next);
-          if (next) retry();
+          if (next) void pollShell();
         }}
       >
         <SidebarMenuButton
@@ -125,16 +114,17 @@ export function NotificationsMenu() {
               <Button
                 variant="ghost"
                 size="sm"
-                onClick={() => void send("/notifications/read", "POST", { all: true }).catch(() => {})}
+                onClick={() => void markRead("all").catch(() => {})}
               >
                 {N.markAll}
               </Button>
             )}
           </div>
-          {data?.notifications.length ? (
+          {data.notifications.length ? (
             <ul className="max-h-[min(28rem,70vh)] overflow-y-auto p-1">
               {data.notifications.map((n) => {
                 const Icon = ICONS[n.kind] ?? Bell;
+                const dot = notificationDot(n);
                 return (
                   <li key={n.id}>
                     <button
@@ -150,7 +140,12 @@ export function NotificationsMenu() {
                         <span className={`line-clamp-2 ${n.read ? "text-muted-foreground" : "font-medium"}`}>{n.title}</span>
                         <span className="text-xs text-muted-foreground">{ago(n.createdAt)}</span>
                       </span>
-                      {!n.read && <span aria-hidden className="mt-2 size-2 shrink-0 rounded-full bg-primary" />}
+                      {dot === "court" && (
+                        <span className="mt-2 size-2 shrink-0 rounded-full bg-primary">
+                          <span className="sr-only">{N.yourMove}</span>
+                        </span>
+                      )}
+                      {dot === "unread" && <span aria-hidden className="mt-2 size-2 shrink-0 rounded-full bg-muted-foreground/50" />}
                     </button>
                   </li>
                 );

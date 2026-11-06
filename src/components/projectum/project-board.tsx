@@ -23,9 +23,16 @@
 // Stages the project has left are buttons in the track. Each opens the
 // project as it stood when it left that stage, read only: no options, no
 // move, no new build, just the view.
+//
+// A board that belongs to a project leads with the project's header: its
+// posting, status, stage bar, the moves the viewer may make, the notes it
+// came back with and what to do next. While the plan is written the header
+// holds the plan editor, and the board's own stage moves wait until the plan
+// is approved. A colleague gets the card's outline only.
 
 import * as React from "react";
 import Image from "next/image";
+import Link from "next/link";
 import {
   ArrowLeft,
   ArrowRight,
@@ -39,6 +46,7 @@ import {
   Globe,
   Hammer,
   ListOrdered,
+  Lock,
   MonitorPlay,
   Pencil,
   Presentation,
@@ -64,9 +72,19 @@ import { BuildDate, BuildLog, NewBuildDialog, buildNote, formatDay } from "@/com
 import { LiveDialog, type LiveMode } from "@/components/projectum/live-dialog";
 import { PlanDialog, type PlanMode, type PlanTarget, RoleDot } from "@/components/projectum/plan-dialog";
 import { useAccount } from "@/lib/account";
-import { PhasePanel } from "@/components/projectum/phase-two";
+import { MeetingActions, PhasePanel } from "@/components/projectum/phase-two";
+import { boardStageFor } from "@/lib/pipeline/machines";
 import { SubmissionPanel } from "@/components/projectum/pipeline-ui";
-import { useProjects, useVisibleProjects } from "@/components/projectum/project-store";
+import { type BoardEntry, boardOf, useProjects, useVisibleProjects, whenSaved } from "@/components/projectum/project-store";
+import { boardMode, canMoveStage, findBoard } from "@/components/projectum/board-mode";
+import type { CopyCtx } from "@/lib/pipeline/handoffs";
+import { NextSteps } from "@/components/projectum/next-steps";
+import { type PipelineProject, refresh, useApi } from "@/components/projectum/pipeline-store";
+import { PlanEditor } from "@/components/projectum/plan-editor";
+import { isPlanning, returnNotes } from "@/components/projectum/project-helpers";
+import { StageBar } from "@/components/projectum/stage-bar";
+import { StatusPill } from "@/components/projectum/status-pill";
+import { TransitionBar } from "@/components/projectum/transition-bar";
 import { ROLE_STYLE, projectMeanings, roleName } from "@/components/projectum/roles";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -77,6 +95,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 const B = copy.projectum.board;
+const P = copy.projectum.pipeline;
 
 // Where each stage moves next. Live is the last.
 const NEXT: Partial<Record<Stage, Exclude<Stage, "brainstorming">>> = {
@@ -587,10 +606,108 @@ export function ProjectCard({
   );
 }
 
+// The notes a plan or submission came back with.
+function ReturnNotes({ text }: { text: string }) {
+  return (
+    <div data-return-notes="" className="grid gap-1 rounded-lg border p-3 text-sm">
+      <p className="text-xs font-medium text-muted-foreground">{P.planEditor.notes}</p>
+      <p className="whitespace-pre-line">{text}</p>
+    </div>
+  );
+}
+
+// A partner at the organization that posted the problem: who may ask to
+// meet the team and sign the project off.
+function isPostingPartner(me: { roles: readonly string[]; orgId: string | null }, entry: Pick<BoardEntry, "postingOrgId">): boolean {
+  return me.roles.includes("partner") && Boolean(me.orgId) && entry.postingOrgId === me.orgId;
+}
+
+// The project a board belongs to: its posting and status, how far along it
+// is, the moves the viewer may make (Submit action plan sits in the plan
+// editor, and Submit work in the board's own move), the notes it came back
+// with above what to do next, and the plan editor while the team writes it.
+function ProjectHeader({ entry }: { entry: BoardEntry }) {
+  const me = useAccount();
+  const { data: project } = useApi<PipelineProject>(entry.projectId ? `/projects/${encodeURIComponent(entry.projectId)}` : null);
+  const status = project?.status ?? entry.status;
+  if (!status) return null;
+  const title = project?.posting.title ?? entry.postingTitle ?? "";
+  const ctx: CopyCtx = {
+    partner: project?.posting.org?.name ?? "",
+    member: project?.lead.name ?? entry.owner.name,
+    posting: title,
+    selfDirected: project?.posting.kind === "self",
+  };
+  const notes = project ? returnNotes(status, project.reviews) : "";
+  const writing = Boolean(project && entry.onTeam && entry.editable && project.view === "full" && isPlanning(status));
+  // The posting's partner brings the team on from MeetingActions, which asks
+  // for a message to the team, so the bar leaves that move out.
+  const partnerHere = isPostingPartner(me, entry);
+  return (
+    <header data-project-header="" className="grid gap-4">
+      <div className="flex flex-wrap items-center gap-2">
+        {entry.postingId ? (
+          <Link href={`/projectum?posting=${encodeURIComponent(entry.postingId)}`} className="text-lg font-medium underline-offset-4 hover:underline">
+            {title}
+          </Link>
+        ) : (
+          <span className="text-lg font-medium">{title}</span>
+        )}
+        <StatusPill kind="project" status={status} />
+      </div>
+      <StageBar status={status} self={project?.posting.kind === "self"} />
+      {project && (
+        <TransitionBar
+          kind="project"
+          id={project.id}
+          status={status}
+          roles={me.roles}
+          ctx={ctx}
+          allowed={project.transitions}
+          exclude={partnerHere ? ["submitPlan", "submitWork", "integrate"] : ["submitPlan", "submitWork"]}
+        />
+      )}
+      {entry.projectId && (
+        <MeetingActions
+          projectId={entry.projectId}
+          status={status}
+          meeting={entry.meeting}
+          selection={entry.selection}
+          partner={partnerHere}
+          staff={me.admin || me.roles.includes("rep")}
+          canIntegrate={Boolean(project?.transitions.includes("integrate"))}
+          ctx={ctx}
+        />
+      )}
+      {notes && <ReturnNotes text={notes} />}
+      {project?.nextSteps && <NextSteps copyKey={project.nextSteps} ctx={ctx} />}
+      {writing && project && <PlanEditor project={project} ctx={ctx} />}
+    </header>
+  );
+}
+
+// A colleague's board: the project's header and the card's outline.
+function OutlineBoard({ entry }: { entry: BoardEntry }) {
+  return (
+    <div data-board="" data-board-mode="outline" className="mx-auto grid w-full min-w-0 max-w-6xl content-start [overflow-wrap:anywhere] gap-6 p-6">
+      <ProjectHeader entry={entry} />
+      <p className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Eye className="size-4 shrink-0" />
+        <span>{P.board.outline}</span>
+      </p>
+      <ProjectCard project={boardOf(entry)} overview />
+    </div>
+  );
+}
+
 export function ProjectBoard({ projectId }: { projectId: string }) {
-  const [list, update] = useProjects();
-  const project = list.find((p) => p.id === projectId) ?? null;
-  const entry = useVisibleProjects().entries.find((e) => e.project.id === projectId);
+  const [, update] = useProjects();
+  // Any board this account may see opens here; only an editable one offers
+  // changes.
+  const entry = findBoard(useVisibleProjects().entries, projectId);
+  const project = entry?.project ?? null;
+  const mode = entry ? boardMode(entry) : "view";
+  const editable = mode === "edit";
   const me = useAccount();
   const [planOpen, setPlanOpen] = React.useState(false);
   const [planTarget, setPlanTarget] = React.useState<PlanTarget>("solidifying");
@@ -606,8 +723,10 @@ export function ProjectBoard({ projectId }: { projectId: string }) {
   // Back to hands focus to Move to, since Back to fades out once clicked.
   const moveRef = React.useRef<HTMLButtonElement>(null);
 
-  if (!project) return null;
-  const next = NEXT[project.stage];
+  if (entry && !project) return <OutlineBoard entry={entry} />;
+  if (!entry || !project) return null;
+  // The board's own moves wait for an approved plan on a project's board.
+  const next = canMoveStage(entry.status) ? NEXT[project.stage] : undefined;
   const planForm = PLAN_FORM[project.stage];
   const past = viewing && STAGES.indexOf(viewing) < STAGES.indexOf(project.stage) ? viewing : null;
   const record = past ? project.history[past] : undefined;
@@ -649,56 +768,85 @@ export function ProjectBoard({ projectId }: { projectId: string }) {
     setLiveOpen(true);
   };
   const save = (saved: Project) => update((l) => replaceProject(l, saved));
+  // While the plan is written the board's steps are the plan's milestones,
+  // so once the board lands the project (and its plan editor) loads again.
+  const savePlan = (saved: Project) => {
+    save(saved);
+    if (entry.projectId) void whenSaved().then(refresh);
+  };
 
   return (
     <div data-board="" data-stage={project.stage} className="mx-auto grid w-full min-w-0 max-w-6xl content-start [overflow-wrap:anywhere] gap-6 p-6">
-      <div className="flex min-h-9 items-center gap-8">
-        <StageTrack
-          stage={project.stage}
-          shown={pastProject ? pastProject.stage : project.stage}
-          onShow={(s) => setViewing(s === project.stage ? null : s)}
-        />
-        {/* Back to and Move to share one cell, as wide as the wider of
-            the two, so the track holds still while they crossfade. A new
-            project has no stage behind it, so no Back to. */}
-        <div data-stage-actions="" className="grid justify-items-end *:col-start-1 *:row-start-1">
-          {STAGES.indexOf(project.stage) > 0 && (
-            <Button
-              variant="outline"
-              onClick={() => {
-                setViewing(null);
-                requestAnimationFrame(() => {
-                  if (moveRef.current && !moveRef.current.disabled) moveRef.current.focus();
-                });
-              }}
-              {...swapProps(Boolean(pastProject))}
-            >
-              <ArrowLeft data-icon="inline-start" />
-              {B.backTo} {B.stages[project.stage]}
-            </Button>
-          )}
-          {next && (
-            <Button
-              ref={moveRef}
-              disabled={!project.notesUrl}
-              onClick={() => (next === "live" ? openLive("move") : openPlan(next, "move"))}
-              {...swapProps(!pastProject)}
-            >
-              {B.moveTo[next]}
-              <ArrowRight data-icon="inline-end" />
-            </Button>
-          )}
+      {entry.projectId && <ProjectHeader entry={entry} />}
+      {/* While the plan is written and reviewed the board waits in
+          Solidifying; the pipeline bar above already says where the
+          project stands, so the board's own track waits for an approved
+          plan. */}
+      {!(entry.status && boardStageFor(entry.status) === "solidifying") && (
+        <div className="flex min-h-9 items-center gap-8">
+          <StageTrack
+            stage={project.stage}
+            shown={pastProject ? pastProject.stage : project.stage}
+            onShow={(s) => setViewing(s === project.stage ? null : s)}
+          />
+          {/* Back to and Move to share one cell, as wide as the wider of
+              the two, so the track holds still while they crossfade. A new
+              project has no stage behind it, so no Back to. */}
+          <div data-stage-actions="" className="grid justify-items-end *:col-start-1 *:row-start-1">
+            {STAGES.indexOf(project.stage) > 0 && (
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setViewing(null);
+                  requestAnimationFrame(() => {
+                    if (moveRef.current && !moveRef.current.disabled) moveRef.current.focus();
+                  });
+                }}
+                {...swapProps(Boolean(pastProject))}
+              >
+                <ArrowLeft data-icon="inline-start" />
+                {B.backTo} {B.stages[project.stage]}
+              </Button>
+            )}
+            {next && editable && (
+              <Button
+                ref={moveRef}
+                disabled={!project.notesUrl}
+                onClick={() => (next === "live" ? openLive("move") : openPlan(next, "move"))}
+                {...swapProps(!pastProject)}
+              >
+                {B.moveTo[next]}
+                <ArrowRight data-icon="inline-end" />
+              </Button>
+            )}
+          </div>
         </div>
-      </div>
+      )}
+
+      {/* Seen but not changeable: locked for the team while a gate decides,
+          view only for everyone else. */}
+      {!editable && (
+        <p data-board-mode={mode} className="-mt-2 flex items-center gap-2 text-sm text-muted-foreground">
+          {mode === "locked" ? <Lock className="size-4 shrink-0" /> : <Eye className="size-4 shrink-0" />}
+          <span>{mode === "locked" ? P.board.locked : P.board.readOnly}</span>
+        </p>
+      )}
 
       {/* The team's latest submission: waiting, accepted, or sent back
           with the Lab's note. */}
-      {entry?.submission && !pastProject && (
+      {entry.submission && !pastProject && (
         <SubmissionPanel submission={entry.submission} launch={project.launch} people={project.people} />
       )}
       {/* Phase 2, once a partner selects the team for an internship. */}
-      {entry?.selection && !pastProject && (
-        <PhasePanel claimId={entry.claimId} selection={entry.selection} editable={entry.editable} canComplete={me.approver} />
+      {entry.selection && entry.projectId && !pastProject && (
+        <PhasePanel
+          projectId={entry.projectId}
+          selection={entry.selection}
+          editable={entry.editable}
+          // Who the Worker lets sign it off: an admin, or a partner at the
+          // posting's organization.
+          canComplete={me.admin || isPostingPartner(me, entry)}
+        />
       )}
 
       {/* Keyed by the stage on show, so opening a past stage or going back
@@ -723,6 +871,8 @@ export function ProjectBoard({ projectId }: { projectId: string }) {
             </p>
             <ProjectCard project={pastProject} readOnly />
           </>
+        ) : !editable ? (
+          <ProjectCard project={project} readOnly />
         ) : (
           <ProjectCard
             project={project}
@@ -734,6 +884,8 @@ export function ProjectBoard({ projectId }: { projectId: string }) {
         )}
       </div>
 
+      {editable && (
+        <>
       <PlanDialog
         project={project}
         target={planTarget}
@@ -742,7 +894,7 @@ export function ProjectBoard({ projectId }: { projectId: string }) {
         onOpenChange={setPlanOpen}
         formKey={formKey}
         onSave={(saved) => {
-          save(saved);
+          savePlan(saved);
           setPlanOpen(false);
         }}
       />
@@ -768,6 +920,8 @@ export function ProjectBoard({ projectId }: { projectId: string }) {
           setLiveOpen(false);
         }}
       />
+        </>
+      )}
     </div>
   );
 }

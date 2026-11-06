@@ -10,8 +10,9 @@ import Link from "next/link";
 import { Copy, ExternalLink } from "lucide-react";
 import { copy } from "@/content/copy";
 import { updateAccount, useAccount } from "@/lib/account";
-import { LevelBadge } from "@/components/projectum/pipeline-ui";
+import { LevelBadge, useTaxonomy } from "@/components/projectum/pipeline-ui";
 import { Button, buttonVariants } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 
@@ -44,6 +45,37 @@ function SwitchRow({
   );
 }
 
+// The fields a member wants to work in, from the live taxonomy. One that
+// has since been retired stays ticked until they untick it.
+function InterestsPicker({ value, onChange }: { value: string[]; onChange: (next: string[]) => void }) {
+  const ids = React.useId();
+  const { taxonomy, name } = useTaxonomy();
+  const offered = taxonomy?.disciplines.map((d) => d.slug) ?? [];
+  const slugs = [...offered, ...value.filter((v) => !offered.includes(v))];
+  return (
+    <section className="grid gap-1.5" data-interests="">
+      <h3 className="text-xs font-medium text-muted-foreground">{F.interestsHeading}</h3>
+      <p className="text-xs text-muted-foreground">{F.interestsHelp}</p>
+      {!taxonomy ? (
+        <p className="text-sm text-muted-foreground">{F.interestsLoading}</p>
+      ) : (
+        <div className="flex flex-wrap gap-x-4 gap-y-2">
+          {slugs.map((s) => (
+            <div key={s} className="flex items-center gap-2">
+              <Checkbox
+                id={`${ids}-${s}`}
+                checked={value.includes(s)}
+                onCheckedChange={(on) => onChange(on ? [...value, s] : value.filter((v) => v !== s))}
+              />
+              <Label htmlFor={`${ids}-${s}`}>{name(s)}</Label>
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function ProfileSettings() {
   const me = useAccount();
   const ids = React.useId();
@@ -57,6 +89,11 @@ export function ProfileSettings() {
   if (me.role === "partner") {
     return (
       <div className="grid gap-2" data-profile-settings="">
+        {me.org && (
+          <Link href="/projectum?view=org" className="text-sm underline-offset-4 hover:underline" data-org-link="">
+            {me.org.name}
+          </Link>
+        )}
         <SwitchRow
           id={`${ids}-hide`}
           label={F.hideNameLabel}
@@ -86,6 +123,7 @@ export function ProfileSettings() {
           <p className="text-sm">{me.claudeAccess ? F.claudeReady : F.claudeWaiting}</p>
         </section>
       )}
+      <InterestsPicker value={me.interests} onChange={(interests) => save({ interests })} />
       <SwitchRow
         id={`${ids}-public`}
         label={F.publicLabel}

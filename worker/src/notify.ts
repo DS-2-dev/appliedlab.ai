@@ -1,98 +1,53 @@
-// Notifications for the bell in Projectum: one row per person per event,
-// written next to the emails that already go out (pipeline.ts, accounts.ts).
-// The title is the whole message, and href is the Projectum page it leads
-// to. Writing one never fails a request: a notification that can't be
-// saved is only logged.
+// The bell in Projectum: reading and clearing notifications. They are
+// written by emit() (events.ts), one row per person per event, in the same
+// batch as the change they describe. The title is the whole message, and
+// href is the Projectum page it leads to.
 
 import { type AccountEnv, type Json, type UserRow } from "./accounts";
-import { normalizeEmail } from "@/lib/email-rules";
 
-export type NotificationKind =
-  | "claim-new"
-  | "claim-approved"
-  | "claim-denied"
-  | "submission-new"
-  | "submission-accepted"
-  | "submission-returned"
-  | "partner-new"
-  | "partner-approved"
-  | "meeting-requested"
-  | "selected"
-  | "complete"
-  | "team-submitted"
-  | "reminder";
+// The event type that wrote it (emit), or an older kind from before the
+// event log (claim-approved, reminder and the like).
+export type NotificationKind = string;
 
-export async function notify(
-  env: AccountEnv,
-  userIds: string[],
-  kind: NotificationKind,
-  title: string,
-  href: string,
-): Promise<void> {
-  const ids = [...new Set(userIds.filter(Boolean))];
-  if (!ids.length) return;
-  const at = new Date().toISOString();
-  try {
-    await env.DB.batch(
-      ids.map((id) =>
-        env.DB.prepare("INSERT INTO notifications (id, user_id, kind, title, href, created_at) VALUES (?, ?, ?, ?, ?, ?)").bind(
-          crypto.randomUUID(),
-          id,
-          kind,
-          title.slice(0, 200),
-          href,
-          at,
-        ),
-      ),
-    );
-  } catch (e) {
-    console.error("[notify] couldn't save", kind, e);
-  }
-}
+export type NotificationOut = {
+  id: string;
+  kind: NotificationKind;
+  title: string;
+  href: string;
+  court: boolean;
+  read: boolean;
+  createdAt: string;
+};
 
-// Everyone who approves: reps, APPROVER_EMAIL and APPROVERS, if they have
-// an account. `except` leaves out whoever caused the event.
-export async function approverIds(env: AccountEnv & { APPROVERS?: string }, except = ""): Promise<string[]> {
-  const listed = [env.APPROVER_EMAIL, ...(env.APPROVERS ?? "").split(",")].map((e) => normalizeEmail(e)).filter(Boolean);
-  const marks = listed.map(() => "?").join(",") || "''";
+// A person's newest notifications and how many are unread.
+export async function listNotifications(env: AccountEnv, userId: string, limit: number): Promise<{ unread: number; notifications: NotificationOut[] }> {
   const { results } = await env.DB.prepare(
-    `SELECT id FROM users WHERE status = 'active' AND (role = 'rep' OR email IN (${marks}))`,
+    "SELECT id, kind, title, href, court, read_at, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT ?",
   )
-    .bind(...listed)
-    .all<{ id: string }>();
-  return results.map((r) => r.id).filter((id) => id !== except);
-}
-
-export async function teamIds(env: AccountEnv, claimId: string): Promise<string[]> {
-  const { results } = await env.DB.prepare("SELECT user_id FROM claim_members WHERE claim_id = ?").bind(claimId).all<{ user_id: string }>();
-  return results.map((r) => r.user_id);
+    .bind(userId, limit)
+    .all<{ id: string; kind: NotificationKind; title: string; href: string; court: number; read_at: string | null; created_at: string }>();
+  const unread = await env.DB.prepare("SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND read_at IS NULL")
+    .bind(userId)
+    .first<{ n: number }>();
+  return {
+    unread: unread?.n ?? 0,
+    notifications: results.map((n) => ({
+      id: n.id,
+      kind: n.kind,
+      title: n.title,
+      href: n.href,
+      court: n.court === 1,
+      read: Boolean(n.read_at),
+      createdAt: n.created_at,
+    })),
+  };
 }
 
 // GET /notifications: the latest 40 and how many are unread.
 // POST /notifications/read: { ids } marks those read, { all: true } all.
 export async function handleNotifications(req: Request, env: AccountEnv, user: UserRow, json: Json): Promise<Response | null> {
   const { pathname } = new URL(req.url);
-  if (pathname === "/notifications" && req.method === "GET") {
-    const { results } = await env.DB.prepare(
-      "SELECT id, kind, title, href, read_at, created_at FROM notifications WHERE user_id = ? ORDER BY created_at DESC LIMIT 40",
-    )
-      .bind(user.id)
-      .all<{ id: string; kind: NotificationKind; title: string; href: string; read_at: string | null; created_at: string }>();
-    const unread = await env.DB.prepare("SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND read_at IS NULL")
-      .bind(user.id)
-      .first<{ n: number }>();
-    return json({
-      unread: unread?.n ?? 0,
-      notifications: results.map((n) => ({
-        id: n.id,
-        kind: n.kind,
-        title: n.title,
-        href: n.href,
-        read: Boolean(n.read_at),
-        createdAt: n.created_at,
-      })),
-    });
-  }
+  if (pathname === "/notifications" && req.method === "GET") return json(await listNotifications(env, user.id, 40));
   if (pathname === "/notifications/read" && req.method === "POST") {
     const body = ((await req.json().catch(() => null)) ?? {}) as { ids?: unknown; all?: unknown };
     const at = new Date().toISOString();

@@ -6,19 +6,31 @@
 //
 // Just the bar: the mark and the collapse toggle at the top, then the bell
 // (notifications-menu.tsx) and the account's views, which depend on its
-// role. Partners get My Problems.
-// Members get the Notice Board, My Claims and All Projects with Your
-// Projects under it; reps get the Notice Board and All Projects; and
-// approvers also get Approvals, with how many are waiting, and Overview. At the bottom sits
+// role (nav.ts): members get the Notice Board, My Projects, All Projects and
+// In your court, with Your Projects under them; partners My Postings, their
+// Organization and In your court; reps the Notice Board, Reviews, All
+// Projects and In your court; admins also Reviews and the Overview. The
+// badges come from the polled shell (shell-store.ts). At the bottom sits
 // the profile, which opens Settings in a dialog, where Log out also lives.
 
 import * as React from "react";
 import Link from "next/link";
-import { ClipboardCheck, FolderKanban, Inbox, LayoutDashboard, type LucideIcon, Megaphone, PanelLeft } from "lucide-react";
+import {
+  Building2,
+  ClipboardCheck,
+  FolderKanban,
+  FolderOpen,
+  Inbox,
+  LayoutDashboard,
+  type LucideIcon,
+  Megaphone,
+  PanelLeft,
+} from "lucide-react";
 import { copy } from "@/content/copy";
 import { useAccount } from "@/lib/account";
 import { initials } from "@/lib/initials";
-import { useApi } from "@/components/projectum/pipeline-store";
+import { type NavItem, type ProjectumView, navItems } from "@/components/projectum/nav";
+import { useShell } from "@/components/projectum/shell-store";
 import { useAvatar } from "@/components/projectum/profile-store";
 import { NotificationsMenu } from "@/components/projectum/notifications-menu";
 import { ProjectFolders } from "@/components/projectum/project-folders";
@@ -40,8 +52,6 @@ import {
 import { Button } from "@/components/ui/button";
 
 const S = copy.projectum;
-
-export type ProjectumView = "board" | "mine" | "problem" | "claims" | "queue" | "overview" | "projects" | "project";
 
 // The collapse toggle, one for each state of the bar. Open, it sits at the
 // right as the sidebar icon. Folded, a second one takes the mark's own spot
@@ -85,33 +95,25 @@ function SidebarToggle({ folded }: { folded: boolean }) {
   );
 }
 
-const P = copy.projectum.pipeline;
-
 // Hovered or focused, the folder hops once (globals.css).
 const HOP =
   "motion-safe:hover:[&>svg]:animate-[projectum-hop_450ms_ease-out] motion-safe:focus-visible:[&>svg]:animate-[projectum-hop_450ms_ease-out]";
 
-type NavItem = { view: ProjectumView; label: string; href: string; icon: LucideIcon; badge?: number; className?: string };
-
-function navItems(role: string, approver: boolean, waiting: number): NavItem[] {
-  if (role === "partner") return [{ view: "mine", label: P.nav.myProblems, href: "/projectum", icon: Megaphone }];
-  const items: NavItem[] = [{ view: "board", label: P.nav.board, href: "/projectum", icon: Megaphone }];
-  if (role === "member") items.push({ view: "claims", label: P.nav.myClaims, href: "/projectum?view=claims", icon: ClipboardCheck });
-  if (approver) {
-    items.push({ view: "queue", label: P.nav.queue, href: "/projectum?view=queue", icon: Inbox, badge: waiting });
-    items.push({ view: "overview", label: P.overview.nav, href: "/projectum?view=overview", icon: LayoutDashboard });
-  }
-  items.push({ view: "projects", label: S.projects, href: "/projectum?view=projects", icon: FolderKanban, className: HOP });
-  return items;
-}
-
-// How many meetings, claims, submissions and partners wait for an approver.
-function useWaiting(approver: boolean): number {
-  const { data } = useApi<{ meetings: unknown[]; claims: unknown[]; submissions: unknown[]; partners: unknown[] }>(
-    approver ? "/queue" : null,
-  );
-  return data ? data.meetings.length + data.claims.length + data.submissions.length + data.partners.length : 0;
-}
+// Each entry's icon, and the folder's hop on All Projects.
+const ICONS: Record<ProjectumView, LucideIcon> = {
+  board: Megaphone,
+  posting: Megaphone,
+  project: FolderKanban,
+  review: ClipboardCheck,
+  postings: Megaphone,
+  myprojects: FolderOpen,
+  projects: FolderKanban,
+  reviews: ClipboardCheck,
+  inbox: Inbox,
+  org: Building2,
+  overview: LayoutDashboard,
+};
+const CLASSES: Partial<Record<NavItem["view"], string>> = { projects: HOP };
 
 export function AppSidebar({
   name,
@@ -129,8 +131,8 @@ export function AppSidebar({
 }) {
   const [avatar] = useAvatar();
   const me = useAccount();
-  const waiting = useWaiting(me.approver);
-  const items = navItems(me.role, me.approver, waiting);
+  const shell = useShell();
+  const items = navItems(me, shell);
   const [settingsOpen, setSettingsOpen] = React.useState(false);
   return (
     <Sidebar collapsible="icon">
@@ -165,9 +167,9 @@ export function AppSidebar({
                   tooltip={item.label}
                   isActive={view === item.view}
                   render={<Link href={item.href} />}
-                  className={item.className}
+                  className={CLASSES[item.view]}
                 >
-                  <item.icon />
+                  {React.createElement(ICONS[item.view])}
                   <span>{item.label}</span>
                 </SidebarMenuButton>
                 {item.badge ? <SidebarMenuBadge>{item.badge}</SidebarMenuBadge> : null}

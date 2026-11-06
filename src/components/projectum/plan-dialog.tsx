@@ -11,12 +11,17 @@
 //   main link on top (a repository, Drive folder, Figma file or anything
 //   else) and the whole plan brought over from last time to edit again.
 //
+// Each step is a milestone: what gets done and how its success is judged,
+// kept in the step's text as "<title>. <criterion>" (src/lib/projects.ts).
+// On a project's board these are its action plan's milestones.
+//
 // Closing the form leaves the card where it was. Wide and in columns so the
 // whole form fits on one desktop screen without scrolling.
 
 import * as React from "react";
 import { ChevronDown, Plus, Trash2, X } from "lucide-react";
 import { copy } from "@/content/copy";
+import { LIMITS } from "@/lib/problems";
 import { cn } from "@/lib/utils";
 import { initials } from "@/lib/initials";
 import {
@@ -35,6 +40,8 @@ import {
   prototypeProject,
   solidifyProblems,
   solidifyProject,
+  splitStep,
+  stepText,
 } from "@/lib/projects";
 import { AddPersonMenu } from "@/components/projectum/people-menu";
 import { ROLE_STYLE, defaultMeanings, projectMeanings, roleName } from "@/components/projectum/roles";
@@ -75,7 +82,12 @@ const TEXT = {
   },
 } as const;
 
-const newStep = (): Step => ({ id: crypto.randomUUID(), text: "", ownerId: "" });
+// A step as the form edits it: the milestone's title and criterion apart.
+type StepRow = { id: string; title: string; criterion: string; ownerId: string };
+
+const newStep = (): StepRow => ({ id: crypto.randomUUID(), title: "", criterion: "", ownerId: "" });
+const rowOf = (s: Step): StepRow => ({ id: s.id, ...splitStep(s.text), ownerId: s.ownerId });
+const stepOf = (r: StepRow): Step => ({ id: r.id, text: stepText(r.title, r.criterion), ownerId: r.ownerId });
 
 function FieldError({ id, show, children }: { id: string; show: boolean; children: React.ReactNode }) {
   if (!show) return null;
@@ -107,22 +119,33 @@ function PlanForm({
   const [thesis, setThesis] = React.useState(project.plan?.thesis ?? "");
   const [reasoning, setReasoning] = React.useState(project.plan?.reasoning ?? "");
   const [techStack, setTechStack] = React.useState(project.plan?.techStack ?? "");
-  const [steps, setSteps] = React.useState<Step[]>(() => (project.plan?.steps.length ? project.plan.steps : [newStep()]));
+  const [steps, setSteps] = React.useState<StepRow[]>(() => (project.plan?.steps.length ? project.plan.steps.map(rowOf) : [newStep()]));
   const [people, setPeople] = React.useState<Person[]>(project.people);
   const [meanings, setMeanings] = React.useState<Record<RoleId, string>>(() => projectMeanings(project));
   const [githubUrl, setGithubUrl] = React.useState(project.prototype?.githubUrl ?? "");
   const [meaningsOpen, setMeaningsOpen] = React.useState(false);
   const [showErrors, setShowErrors] = React.useState(false);
 
-  const draft = { thesis, reasoning, techStack, steps, people, meanings, githubUrl, supabase: project.prototype?.supabase ?? false };
-  const problems = withPrototype ? prototypeProblems(draft) : solidifyProblems(draft);
+  const draft = {
+    thesis,
+    reasoning,
+    techStack,
+    steps: steps.map(stepOf),
+    people,
+    meanings,
+    githubUrl,
+    supabase: project.prototype?.supabase ?? false,
+  };
+  // A criterion with no title would read as a title of its own once saved.
+  const untitled = steps.filter((r) => !r.title.trim() && r.criterion.trim()).map((r) => `step-text:${r.id}`);
+  const problems = [...new Set([...(withPrototype ? prototypeProblems(draft) : solidifyProblems(draft)), ...untitled])];
   const bad = (key: string) => showErrors && problems.includes(key);
   const invalid = (key: string) => (bad(key) ? true : undefined);
   const errId = (key: string) => `${ids}-err-${key.replace(/[^a-z0-9-]/gi, "-")}`;
   const described = (key: string) => (bad(key) ? errId(key) : undefined);
   const text = TEXT[target][mode];
 
-  const setStep = (id: string, patch: Partial<Step>) =>
+  const setStep = (id: string, patch: Partial<StepRow>) =>
     setSteps((s) => s.map((x) => (x.id === id ? { ...x, ...patch } : x)));
 
   const removePerson = (id: string) => {
@@ -134,9 +157,11 @@ function PlanForm({
   const submit = (e: React.FormEvent) => {
     e.preventDefault();
     const defaults = defaultMeanings();
-    const next = withPrototype
-      ? (mode === "edit" ? editPrototype : prototypeProject)(project, draft, defaults)
-      : (mode === "edit" ? editPlan : solidifyProject)(project, draft, defaults);
+    const next = untitled.length
+      ? null
+      : withPrototype
+        ? (mode === "edit" ? editPrototype : prototypeProject)(project, draft, defaults)
+        : (mode === "edit" ? editPlan : solidifyProject)(project, draft, defaults);
     if (next) {
       onSave(next);
       return;
@@ -255,13 +280,13 @@ function PlanForm({
                     <span className="w-5 shrink-0 text-right text-sm text-muted-foreground tabular-nums">{i + 1}.</span>
                     <Input
                       className="min-w-0 flex-1"
-                      value={step.text}
-                      maxLength={MAX_LINE}
+                      value={step.title}
+                      maxLength={LIMITS.milestoneTitle}
                       placeholder={C.stepPlaceholder}
                       aria-label={`${C.step} ${i + 1}`}
                       aria-invalid={invalid(`step-text:${step.id}`)}
                       aria-describedby={described(`step-text:${step.id}`)}
-                      onChange={(e) => setStep(step.id, { text: e.target.value })}
+                      onChange={(e) => setStep(step.id, { title: e.target.value })}
                     />
                     <Select
                       value={step.ownerId || null}
@@ -293,6 +318,18 @@ function PlanForm({
                     >
                       <Trash2 />
                     </Button>
+                  </div>
+                  <div className="pl-7">
+                    {/* The step's text holds both, so the criterion gets
+                        what the title leaves of the line. */}
+                    <Input
+                      className="h-7 text-xs"
+                      value={step.criterion}
+                      maxLength={Math.max(0, MAX_LINE - step.title.trim().length - 2)}
+                      placeholder={C.criterionPlaceholder}
+                      aria-label={`${C.criterion} (${C.step} ${i + 1})`}
+                      onChange={(e) => setStep(step.id, { criterion: e.target.value })}
+                    />
                   </div>
                   <div className="pl-7">
                     <FieldError id={errId(`step-text:${step.id}`)} show={bad(`step-text:${step.id}`)}>{C.errors.stepText}</FieldError>

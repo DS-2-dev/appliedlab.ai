@@ -10,7 +10,7 @@
     "lint": "eslint",
     "copy-lint": "node scripts/copy-lint.mjs",
     "test": "node --import ./scripts/test-loader.mjs --test \"scripts/*.test.mjs\"",
-    "check": "tsc --noEmit && eslint && node scripts/copy-lint.mjs && node --test \"scripts/*.test.mjs\""
+    "check": "tsc --noEmit && eslint && node scripts/copy-lint.mjs && node --import ./scripts/test-loader.mjs --test \"scripts/*.test.mjs\""
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.126.0",

@@ -9,6 +9,7 @@
 
 import * as React from "react";
 import type { AccountRole } from "@/lib/email-rules";
+import type { Level, Role } from "@/lib/pipeline/domain";
 import { ACCOUNT_URL } from "@/lib/site";
 
 export type { AccountRole } from "@/lib/email-rules";
@@ -20,17 +21,24 @@ export interface Account {
   role: AccountRole;
   status: "active" | "pending";
   avatar: string | null;
-  // Approves claims and new partners: reps, and the Lab's approvers.
-  approver: boolean;
-  // Members: their level, worked out from their claims, whether their
-  // profile page is public and its address, and whether the Lab has given
-  // them a funded Claude account. Partners: whether their name stays off
-  // student profiles.
-  level: "affiliate" | "sponsored" | "builder" | null;
+  // Every role held, with "admin" when the account is one.
+  roles: Role[];
+  admin: boolean;
+  // Members: their stored level. Everyone else: null.
+  level: Level | null;
+  levelLocked: boolean;
+  orgId: string | null;
+  org: { id: string; slug: string; name: string; primary: boolean } | null;
+  // A pending partner who asked an organization to let them in: its name.
+  pendingOrgName: string | null;
+  // Members: whether their profile page is public and its address, and
+  // whether the Lab has given them a funded Claude account. Partners:
+  // whether their name stays off student profiles.
   profilePublic: boolean;
   handle: string | null;
   claudeAccess: boolean;
   hideName: boolean;
+  interests: string[];
 }
 
 export type AccountState =
@@ -80,6 +88,7 @@ export class ApiError extends Error {
   constructor(
     public status: number,
     public code: string,
+    public issues?: string[],
   ) {
     super(code);
   }
@@ -99,13 +108,13 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
   } catch {
     throw new ApiError(0, "network");
   }
-  const body = (await res.json().catch(() => ({}))) as { error?: string };
+  const body = (await res.json().catch(() => ({}))) as { error?: string; issues?: string[] };
   if (res.status === 401 && t) {
     memoryToken = null;
     writeToken(null);
     set(SIGNED_OUT);
   }
-  if (!res.ok) throw new ApiError(res.status, body.error ?? "error");
+  if (!res.ok) throw new ApiError(res.status, body.error ?? "error", body.issues);
   return body as T;
 }
 
@@ -137,6 +146,18 @@ function subscribe(onChange: () => void) {
   return () => {
     listeners.delete(onChange);
     window.removeEventListener("storage", onStorage);
+  };
+}
+
+// For stores outside React (shell-store.ts): the account now, and a call on
+// every change to it, sign-in and sign-out included.
+export function currentAccountState(): AccountState {
+  return state;
+}
+export function watchAccount(onChange: () => void): () => void {
+  listeners.add(onChange);
+  return () => {
+    listeners.delete(onChange);
   };
 }
 
@@ -231,6 +252,7 @@ export async function updateAccount(patch: {
   avatar?: string | null;
   profilePublic?: boolean;
   hideName?: boolean;
+  interests?: string[];
 }): Promise<void> {
   const { user } = await api<{ user: Account }>("/me", { method: "PATCH", body: JSON.stringify(patch) });
   set({ status: "signed-in", account: user });

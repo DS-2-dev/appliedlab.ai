@@ -213,6 +213,27 @@ body {
   --sidebar: #f9f9f9;
   --sidebar-accent: #ececec;
   --sidebar-border: oklch(0 0 0 / 8%);
+  /* Status tones (status-pill.tsx, stage-bar.tsx). */
+  --tone-neutral-bg: #f4f4f4;
+  --tone-neutral-fg: #525252;
+  --tone-gray-bg: #e9e9ea;
+  --tone-gray-fg: #3f3f46;
+  --tone-amber-bg: #fdf1d3;
+  --tone-amber-fg: #8a5a00;
+  --tone-blue-bg: #e3eefb;
+  --tone-blue-fg: #1f5aa6;
+  --tone-violet-bg: #ebeaf2;
+  --tone-violet-fg: #575275;
+  --tone-green-bg: #e0f3e5;
+  --tone-green-fg: #1f6b38;
+  --tone-teal-bg: #ddf1f0;
+  --tone-teal-fg: #17676a;
+  --tone-red-bg: #fbe4e2;
+  --tone-red-fg: #a82a22;
+  --tone-orange-bg: #fde9d9;
+  --tone-orange-fg: #a34a0c;
+  --tone-ink-bg: #1a1a1a;
+  --tone-ink-fg: #ffffff;
 }
 /* Dark mode (Settings, Preferences), ChatGPT's current dark theme one for
    one: a pure black canvas and rail split by a faint hairline, cards flat on
@@ -244,6 +265,27 @@ body {
   --sidebar-accent-foreground: #ffffff;
   --sidebar-border: oklch(1 0 0 / 12%);
   --sidebar-ring: #8f8f8f;
+  /* Status tones, dark. */
+  --tone-neutral-bg: #212121;
+  --tone-neutral-fg: #c8c8c8;
+  --tone-gray-bg: #2a2a2c;
+  --tone-gray-fg: #d4d4d8;
+  --tone-amber-bg: #2e2410;
+  --tone-amber-fg: #f0c460;
+  --tone-blue-bg: #112238;
+  --tone-blue-fg: #8dbcf2;
+  --tone-violet-bg: #1e1d29;
+  --tone-violet-fg: #b3aed0;
+  --tone-green-bg: #10261a;
+  --tone-green-fg: #7fd49b;
+  --tone-teal-bg: #0e2527;
+  --tone-teal-fg: #6fcfd0;
+  --tone-red-bg: #2d1513;
+  --tone-red-fg: #f29a92;
+  --tone-orange-bg: #2d1c0f;
+  --tone-orange-fg: #f5a56a;
+  --tone-ink-bg: #ffffff;
+  --tone-ink-fg: #000000;
 }
 /* The landing heading's tilting word (page.tsx). Upright most of the time,
    it leans into an italic slant now and then and straightens again. The

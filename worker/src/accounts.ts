@@ -11,16 +11,19 @@
 // the site (GitHub Pages) and this Worker are on different domains. Only the
 // token's hash is stored.
 //
-// Problems, claims and project boards are in pipeline.ts.
+// Postings, projects, boards and submissions are in postings.ts, projects.ts, boards.ts and submissions.ts.
 
 import { looksLikeEmail, normalizeEmail, roleForEmail, type AccountRole } from "@/lib/email-rules";
 import { type AlertEnv, alert } from "./alerts";
-import { approverIds, notify } from "./notify";
+import { emit } from "./events";
+import { activeDisciplineSlugs } from "./taxonomy";
+import { ensureOrgFor, notifyAdminsOfPartner, onPartnerSignUp } from "./orgs";
 import { isThumbnail } from "@/lib/projects";
+import { ROLES, type Level, type Role } from "@/lib/pipeline/domain";
 
 export interface AccountEnv {
   DB: D1Database;
-  // Submitted final reports (pipeline.ts).
+  // Submitted final reports (submissions.ts).
   REPORTS: KVNamespace;
   LOGIN_LIMITER: RateLimit;
   LOGIN_IP_LIMITER: RateLimit;
@@ -47,7 +50,10 @@ const MAX_PERSON_NAME = 80;
 
 type Status = "active" | "pending" | "removed";
 
-export const USER_COLS = "id, email, name, role, status, avatar, profile_public, handle, claude_access, hide_name";
+export const USER_COLS =
+  "id, email, name, role, status, avatar, profile_public, handle, claude_access, hide_name, roles, org_id, level, level_locked, interests";
+
+export type { Level };
 
 export interface UserRow {
   id: string;
@@ -60,59 +66,104 @@ export interface UserRow {
   handle?: string | null;
   claude_access?: number;
   hide_name?: number;
+  // A JSON array of roles, always holding `role`. Sign-up never stores
+  // "admin" here; it comes from isAdmin.
+  roles: string;
+  org_id: string | null;
+  level: Level;
+  level_locked: number;
+  // A JSON array of tags.
+  interests: string;
 }
 
-// Who approves claims and new partners: reps, the Lab's approver
-// (APPROVER_EMAIL, who also gets the emails), and anyone listed in
-// APPROVERS, whatever their own role.
-export function isApprover(env: AccountEnv, u: { email: string; role: AccountRole; status: string }): boolean {
+function parseList(text: string | undefined): unknown[] {
+  try {
+    const v: unknown = JSON.parse(text || "[]");
+    return Array.isArray(v) ? v : [];
+  } catch {
+    return [];
+  }
+}
+
+// The roles the account holds: the stored list, de-duplicated, always with
+// its own `role`, and never "admin" (that is isAdmin's call).
+export function rolesOf(u: Pick<UserRow, "role" | "roles">): Role[] {
+  const known = (ROLES as readonly string[]).filter((r) => r !== "admin");
+  const stored = parseList(u.roles).filter((r): r is Role => typeof r === "string" && known.includes(r));
+  return [...new Set<Role>([u.role, ...stored])];
+}
+
+// Admins: active accounts whose roles list says admin, the Lab's approver
+// (APPROVER_EMAIL), and anyone listed in APPROVERS, whatever their role.
+export function isAdmin(env: AccountEnv, u: { email: string; status: string; roles?: string }): boolean {
   if (u.status !== "active") return false;
-  if (u.role === "rep") return true;
+  if (parseList(u.roles).includes("admin")) return true;
   const listed = [env.APPROVER_EMAIL, ...(env.APPROVERS ?? "").split(",")].map((e) => normalizeEmail(e)).filter(Boolean);
   return listed.includes(normalizeEmail(u.email));
 }
 
-// What the browser gets about the signed-in person.
-function publicUser(u: UserRow, env: AccountEnv) {
+export function hasRole(env: AccountEnv, u: RoleSubject, r: Role): boolean {
+  return r === "admin" ? isAdmin(env, u) : rolesOf(u).includes(r);
+}
+
+type RoleSubject = { email: string; role: AccountRole; status: string; roles: string };
+
+// Reps and admins: the Lab's staff.
+export function isStaff(env: AccountEnv, u: RoleSubject): boolean {
+  return u.status === "active" && (hasRole(env, u, "rep") || isAdmin(env, u));
+}
+
+// The organization an account belongs to, for the browser.
+async function orgSummary(env: AccountEnv, u: UserRow) {
+  if (!u.org_id) return null;
+  const o = await env.DB.prepare("SELECT id, slug, name, primary_user_id FROM orgs WHERE id = ?")
+    .bind(u.org_id)
+    .first<{ id: string; slug: string; name: string; primary_user_id: string | null }>();
+  return o ? { id: o.id, slug: o.slug, name: o.name, primary: o.primary_user_id === u.id } : null;
+}
+
+// The organization a pending partner is waiting on, by name, so the waiting
+// page can say whose answer it is.
+async function pendingOrgName(env: AccountEnv, u: UserRow): Promise<string | null> {
+  if (u.org_id) return null;
+  const r = await env.DB.prepare(
+    "SELECT o.name FROM org_requests r JOIN orgs o ON o.id = r.org_id WHERE r.user_id = ? AND r.status = 'pending' ORDER BY r.created_at DESC LIMIT 1",
+  )
+    .bind(u.id)
+    .first<{ name: string }>();
+  return r?.name ?? null;
+}
+
+// What the browser gets about the signed-in person. A member's level is the
+// stored one; everyone else has none.
+async function accountOut(u: UserRow, env: AccountEnv) {
+  const admin = isAdmin(env, u);
+  const roles = rolesOf(u);
   return {
     id: u.id,
     email: u.email,
     name: u.name,
     role: u.role,
+    roles: admin ? [...roles, "admin" as Role] : roles,
+    admin,
     status: u.status,
     avatar: u.avatar,
-    approver: isApprover(env, u),
+    level: u.role === "member" ? u.level : null,
+    levelLocked: Boolean(u.level_locked),
+    orgId: u.org_id,
+    org: await orgSummary(env, u),
+    pendingOrgName: await pendingOrgName(env, u),
     profilePublic: Boolean(u.profile_public),
     handle: u.handle ?? null,
     claudeAccess: Boolean(u.claude_access),
     hideName: Boolean(u.hide_name),
+    interests: parseList(u.interests).filter((t): t is string => typeof t === "string"),
   };
-}
-
-export type Level = "affiliate" | "sponsored" | "builder";
-
-// A member's level, from the deck: Affiliate once registered, Sponsored
-// while on an approved claim, Builder once a partner hires their team.
-// Worked out each time, never stored, so it can't drift from the claims.
-export async function levelOf(env: AccountEnv, userId: string): Promise<Level> {
-  const row = await env.DB.prepare(
-    "SELECT " +
-      "EXISTS (SELECT 1 FROM claim_members m JOIN claims c ON c.id = m.claim_id JOIN selections s ON s.claim_id = c.id WHERE m.user_id = ?1 AND c.status = 'approved') AS builder, " +
-      "EXISTS (SELECT 1 FROM claim_members m JOIN claims c ON c.id = m.claim_id WHERE m.user_id = ?1 AND c.status = 'approved') AS sponsored",
-  )
-    .bind(userId)
-    .first<{ builder: number; sponsored: number }>();
-  return row?.builder ? "builder" : row?.sponsored ? "sponsored" : "affiliate";
-}
-
-// The account as the browser gets it, with a member's level.
-async function accountOut(u: UserRow, env: AccountEnv) {
-  return { ...publicUser(u, env), level: u.role === "member" ? await levelOf(env, u.id) : null };
 }
 
 // A profile's address: the name as a slug, plus a few letters so two Sam
 // Lees don't collide.
-function handleFor(name: string): string {
+export function handleFor(name: string): string {
   const slug = name
     .normalize("NFKD")
     .replace(/[^\w\s-]/g, "")
@@ -284,13 +335,27 @@ async function createUser(
     role,
     status: role === "partner" ? "pending" : "active",
     avatar,
+    roles: JSON.stringify([role]),
+    org_id: null,
+    level: "affiliate",
+    level_locked: 0,
+    interests: "[]",
   };
-  await env.DB.prepare("INSERT INTO users (id, email, name, role, status, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?, ?)")
-    .bind(user.id, email, name, role, user.status, avatar, new Date().toISOString())
+  await env.DB.prepare("INSERT INTO users (id, email, name, role, roles, status, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(user.id, email, name, role, user.roles, user.status, avatar, new Date().toISOString())
     .run();
   if (role === "partner") {
-    await askApproval(env, req, user);
-    await notify(env, await approverIds(env), "partner-new", `${name} signed up as a business and is waiting for approval`, "/projectum?view=queue");
+    const stmts: D1PreparedStatement[] = [];
+    const asked = await onPartnerSignUp(env, stmts, user);
+    if (asked) {
+      // The org's primary decides, so the admin isn't asked.
+      await env.DB.batch(stmts);
+      await asked.after();
+    } else {
+      await askApproval(env, req, user);
+      await notifyAdminsOfPartner(env, stmts, user);
+      await env.DB.batch(stmts);
+    }
   }
   return user;
 }
@@ -314,7 +379,7 @@ async function issueSession(env: AccountEnv, userId: string): Promise<string> {
 const APPROVAL_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
 // The emailed link to approve a partner, signed and good for 30 days.
-async function approvalLink(env: AccountEnv, req: Request, userId: string): Promise<string> {
+export async function approvalLink(env: AccountEnv, req: Request, userId: string): Promise<string> {
   const exp = String(Date.now() + APPROVAL_TTL_MS);
   const url = new URL("/approve", req.url);
   url.searchParams.set("u", userId);
@@ -372,7 +437,15 @@ export async function approvePartner(req: Request, env: AccountEnv): Promise<Res
   }
   if (user.status === "pending") {
     await env.DB.prepare("UPDATE users SET status = 'active' WHERE id = ?").bind(id).run();
-    await notify(env, [id], "partner-approved", "The Lab approved your account. Post your first problem.", "/projectum");
+    await ensureOrgFor(env, user);
+    const stmts: D1PreparedStatement[] = [];
+    emit(env, stmts, {
+      type: "account.approved",
+      actor: null,
+      subject: { kind: "user", id },
+      notify: [{ userIds: [id], title: "The Lab approved your account. Post your first problem.", href: "/projectum" }],
+    });
+    await env.DB.batch(stmts);
     await sendEmail(
       env,
       user.email,
@@ -417,13 +490,20 @@ async function updateMe(req: Request, env: AccountEnv, user: UserRow, json: Json
     if (user.role !== "partner") return json({ error: "hide" }, 400);
     next.hide_name = body.hideName === true ? 1 : 0;
   }
+  if ("interests" in body) {
+    if (user.role !== "member" || !Array.isArray(body.interests)) return json({ error: "interests" }, 400);
+    // Only the disciplines on offer now, each once.
+    const offered = new Set(await activeDisciplineSlugs(env));
+    const picked = [...new Set(body.interests.filter((t): t is string => typeof t === "string" && offered.has(t)))];
+    next.interests = JSON.stringify(picked);
+  }
   if ("avatar" in body) {
     if (body.avatar !== null && !isThumbnail(body.avatar)) return json({ error: "avatar" }, 400);
     next.avatar = body.avatar as string | null;
   }
   for (let tries = 0; ; tries++) {
-    const r = await env.DB.prepare("UPDATE users SET name = ?, avatar = ?, profile_public = ?, handle = ?, hide_name = ? WHERE id = ?")
-      .bind(next.name, next.avatar, next.profile_public ?? 0, next.handle ?? null, next.hide_name ?? 0, user.id)
+    const r = await env.DB.prepare("UPDATE users SET name = ?, avatar = ?, profile_public = ?, handle = ?, hide_name = ?, interests = ? WHERE id = ?")
+      .bind(next.name, next.avatar, next.profile_public ?? 0, next.handle ?? null, next.hide_name ?? 0, next.interests ?? "[]", user.id)
       .run()
       .catch((e: unknown) => e);
     if (!(r instanceof Error)) break;

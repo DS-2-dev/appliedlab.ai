@@ -1,49 +1,133 @@
 "use client";
 
-// The pipeline's data from the Worker (worker/src/pipeline.ts), for the
-// Notice Board, a problem, My Claims, My Problems and Approvals. Each path is
-// fetched once and shared by every component that reads it. After a change,
-// refresh() reloads every path loaded so far, so lists and counts agree.
+// The pipeline's data from the Worker: postings, projects, reviews,
+// organizations and the taxonomy. Each path is fetched once and shared by
+// every component that reads it. After a change, refresh() reloads every
+// path loaded so far, and the shell's counts (shell-store.ts) are asked for
+// again, so lists, badges and the bell agree.
+//
+// The types mirror the Worker's output field for field: postingOut
+// (worker/src/postings.ts), projectOut (projects.ts), the review queue and
+// page (reviews.ts), the organization page (orgs.ts) and GET /taxonomy.
 
 import * as React from "react";
 import { ACCOUNT_URL } from "@/lib/site";
 import { ApiError, api, sessionToken } from "@/lib/account";
 import type { Project } from "@/lib/projects";
+import type { PostingStatus, ProjectStatus } from "@/lib/pipeline/domain";
+import type { ClaimStatus, Field, Milestone, PhaseMilestone, PlanDraft, PostingDraft, ProblemStatus } from "@/lib/problems";
 import { reloadProjects } from "@/components/projectum/project-store";
-import type { ClaimStatus, Field, Milestone, PhaseMilestone, ProblemStatus } from "@/lib/problems";
+import { pollShell } from "@/components/projectum/shell-store";
 
 export type Person = { id: string; name: string };
 
-export type Problem = {
+// One round at a gate (ReviewOut in worker/src/reviews.ts).
+export type Review = {
   id: string;
-  title: string;
-  summary: string;
-  details: string;
-  fields: Field[];
-  deliverable: string;
-  deadline: string;
-  status: ProblemStatus;
-  // Posted by a partner, or proposed by a member as their own project.
-  origin: "partner" | "member";
-  createdAt: string;
-  owner: Person;
-  counts: { approved: number; pending: number };
-  myClaim?: ClaimStatus | null;
+  gate: "posting" | "action_plan" | "submission" | "completion";
+  subjectId: string;
+  round: number;
+  status: "open" | "approved" | "returned" | "withdrawn";
+  assignedTo: Person | null;
+  decidedBy: Person | null;
+  decidedAt: string | null;
+  feedback: string;
+  score: number | null;
+  openedAt: string;
 };
 
-export type Claim = {
+// GET /postings?scope=board|mine|all, GET /postings/:id.
+export type Posting = PostingDraft & {
   id: string;
-  problemId: string;
-  ownerId: string;
-  status: ClaimStatus;
-  reviewNote: string;
-  reviewedAt: string | null;
+  orgId: string | null;
+  org: { id: string; name: string; slug: string } | null;
+  author: Person;
+  status: PostingStatus;
+  kind: "partner" | "self";
+  sealed: boolean;
+  showOnProfile: boolean;
+  submittedAt: string | null;
+  publishedAt: string | null;
+  closedAt: string | null;
   createdAt: string;
-  plan: { approach: string; milestones: Milestone[]; finishBy: string };
-  // The board an approved claim opened, or null.
-  projectId: string | null;
-  team: Person[];
+  // Projects still working toward a submission, and delivered ones.
+  counts: { open: number; delivered: number };
+  // The viewer's own project on it, the newest.
+  myProject: { id: string; status: ProjectStatus; boardId: string | null } | null;
+  // The transition names the viewer may take now.
+  transitions: string[];
+  // A NEXT_STEPS key (src/lib/pipeline/handoffs.ts), or null.
+  nextSteps: string | null;
+  reviews: Review[];
 };
+
+// GET /projects/mine, /projects?posting=, /projects/:id. A colleague gets
+// the outline: an empty plan, no board, no transitions and no reviews.
+export type PipelineProject = {
+  id: string;
+  postingId: string;
+  posting: { id: string; title: string; kind: "partner" | "self"; org: { id: string; name: string } | null };
+  status: ProjectStatus;
+  phase: "parallel" | "integrated";
+  plan: PlanDraft;
+  lead: Person;
+  team: Person[];
+  boardId: string | null;
+  plannedTerms: number;
+  claimedAt: string;
+  activatedAt: string | null;
+  submittedAt: string | null;
+  deliveredAt: string | null;
+  transitions: string[];
+  nextSteps: string | null;
+  reviews: Review[];
+  view: "full" | "partner" | "colleague";
+};
+
+// GET /reviews: an open review and what it is about. Ids starting "sub:"
+// stand for pending submissions from before submissions had reviews.
+export type ReviewRow = Review & {
+  title: string;
+  who: string;
+  posting: { id: string; title: string };
+  project: { id: string; status: string; lead: Person; team: Person[] } | null;
+  waitingSince: string;
+  href: string;
+};
+
+// GET /reviews/:id: the review, every round, its subject now, what was sent
+// for review (frozen), and the project's board.
+export type ReviewDetail = {
+  review: Review;
+  history: Review[];
+  subject: Posting | PipelineProject;
+  snapshot: unknown;
+  board: Project | null;
+};
+
+// GET /orgs/mine, GET /orgs/:id (staff).
+export type Org = {
+  id: string;
+  slug: string;
+  name: string;
+  kind: string;
+  domain: string;
+  industry: string;
+  location: string;
+  website: string;
+  description: string;
+  isPublic: boolean;
+  showcaseConsentDefault: boolean;
+  primaryUserId: string | null;
+};
+export type OrgPerson = { id: string; name: string; email: string; primary: boolean };
+export type OrgRequest = { id: string; user: { id: string; name: string; email: string }; message: string; createdAt: string };
+// Requests are filled only for the primary and staff.
+export type OrgPage = { org: Org; people: OrgPerson[]; requests: OrgRequest[] };
+
+// GET /taxonomy.
+export type TaxonomyItem = { slug: string; name: string };
+export type Taxonomy = { disciplines: TaxonomyItem[]; tags: TaxonomyItem[] };
 
 // A team's latest submission. Partners only ever get accepted ones.
 export type Submission = {
@@ -55,33 +139,52 @@ export type Submission = {
   createdAt: string;
 };
 
-// After an accepted submission: the partner's latest meeting request, and
-// its selection of the team for an internship, which starts phase 2.
-export type Meeting = { id: string; status: "requested" | "arranged"; message: string; createdAt: string };
+// Once the partner brings the team on: its message and phase 2's milestones.
 export type Selection = {
   message: string;
   milestones: PhaseMilestone[];
   completedAt: string | null;
   createdAt: string;
 };
-export type MeetingRequest = {
+
+// A partner's request to meet a team (worker/src/phase2.ts). "arranged" is
+// the older name for "scheduled".
+export type Meeting = { id: string; status: "requested" | "scheduled" | "arranged"; message: string; createdAt: string };
+
+// --- Deprecated: the older problem and claim shapes. The Worker no longer
+// serves them; the overview's problems list and PlanView still read these.
+
+/** @deprecated use Posting */
+export type Problem = {
   id: string;
-  message: string;
+  title: string;
+  summary: string;
+  details: string;
+  fields: Field[];
+  deliverable: string;
+  deadline: string;
+  status: ProblemStatus;
+  origin: "partner" | "member";
   createdAt: string;
-  problem: Problem | null;
-  partner: { name: string; email: string } | null;
-  team: { id: string; name: string; email: string }[];
+  owner: Person;
+  counts: { approved: number; pending: number };
+  myClaim?: ClaimStatus | null;
 };
 
-export type ClaimWithSubmission = Claim & {
-  submission?: Submission | null;
-  meeting?: Meeting | null;
-  selection?: Selection | null;
+/** @deprecated use PipelineProject */
+export type Claim = {
+  id: string;
+  problemId: string;
+  ownerId: string;
+  status: ClaimStatus;
+  reviewNote: string;
+  reviewedAt: string | null;
+  createdAt: string;
+  plan: { approach: string; milestones: Milestone[]; finishBy: string };
+  projectId: string | null;
+  team: Person[];
 };
-export type MyClaim = ClaimWithSubmission & { problem: { id: string; title: string; owner: string } | null };
-export type QueueClaim = Claim & { problem: Problem | null };
-export type QueueSubmission = Submission & { problem: Problem | null; project: Project | null };
-export type PendingPartner = { id: string; email: string; name: string; createdAt: string };
+
 
 type Entry = { data?: unknown; error?: boolean; loading?: Promise<void> };
 const cache = new Map<string, Entry>();
@@ -146,23 +249,27 @@ export function useApi<T>(path: string | null): { data: T | undefined; error: bo
   return { data: entry?.data as T | undefined, error: Boolean(entry?.error), retry };
 }
 
+// A change on the Worker, then everything that may show it loads again: the
+// paths read so far, the boards and the shell's counts.
 export async function send<T = unknown>(path: string, method: string, body?: unknown): Promise<T> {
   const res = await api<T>(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
   refresh();
-  // An approval opens a board, and a withdrawal closes one.
+  // A claim opens a board, and a status change moves one.
   reloadProjects();
+  void pollShell();
   return res;
 }
 
 // Submits a board: the board moved to its last stage, and the final report.
 // Sent as a form, since it carries a file.
-export async function submitWork(project: Project, report: File): Promise<void> {
+export async function submitWork(board: Project, report: File): Promise<void> {
   const body = new FormData();
-  body.set("project", JSON.stringify(project));
+  body.set("project", JSON.stringify(board));
   body.set("report", report);
-  await api(`/projects/${encodeURIComponent(project.id)}/submissions`, { method: "POST", body });
+  await api(`/boards/${encodeURIComponent(board.id)}/submissions`, { method: "POST", body });
   refresh();
   reloadProjects();
+  void pollShell();
 }
 
 // Downloads a submission's report as the signed-in person, then hands the

@@ -49,11 +49,13 @@ export function AccountGate({ children }: { children: React.ReactNode }) {
 
   if (state.status !== "signed-in") return null;
   if (state.account.status === "pending") {
+    // A partner who asked an organization to let them in sees whose answer it is.
+    const org = state.account.pendingOrgName;
     return (
       <main className="projectum-ui grid min-h-svh place-items-center p-6">
         <div className="grid max-w-md gap-3 text-center">
-          <h1 className="text-xl font-medium">{P.heading}</h1>
-          <p className="text-muted-foreground">{P.body}</p>
+          <h1 className="text-xl font-medium">{org ? P.waitingFor(org) : P.heading}</h1>
+          <p className="text-muted-foreground">{org ? P.waitingForBody : P.body}</p>
           <p className="text-sm text-muted-foreground">{state.account.email}</p>
           <div className="mt-2">
             <LogoutButton />

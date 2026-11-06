@@ -1,21 +1,107 @@
 "use client";
 
-// Small pieces the pipeline's views share: field tags, claim status, a
-// plan laid out, a team, dates, and the loading and error states.
+// Small pieces the pipeline's views share: discipline and field tags, the
+// teammate picker, claim status, a plan laid out, a team, dates, and the
+// loading and error states.
 
 import * as React from "react";
-import { Award, CircleCheck, CircleDashed, CircleX, Download, ExternalLink, Sprout, Undo2, Wrench } from "lucide-react";
+import { Award, CircleCheck, CircleDashed, CircleX, Download, ExternalLink, Sprout, Undo2, UserPlus, Wrench, X } from "lucide-react";
 import { copy } from "@/content/copy";
+import { useAccount } from "@/lib/account";
 import { initials } from "@/lib/initials";
-import type { ClaimStatus, Field } from "@/lib/problems";
+import { type ClaimStatus, type Field, LIMITS } from "@/lib/problems";
 import type { Launch, Person as BoardPerson } from "@/lib/projects";
-import { type Claim, type Person, type Submission, downloadReport } from "@/components/projectum/pipeline-store";
+import { usePeople } from "@/components/projectum/people-store";
+import { type Claim, type Person, type Submission, type Taxonomy, downloadReport, useApi } from "@/components/projectum/pipeline-store";
 import { Avatar, AvatarFallback, AvatarGroup } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Skeleton } from "@/components/ui/skeleton";
 
 const P = copy.projectum.pipeline;
+
+// The live taxonomy (GET /taxonomy), loaded once and shared, with a name
+// for any discipline slug. A slug since retired shows as itself.
+export function useTaxonomy(): { taxonomy: Taxonomy | undefined; name: (slug: string) => string } {
+  const { data } = useApi<Taxonomy>("/taxonomy");
+  const names = React.useMemo(() => new Map((data?.disciplines ?? []).map((d) => [d.slug, d.name])), [data]);
+  const name = React.useCallback((slug: string) => names.get(slug) ?? slug, [names]);
+  return { taxonomy: data, name };
+}
+
+export function DisciplineTags({ slugs, name }: { slugs: string[]; name: (slug: string) => string }) {
+  if (!slugs.length) return null;
+  return (
+    <div className="flex flex-wrap gap-1">
+      {slugs.map((s) => (
+        <Badge key={s} variant="secondary">
+          {name(s)}
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
+// The other members on a team: active members from /people, never the
+// signed-in account, at most LIMITS.teammates.
+export function TeammatePicker({ value, onChange }: { value: Person[]; onChange: (team: Person[]) => void }) {
+  const me = useAccount();
+  const people = usePeople();
+  const id = React.useId();
+  const T = P.teammates;
+  const available = (people ?? []).filter((p) => p.role === "member" && p.id !== me.id && !value.some((t) => t.id === p.id));
+  return (
+    <div className="grid gap-2">
+      <div className="flex items-center justify-between gap-2">
+        <span id={id} className="text-sm font-medium">
+          {T.label}
+        </span>
+        <DropdownMenu>
+          <DropdownMenuTrigger
+            render={<Button type="button" variant="outline" size="sm" disabled={!available.length || value.length >= LIMITS.teammates} />}
+          >
+            <UserPlus />
+            {T.add}
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="max-h-72 min-w-48 overflow-y-auto">
+            {available.map((p) => (
+              <DropdownMenuItem key={p.id} onClick={() => onChange([...value, { id: p.id, name: p.name }])}>
+                <Avatar size="sm">
+                  <AvatarFallback>{initials(p.name)}</AvatarFallback>
+                </Avatar>
+                {p.name}
+              </DropdownMenuItem>
+            ))}
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+      {value.length ? (
+        <ul aria-labelledby={id} className="grid gap-1 rounded-lg border p-1">
+          {value.map((t) => (
+            <li key={t.id} className="flex items-center gap-2 rounded-md px-2 py-1 text-sm">
+              <Avatar size="sm">
+                <AvatarFallback>{initials(t.name)}</AvatarFallback>
+              </Avatar>
+              <span className="flex-1 truncate">{t.name}</span>
+              <Button
+                type="button"
+                variant="ghost"
+                size="icon-sm"
+                aria-label={`${T.remove} ${t.name}`}
+                onClick={() => onChange(value.filter((x) => x.id !== t.id))}
+              >
+                <X />
+              </Button>
+            </li>
+          ))}
+        </ul>
+      ) : (
+        <p className="text-xs text-muted-foreground">{T.help}</p>
+      )}
+    </div>
+  );
+}
 
 // A stored YYYY-MM-DD, as "Dec 1, 2026". Read as UTC so it never shifts a day.
 export function formatDate(date: string): string {

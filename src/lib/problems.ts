@@ -35,6 +35,9 @@ export const LIMITS = {
   teammates: 6,
   note: 1000,
   phaseMilestones: 12,
+  tags: 10,
+  tag: 40,
+  feedback: 2000,
 } as const;
 
 export type ProblemDraft = {
@@ -107,7 +110,79 @@ export function problemIssues(draft: ProblemDraft): ProblemIssue[] {
   return issues;
 }
 
-export function cleanClaim(value: unknown): ClaimDraft {
+// Postings: a partner's problem on the notice board (pipeline/machines.ts).
+// A draft needs only a title; sending it for review needs enough for a
+// member to decide whether to claim it.
+
+export const EFFORTS = ["small", "medium", "large", "multi"] as const;
+export type Effort = (typeof EFFORTS)[number];
+const isEffort = (value: unknown): value is Effort => EFFORTS.includes(value as Effort);
+
+export type PostingDraft = {
+  title: string;
+  summary: string;
+  details: string;
+  // Discipline slugs from the taxonomy.
+  disciplines: string[];
+  // Free-text slugs.
+  tags: string[];
+  effort: "" | Effort;
+  deliverable: string;
+  // YYYY-MM-DD, or "" for none.
+  deadline: string;
+};
+
+function cleanTag(value: unknown): string {
+  return str(value)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, LIMITS.tag)
+    .replace(/-+$/, "");
+}
+
+// Disciplines not in `allowedDisciplines` (the live taxonomy) are dropped.
+export function cleanPosting(value: unknown, allowedDisciplines: readonly string[]): PostingDraft {
+  const v = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  const disciplines = Array.isArray(v.disciplines)
+    ? [...new Set(v.disciplines.filter((d): d is string => typeof d === "string" && allowedDisciplines.includes(d)))]
+    : [];
+  const tags = Array.isArray(v.tags) ? [...new Set(v.tags.map(cleanTag).filter(Boolean))].slice(0, LIMITS.tags) : [];
+  return {
+    title: cleanLine(v.title, LIMITS.title),
+    summary: cleanLine(v.summary, LIMITS.summary),
+    details: cleanText(v.details, LIMITS.details),
+    disciplines,
+    tags,
+    effort: isEffort(v.effort) ? v.effort : "",
+    deliverable: cleanText(v.deliverable, LIMITS.deliverable),
+    deadline: cleanDate(v.deadline),
+  };
+}
+
+export type PostingIssue = "title" | "summary" | "disciplines";
+
+// What a posting still needs: a draft only a title; sending it for review a
+// title of at least 4 characters, a summary of at least 20 and a discipline.
+export function postingIssues(draft: PostingDraft, { forSubmit }: { forSubmit: boolean }): PostingIssue[] {
+  if (!forSubmit) return draft.title ? [] : ["title"];
+  const issues: PostingIssue[] = [];
+  if (draft.title.length < 4) issues.push("title");
+  if (draft.summary.length < 20) issues.push("summary");
+  if (!draft.disciplines.length) issues.push("disciplines");
+  return issues;
+}
+
+// A project's action plan (pipeline/machines.ts): how the team means to
+// solve the posting, the milestones that show progress, and a finish date.
+export type PlanDraft = {
+  approach: string;
+  milestones: Milestone[];
+  // YYYY-MM-DD, or "" for none.
+  finishBy: string;
+};
+
+export function cleanPlan(value: unknown): PlanDraft {
   const v = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
   const milestones = (Array.isArray(v.milestones) ? v.milestones : [])
     .map((m) => {
@@ -119,31 +194,36 @@ export function cleanClaim(value: unknown): ClaimDraft {
     })
     .filter((m) => m.title || m.criterion)
     .slice(0, LIMITS.milestones);
-  const teammates = Array.isArray(v.teammates)
-    ? [...new Set(v.teammates.filter((t): t is string => typeof t === "string" && /^[\w-]{1,64}$/.test(t)))].slice(
-        0,
-        LIMITS.teammates,
-      )
-    : [];
-  return {
-    approach: cleanText(v.approach, LIMITS.approach),
-    milestones,
-    finishBy: cleanDate(v.finishBy),
-    teammates,
-  };
+  return { approach: cleanText(v.approach, LIMITS.approach), milestones, finishBy: cleanDate(v.finishBy) };
 }
 
-export type ClaimIssue = "approach" | "milestones" | "milestone";
+export type PlanIssue = "approach" | "milestones" | "milestone";
 
 // An action plan needs an approach and at least one milestone, and every
 // milestone needs both what it is and how its success is judged.
-export function claimIssues(draft: ClaimDraft): ClaimIssue[] {
-  const issues: ClaimIssue[] = [];
+export function planIssues(draft: PlanDraft): PlanIssue[] {
+  const issues: PlanIssue[] = [];
   if (!draft.approach) issues.push("approach");
   if (!draft.milestones.length) issues.push("milestones");
   else if (draft.milestones.some((m) => !m.title || !m.criterion)) issues.push("milestone");
   return issues;
 }
+
+// The account ids of the other members on a team, at most six.
+export function cleanTeammates(value: unknown): string[] {
+  return Array.isArray(value)
+    ? [...new Set(value.filter((t): t is string => typeof t === "string" && /^[\w-]{1,64}$/.test(t)))].slice(0, LIMITS.teammates)
+    : [];
+}
+
+export function cleanClaim(value: unknown): ClaimDraft {
+  const v = (value && typeof value === "object" ? value : {}) as Record<string, unknown>;
+  return { ...cleanPlan(v), teammates: cleanTeammates(v.teammates) };
+}
+
+export type ClaimIssue = PlanIssue;
+
+export const claimIssues = (draft: ClaimDraft): ClaimIssue[] => planIssues(draft);
 
 // A claim still in play: it holds the member's place on the problem, so
 // they cannot open a second one there.

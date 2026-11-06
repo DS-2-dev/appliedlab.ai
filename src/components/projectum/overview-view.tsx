@@ -1,11 +1,12 @@
 "use client";
 
-// The approvers' overview (Kylar and faculty reps): every problem, open or
-// closed; every team's claim and where it stands, from a pending plan to a
-// completed internship; and every account, with Approve for a waiting
-// partner and Turn off or on for anyone but an approver, with each member's
-// level and whether their funded Claude account has been given. Counts across the
-// top, then one table per tab, each searched and filtered.
+// The admins' overview: every problem, open or closed; every team's claim
+// and where it stands, from a pending plan to a completed internship; every
+// account, with Approve for a waiting partner and Turn off or on for anyone
+// but staff, with each member's level and whether their funded Claude
+// account has been given; every organization; and the join requests still
+// waiting, which link to the organization page where they are answered.
+// Counts across the top, then one table per tab, each searched.
 
 import * as React from "react";
 import Link from "next/link";
@@ -13,6 +14,7 @@ import { copy } from "@/content/copy";
 import type { AccountRole } from "@/lib/email-rules";
 import type { ClaimStatus } from "@/lib/problems";
 import { type Person, type Problem, send, useApi } from "@/components/projectum/pipeline-store";
+import { useShell } from "@/components/projectum/shell-store";
 import { type Level, LevelBadge, LoadError, Loading, ViewFrame, formatDate } from "@/components/projectum/pipeline-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -45,7 +47,7 @@ type OverviewPerson = {
   role: AccountRole;
   status: "active" | "pending" | "removed";
   createdAt: string;
-  approver: boolean;
+  staff: boolean;
   activeClaims: number;
   problems: number;
   level: Level | null;
@@ -53,7 +55,23 @@ type OverviewPerson = {
   profilePublic: boolean;
 };
 
-type Overview = { problems: Problem[]; claims: OverviewClaim[]; people: OverviewPerson[] };
+type OverviewOrg = { id: string; name: string; people: number; primary: { id: string; name: string } | null };
+
+type OverviewRequest = {
+  id: string;
+  message: string;
+  createdAt: string;
+  user: { id: string; name: string; email: string };
+  org: { id: string; name: string };
+};
+
+type Overview = {
+  problems: Problem[];
+  claims: OverviewClaim[];
+  people: OverviewPerson[];
+  orgs: OverviewOrg[];
+  requests: OverviewRequest[];
+};
 type Stage = keyof typeof V.stages;
 
 // Where a team stands, from its claim's status and what followed approval.
@@ -67,6 +85,8 @@ function stageOf(c: OverviewClaim): Stage {
 }
 
 const problemHref = (id: string) => `/projectum?problem=${encodeURIComponent(id)}`;
+
+const orgHref = (id: string) => `/projectum?view=org&id=${encodeURIComponent(id)}`;
 
 const matches = (q: string, ...texts: string[]) => !q || texts.some((t) => t.toLowerCase().includes(q));
 
@@ -175,7 +195,7 @@ function ProblemsTab({ problems }: { problems: Problem[] }) {
               <Badge variant="outline">{V.problemStatus[p.status]}</Badge>
             </td>
             <td className="px-3 py-2 whitespace-nowrap tabular-nums">
-              {P.card.teams(p.counts.approved)}
+              {P.board.teams(p.counts.approved)}
               {p.counts.pending > 0 && <span className="text-muted-foreground">, {P.card.pending(p.counts.pending)}</span>}
             </td>
             <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatDate(p.createdAt)}</td>
@@ -262,7 +282,7 @@ function PersonAction({ person }: { person: OverviewPerson }) {
       </Button>
     );
   }
-  if (person.approver) return null;
+  if (person.staff) return null;
   return person.status === "removed" ? (
     <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(`/accounts/${person.id}/status`, { status: "active" })}>
       {V.turnOn}
@@ -347,7 +367,7 @@ function PeopleTab({ people }: { people: OverviewPerson[] }) {
             </td>
             <td className="px-3 py-2 whitespace-nowrap">
               {V.roles[p.role]}
-              {p.approver && (
+              {p.staff && (
                 <Badge variant="secondary" className="ml-2">
                   {V.approverBadge}
                 </Badge>
@@ -372,6 +392,64 @@ function PeopleTab({ people }: { people: OverviewPerson[] }) {
   );
 }
 
+function OrgsTab({ orgs }: { orgs: OverviewOrg[] }) {
+  const [query, setQuery] = React.useState("");
+  const q = query.trim().toLowerCase();
+  const shown = orgs.filter((o) => matches(q, o.name, o.primary?.name ?? ""));
+  return (
+    <div className="grid gap-3">
+      <Input
+        type="search"
+        aria-label={V.search}
+        placeholder={V.search}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        className="w-56"
+      />
+      <Table head={[V.columns.org, V.columns.primary, V.columns.people]} empty={!shown.length}>
+        {shown.map((o) => (
+          <tr key={o.id} data-overview-org="">
+            <td className="px-3 py-2">
+              <Link href={orgHref(o.id)} className="font-medium hover:underline">
+                {o.name}
+              </Link>
+            </td>
+            <td className="px-3 py-2">{o.primary?.name ?? ""}</td>
+            <td className="px-3 py-2 tabular-nums">{o.people}</td>
+          </tr>
+        ))}
+      </Table>
+    </div>
+  );
+}
+
+// Join requests still waiting. Each row opens its organization, where the
+// request is approved or declined.
+function RequestsTab({ requests }: { requests: OverviewRequest[] }) {
+  return (
+    <Table head={[V.columns.name, V.columns.email, V.columns.org, V.columns.message, V.columns.created, ""]} empty={!requests.length}>
+      {requests.map((r) => (
+        <tr key={r.id} data-overview-request="">
+          <td className="px-3 py-2 font-medium">{r.user.name}</td>
+          <td className="px-3 py-2">
+            <a href={`mailto:${r.user.email}`} className="hover:underline">
+              {r.user.email}
+            </a>
+          </td>
+          <td className="px-3 py-2">{r.org.name}</td>
+          <td className="px-3 py-2 text-muted-foreground">{r.message}</td>
+          <td className="px-3 py-2 whitespace-nowrap text-muted-foreground">{formatDate(r.createdAt)}</td>
+          <td className="px-3 py-2 text-right">
+            <Link href={orgHref(r.org.id)} className={buttonVariants({ variant: "outline", size: "sm" })}>
+              {V.review}
+            </Link>
+          </td>
+        </tr>
+      ))}
+    </Table>
+  );
+}
+
 function Stat({ label, value, href }: { label: string; value: number; href?: string }) {
   const body = (
     <Card size="sm" className="gap-1 px-4 py-3">
@@ -390,9 +468,8 @@ function Stat({ label, value, href }: { label: string; value: number; href?: str
 
 export function OverviewView() {
   const { data, error, retry } = useApi<Overview>("/overview");
-  const queue = useApi<{ meetings: unknown[]; claims: unknown[]; submissions: unknown[]; partners: unknown[] }>("/queue").data;
+  const waiting = useShell().court;
   const [tab, setTab] = React.useState("problems");
-  const waiting = queue ? queue.meetings.length + queue.claims.length + queue.submissions.length + queue.partners.length : 0;
 
   return (
     <ViewFrame title={V.title} description={V.description}>
@@ -405,20 +482,23 @@ export function OverviewView() {
           <div className="grid grid-cols-5 gap-3" data-overview-stats="">
             <Stat label={V.stats.open} value={data.problems.filter((p) => p.status === "open").length} />
             <Stat label={V.stats.working} value={data.claims.filter((c) => stageOf(c) === "working").length} />
-            <Stat label={V.stats.waiting} value={waiting} href="/projectum?view=queue" />
+            <Stat label={V.stats.waiting} value={waiting} href="/projectum?view=inbox" />
             <Stat label={V.stats.hired} value={data.claims.filter((c) => c.selection).length} />
             <Stat label={V.stats.complete} value={data.claims.filter((c) => c.selection === "complete").length} />
           </div>
           <Tabs value={tab} onValueChange={(v) => setTab(String(v))} className="gap-4">
             <TabsList className="relative">
               <TabsIndicator />
-              {(["problems", "teams", "people"] as const).map((t) => (
+              {(["problems", "teams", "people", "orgs", "requests"] as const).map((t) => (
                 <TabsTrigger
                   key={t}
                   value={t}
                   className="z-[1] data-active:bg-transparent group-data-[variant=default]/tabs-list:data-active:shadow-none"
                 >
                   {V.tabs[t]}
+                  {t === "requests" && data.requests.length > 0 && (
+                    <span className="ml-1.5 tabular-nums opacity-70">{data.requests.length}</span>
+                  )}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -430,6 +510,12 @@ export function OverviewView() {
             </TabsContent>
             <TabsContent value="people">
               <PeopleTab people={data.people} />
+            </TabsContent>
+            <TabsContent value="orgs">
+              <OrgsTab orgs={data.orgs} />
+            </TabsContent>
+            <TabsContent value="requests">
+              <RequestsTab requests={data.requests} />
             </TabsContent>
           </Tabs>
         </>

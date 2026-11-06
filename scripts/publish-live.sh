@@ -30,18 +30,20 @@ fi
 find "$LIVE" -mindepth 1 -type d -empty -not -path "$LIVE/.git*" -delete
 git -C "$SITE" ls-files -z | rsync -a --from0 --files-from=- "$SITE/" "$LIVE/"
 
+# Stage the clone so files this folder deleted leave its index too.
+git -C "$LIVE" add -A
+
 # The clone must now hold exactly this folder's files, byte for byte.
 missing=0
 while IFS= read -r -d '' f; do
   cmp -s "$SITE/$f" "$LIVE/$f" || { echo "differs: $f" >&2; missing=1; }
 done < <(git -C "$SITE" ls-files -z)
-extra="$(comm -13 <(git -C "$SITE" ls-files | sort) <(cd "$LIVE" && git ls-files --others --cached --exclude-standard | grep -v '^CNAME$' | sort -u) || true)"
+extra="$(comm -13 <(git -C "$SITE" ls-files | sort) <(git -C "$LIVE" ls-files | grep -v '^CNAME$' | sort) || true)"
 [ -z "$extra" ] || { echo "extra files in the live copy:" >&2; echo "$extra" >&2; missing=1; }
 [ -f "$LIVE/.github/workflows/pages.yml" ] || { echo "the Pages workflow is missing" >&2; missing=1; }
 [ "$missing" = 0 ] || { echo "Not pushing: the live copy doesn't match $SITE." >&2; exit 1; }
 
 cd "$LIVE"
-git add -A
 if git diff --cached --quiet; then
   echo "Nothing to publish."
   exit 0

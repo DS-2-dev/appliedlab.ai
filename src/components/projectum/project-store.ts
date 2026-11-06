@@ -1,10 +1,12 @@
 "use client";
 
-// Project boards, from the Worker (worker/src/pipeline.ts). An approved claim
-// opens its team's board, so boards are never made here: the team edits its
-// own, and everyone else reads them. Partners see only the boards on their
-// own problems. `editable` marks the boards this account can change: its
-// team's, or any for an approver.
+// Boards, from the Worker (GET /boards, worker/src/boards.ts). A claim opens
+// its team's board, so boards are never made here: the team edits its own,
+// and everyone else reads them. Each entry carries the project it belongs
+// to (its id, status and posting), or nulls for a board of the owner's own.
+// `editable` marks the boards this account can change now: its team's while
+// the project is in the team's court, or any for an admin. A colleague gets
+// only the card (`project` null, `brief` filled).
 //
 // A small external store read through useSyncExternalStore, so every
 // component on the page sees the same list. Edits show at once and save in
@@ -13,44 +15,97 @@
 
 import * as React from "react";
 import { type Account, api, useAccountState } from "@/lib/account";
-import { type Project, cleanProjects } from "@/lib/projects";
-import type { Selection, Submission } from "@/components/projectum/pipeline-store";
+import { type Project, type Stage, atStage, cleanProjects } from "@/lib/projects";
+import type { ProjectStatus } from "@/lib/pipeline/domain";
+import { boardStageFor } from "@/lib/pipeline/machines";
+import type { Meeting, Selection, Submission } from "@/components/projectum/pipeline-store";
 
-export type ProjectOwner = { id: string; name: string; email: string; role: Account["role"] };
-export type ProjectEntry = {
-  project: Project;
-  owner: ProjectOwner;
-  problemId: string;
-  // On this account's team, and changeable by it (its team's, or any for
-  // an approver).
+export type BoardOwner = { id: string; name: string; role: Account["role"] };
+
+// The card's fields, sent for every board, the colleague's outline included.
+export type BoardBrief = {
+  id: string;
+  name: string;
+  description: string;
+  thumbnail: string | null;
+  stage: Stage;
+  people: Project["people"];
+};
+
+export type BoardEntry = {
+  // The whole board, or null for a colleague, who gets the brief only.
+  project: Project | null;
+  brief: BoardBrief;
+  owner: BoardOwner;
+  // On this account's team (or its own board), and changeable by it now.
   onTeam: boolean;
   editable: boolean;
   // The team's latest submission. Partners only get accepted ones.
   submission: Submission | null;
-  // The claim the board belongs to, and its internship, once selected.
-  claimId: string;
+  // Phase 2, once the partner brings the team on.
   selection: Selection | null;
+  // The latest request to meet the team, for the partner and staff.
+  meeting: Meeting | null;
+  // The project the board belongs to, or nulls for a board of one's own.
+  projectId: string | null;
+  status: ProjectStatus | null;
+  postingId: string | null;
+  postingTitle: string | null;
+  // The posting's organization (null on a colleague's outline).
+  postingOrgId: string | null;
+  view: "full" | "partner" | "colleague";
 };
 
-const EMPTY: ProjectEntry[] = [];
-let entries: ProjectEntry[] = EMPTY;
+/** @deprecated use BoardEntry */
+export type ProjectEntry = BoardEntry;
+/** @deprecated use BoardOwner */
+export type ProjectOwner = BoardOwner;
+
+// A board to show where only the brief came: the card's fields, nothing
+// else, so a colleague's entry renders without the board itself.
+export function boardOf(entry: BoardEntry): Project {
+  if (entry.project) return entry.project;
+  const b = entry.brief;
+  return {
+    id: b.id,
+    name: b.name,
+    description: b.description,
+    thumbnail: b.thumbnail,
+    notesUrl: "",
+    color: null,
+    people: b.people,
+    stage: b.stage,
+    plan: null,
+    prototype: null,
+    builds: [],
+    history: {},
+    launch: null,
+    roleMeanings: {},
+  };
+}
+
+const EMPTY: BoardEntry[] = [];
+let entries: BoardEntry[] = EMPTY;
 let loadedFor: string | null = null;
 const listeners = new Set<() => void>();
 let queue: Promise<unknown> = Promise.resolve();
 
-function set(next: ProjectEntry[]) {
+function set(next: BoardEntry[]) {
   entries = next;
   listeners.forEach((l) => l());
 }
 
 async function load(accountId: string) {
   try {
-    const { projects } = await api<{ projects: (Omit<ProjectEntry, "project"> & { project: unknown })[] }>("/projects");
+    const { projects } = await api<{ projects: (Omit<BoardEntry, "project"> & { project: unknown })[] }>("/boards");
     if (loadedFor !== accountId) return;
     set(
-      projects.flatMap((e) => {
-        const [clean] = cleanProjects([e.project]);
-        return clean ? [{ ...e, project: clean }] : [];
+      projects.map((e) => {
+        const [clean] = e.project ? cleanProjects([e.project]) : [];
+        // While the plan is written the board sits in Solidifying, as the
+        // Worker holds it, even before the plan is whole.
+        const held = clean && e.status && boardStageFor(e.status) === "solidifying" ? atStage(clean, "solidifying") : clean;
+        return { ...e, project: held ?? null };
       }),
     );
   } catch {
@@ -61,10 +116,19 @@ async function load(accountId: string) {
 // A board the Worker already saved, a submission say, put in place here
 // without sending it again.
 export function setLocalProject(project: Project) {
-  set(entries.map((e) => (e.project.id === project.id ? { ...e, project } : e)));
+  set(entries.map((e) => (e.project?.id === project.id ? { ...e, project } : e)));
 }
 
-// Boards appear when a claim is approved elsewhere, so a view that may show
+// Settles once every save sent so far has landed (or failed), for a view
+// that reads what a save changed on the Worker.
+export function whenSaved(): Promise<void> {
+  return queue.then(
+    () => undefined,
+    () => undefined,
+  );
+}
+
+// Boards appear when a posting is claimed elsewhere, so a view that may show
 // a new one asks for a fresh list.
 export function reloadProjects() {
   if (loadedFor) void load(loadedFor);
@@ -76,7 +140,7 @@ function subscribe(onChange: () => void) {
 }
 
 // Loads the list once per signed-in account, and empties it on sign-out.
-function useEntries(): { entries: ProjectEntry[]; me: Account | null } {
+function useEntries(): { entries: BoardEntry[]; me: Account | null } {
   const s = useAccountState();
   const me = s.status === "signed-in" ? s.account : null;
   const id = me?.id ?? null;
@@ -99,26 +163,33 @@ function save(accountId: string, before: Project[], after: Project[]) {
   for (const p of after) {
     if (!old.has(p.id) || old.get(p.id) === JSON.stringify(p)) continue;
     queue = queue
-      .then(() => api(`/projects/${encodeURIComponent(p.id)}`, { method: "PUT", body: JSON.stringify({ project: p }) }))
+      .then(() => api(`/boards/${encodeURIComponent(p.id)}`, { method: "PUT", body: JSON.stringify({ project: p }) }))
       .catch(() => {
         if (loadedFor === accountId) void load(accountId);
       });
   }
 }
 
+const editableBoards = (list: BoardEntry[]): Project[] => list.flatMap((e) => (e.editable && e.project ? [e.project] : []));
+
 // The boards this account can change, for the board itself, and the way to
-// change them; `team` is the ones on its own team, for the sidebar. Boards are only changed here, never added or
-// removed: a list that comes back with one missing or new keeps it as it was.
+// change them; `team` is the ones on its own team, for the sidebar. Boards
+// are only changed here, never added or removed: a list that comes back with
+// one missing or new keeps it as it was.
 export function useProjects() {
   const { entries: all, me } = useEntries();
-  const own = React.useMemo(() => all.filter((e) => e.editable).map((e) => e.project), [all]);
-  const team = React.useMemo(() => all.filter((e) => e.onTeam).map((e) => e.project), [all]);
+  const own = React.useMemo(() => editableBoards(all), [all]);
+  const team = React.useMemo(() => all.flatMap((e) => (e.onTeam && e.project ? [e.project] : [])), [all]);
   const update = React.useCallback(
     (fn: (l: Project[]) => Project[]) => {
       if (!me) return;
-      const before = entries.filter((e) => e.editable).map((e) => e.project);
+      const before = editableBoards(entries);
       const changed = new Map(fn(before).map((p) => [p.id, p]));
-      set(entries.map((e) => (e.editable && changed.has(e.project.id) ? { ...e, project: changed.get(e.project.id)! } : e)));
+      set(
+        entries.map((e) =>
+          e.editable && e.project && changed.has(e.project.id) ? { ...e, project: changed.get(e.project.id)! } : e,
+        ),
+      );
       save(me.id, before, [...changed.values()]);
     },
     [me],
@@ -127,7 +198,7 @@ export function useProjects() {
 }
 
 // Every board this account can see, with whose it is, for All Projects and
-// a problem's teams.
-export function useVisibleProjects(): { entries: ProjectEntry[]; me: Account | null } {
+// a posting's teams.
+export function useVisibleProjects(): { entries: BoardEntry[]; me: Account | null } {
   return useEntries();
 }

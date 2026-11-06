@@ -18,7 +18,9 @@ import { copy } from "@/content/copy";
 import { initials } from "@/lib/initials";
 import { type Project, STAGES, type Stage } from "@/lib/projects";
 import { ProjectCard } from "@/components/projectum/project-board";
-import { useVisibleProjects } from "@/components/projectum/project-store";
+import { boardOf, useVisibleProjects } from "@/components/projectum/project-store";
+import { StatusPill } from "@/components/projectum/status-pill";
+import type { ProjectStatus } from "@/lib/pipeline/domain";
 import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
@@ -44,10 +46,12 @@ const TILE_MOTION = {
 };
 
 // `owner` is null for your own, or the owner's name for someone else's.
-type Entry = { project: Project; own: boolean; editable: boolean; owner: string | null };
+// `status` is the project's, or null for a board of the owner's own. A
+// colleague's card is built from the brief alone (boardOf), its outline.
+type Entry = { project: Project; own: boolean; editable: boolean; owner: string | null; status: ProjectStatus | null };
 
 function ProjectTile({ entry, onView }: { entry: Entry; onView: () => void }) {
-  const { project, own, editable, owner } = entry;
+  const { project, own, editable, owner, status } = entry;
   const extra = project.people.length - SHOWN_PEOPLE;
   return (
     <Card data-project-tile="" size="sm" className="h-full gap-0 py-0">
@@ -76,7 +80,10 @@ function ProjectTile({ entry, onView }: { entry: Entry; onView: () => void }) {
         </div>
       </div>
       <CardHeader className="gap-1 py-3">
-        <CardTitle className="truncate">{project.name}</CardTitle>
+        <div className="flex min-w-0 items-center gap-2">
+          <CardTitle className="min-w-0 truncate">{project.name}</CardTitle>
+          {status && <StatusPill kind="project" status={status} size="sm" className="ml-auto shrink-0" />}
+        </div>
         {project.description && <CardDescription className="line-clamp-2">{project.description}</CardDescription>}
       </CardHeader>
       <div className="mt-auto flex items-center justify-between gap-2 px-3 pb-3">
@@ -119,8 +126,8 @@ export function AllProjects() {
   const mine = visible.filter((e) => e.onTeam);
   const others = visible.filter((e) => !e.onTeam);
   const entries: Entry[] = [
-    ...mine.map(({ project, editable }) => ({ project, own: true, editable, owner: null })),
-    ...others.map(({ project, owner, editable }) => ({ project, own: false, editable, owner: owner.name })),
+    ...mine.map((e) => ({ project: boardOf(e), own: true, editable: e.editable, owner: null, status: e.status })),
+    ...others.map((e) => ({ project: boardOf(e), own: false, editable: e.editable, owner: e.owner.name, status: e.status })),
   ];
   const inFilter = (f: Filter) => (f === "all" ? entries : entries.filter((e) => e.project.stage === f));
   const shown = inFilter(filter);

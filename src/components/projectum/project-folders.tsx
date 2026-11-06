@@ -28,7 +28,7 @@ import {
   renameProject,
 } from "@/lib/projects";
 import { useAccount } from "@/lib/account";
-import { ProposalDialog } from "@/components/projectum/claim-form";
+import { ProposalDialog } from "@/components/projectum/proposal-dialog";
 import { useProjects } from "@/components/projectum/project-store";
 import { TreeItem, TreeSection, TreeView } from "@/components/ui/branching-tree-nav";
 import { Button } from "@/components/ui/button";

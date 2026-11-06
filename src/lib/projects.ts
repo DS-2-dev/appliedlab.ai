@@ -19,6 +19,10 @@ export const isFolderColor = (value: unknown): value is FolderColor => FOLDER_CO
 
 export type Person = { id: string; name: string; role: RoleId | null };
 
+// On a project's board a step is one of its action plan's milestones, and
+// its text reads "<title>. <criterion>": what gets done, then how its
+// success is judged (worker/src/boards.ts writes it the same way). A step
+// with no criterion is its title alone. stepText and splitStep convert.
 export type Step = { id: string; text: string; ownerId: string };
 
 // Filled in on the way from Brainstorming to Solidifying.
@@ -104,6 +108,20 @@ export function cleanName(name: string): string {
 
 export function cleanLine(text: string, max = MAX_LINE): string {
   return text.replace(/\s+/g, " ").trim().slice(0, max);
+}
+
+// A milestone as a step's text: "<title>. <criterion>", or the title alone
+// without a criterion.
+export function stepText(title: string, criterion: string): string {
+  const t = cleanLine(title);
+  const c = cleanLine(criterion);
+  return cleanLine(c ? `${t}. ${c}` : t);
+}
+
+// A step's text back as a milestone, split at its first ". ".
+export function splitStep(text: string): { title: string; criterion: string } {
+  const cut = text.indexOf(". ");
+  return cut < 0 ? { title: text.trim(), criterion: "" } : { title: text.slice(0, cut).trim(), criterion: text.slice(cut + 2).trim() };
 }
 
 export function cleanDescription(text: string, max = MAX_DESCRIPTION): string {
@@ -557,6 +575,24 @@ function applyPlan(project: Project, draft: SolidifyDraft, defaults: Record<Role
     },
     roleMeanings,
   };
+}
+
+// The board moved to `stage` whatever its plan says. cleanProjects sends a
+// board with an unfinished plan back to Brainstorming, but a claimed
+// project's board sits in Solidifying while the plan is written (the Worker
+// holds it there too).
+export function atStage(board: Project, stage: Stage): Project {
+  if (board.stage === stage) return board;
+  const brainstorming = board.history.brainstorming ?? {
+    at: "",
+    name: board.name,
+    description: board.description,
+    people: board.people.map((p) => ({ ...p, role: null })),
+    plan: null,
+    prototype: null,
+    roleMeanings: {},
+  };
+  return { ...board, stage, history: { ...board.history, brainstorming } };
 }
 
 // Stored data is untrusted (another tab, an older shape, hand edits), so

@@ -37,3 +37,29 @@ export function roleForEmail(email: string): AccountRole {
   if (domain === "mail.weber.edu") return "member";
   return "partner";
 }
+
+// Mailbox providers anyone can sign up with. An address on one of these says
+// nothing about the organization behind it.
+export const PERSONAL_DOMAINS: readonly string[] = [
+  "gmail.com",
+  "googlemail.com",
+  "yahoo.com",
+  "outlook.com",
+  "hotmail.com",
+  "live.com",
+  "msn.com",
+  "icloud.com",
+  "me.com",
+  "aol.com",
+  "proton.me",
+  "protonmail.com",
+  "gmx.com",
+  "mail.com",
+  "zoho.com",
+  "yandex.com",
+];
+
+// The part after the @, lower-cased; "" when there is none.
+export function emailDomain(email: string): string {
+  return normalizeEmail(email).split("@")[1] ?? "";
+}
