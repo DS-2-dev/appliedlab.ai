@@ -9,6 +9,7 @@ import Link from "next/link";
 import type { CSSProperties, ReactNode } from "react";
 import { copy } from "@/content/copy";
 import { LabMark } from "@/components/LabMark";
+import { StartAtTop } from "@/components/home/StartAtTop";
 import { JOIN_HREF, LOGIN_HREF } from "@/lib/site";
 
 const H = copy.home;
@@ -22,6 +23,7 @@ export const at = (i: number) => ({ "--i": i }) as CSSProperties;
 export function SiteFrame({ children, links = true }: { children: ReactNode; links?: boolean }) {
   return (
     <div className="flex min-h-svh flex-col bg-white font-[family-name:var(--font-inter)] text-sm/4 font-semibold antialiased">
+      <StartAtTop />
       <header className="home-rise flex h-20 items-center justify-between px-5" style={at(0)}>
         <Link href="/" aria-label={copy.nav.wordmark} className={`home-mark ${INK}`}>
           <LabMark className="size-10" />
