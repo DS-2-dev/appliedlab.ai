@@ -11,11 +11,10 @@ const counts = { court: 3, reviews: 5, requests: 2 };
 const me = (role, extra = {}) => ({ role, roles: [role], admin: false, ...extra });
 const rows = (items) => items.map((i) => [i.view, i.label, i.href]);
 
-test("a member gets the board, their projects, all projects and their court", () => {
+test("a member gets the board, their projects and their court, with no All Projects", () => {
   assert.deepEqual(rows(navItems(me("member"), counts)), [
     ["board", N.board, "/projectum"],
     ["myprojects", N.myProjects, "/projectum?view=myprojects"],
-    ["projects", N.projects, "/projectum?view=projects"],
     ["inbox", N.inbox, "/projectum?view=inbox"],
   ]);
   assert.equal(navItems(me("member"), counts).find((i) => i.view === "inbox").badge, 3);
@@ -99,6 +98,8 @@ test("each role opens only its own views", () => {
   assert.equal(pickView("myprojects", ctx(me("partner"))), "postings");
   assert.equal(pickView("projects", ctx(me("partner"))), "postings");
   assert.equal(pickView("projects", ctx(me("rep"))), "projects");
+  assert.equal(pickView("projects", ctx(me("member"))), "board");
+  assert.equal(pickView("projects", ctx(me("member", { admin: true, roles: ["member", "admin"] }))), "projects");
   assert.equal(pickView("org", ctx(me("partner"))), "org");
   assert.equal(pickView("org", ctx(me("member"))), "board");
   assert.equal(pickView("org", ctx(me("rep"), { id: "o1" })), "org");

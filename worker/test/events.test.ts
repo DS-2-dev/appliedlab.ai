@@ -19,6 +19,12 @@ async function seed() {
     ben: "ben@mail.weber.edu",
   };
   for (const [k, email] of Object.entries(emails)) tokens[k] = (await signIn(env, email, k)).token;
+  // Signing up the faculty account queued an approval event; these tests count their own.
+  await env.DB.batch([
+    env.DB.prepare("DELETE FROM notifications"),
+    env.DB.prepare("DELETE FROM events"),
+    env.DB.prepare("DELETE FROM notification_prefs"),
+  ]);
   const id = {
     admin: await idOf(env, emails.admin),
     rep: await idOf(env, emails.rep),
@@ -82,6 +88,46 @@ describe("emit", () => {
     await env.DB.batch(stmts);
     const n = await env.DB.prepare("SELECT COUNT(*) AS n FROM notifications WHERE kind = 'x'").first<{ n: number }>();
     expect(n!.n).toBe(2);
+  });
+});
+
+describe("emit and notification prefs", () => {
+  const send = (env: Env, userId: string, court = false) => {
+    const stmts: D1PreparedStatement[] = [];
+    emit(env, stmts, {
+      type: "posting.closed",
+      actor: null,
+      subject: { kind: "posting", id: "p1" },
+      notify: [{ userIds: [userId], title: "Closed", href: "/projectum?view=myprojects", court }],
+    });
+    return env.DB.batch(stmts);
+  };
+  const rows = async (env: Env, userId: string) =>
+    (await env.DB.prepare("SELECT court, email_pending FROM notifications WHERE user_id = ?").bind(userId).all<{ court: number; email_pending: number }>())
+      .results;
+
+  it("with no prefs, stores the notification and leaves email to the role default (off)", async () => {
+    const { env, id } = await seed();
+    await send(env, id.maya);
+    expect(await rows(env, id.maya)).toEqual([{ court: 0, email_pending: 0 }]);
+  });
+
+  it("stores nothing when the kind is off in the app, but always stores a court item", async () => {
+    const { env, id } = await seed();
+    await env.DB.prepare("INSERT INTO notification_prefs (user_id, kind, in_app, email) VALUES (?, 'posting.closed', 0, 0)").bind(id.maya).run();
+    await send(env, id.maya);
+    expect(await rows(env, id.maya)).toEqual([]);
+    await send(env, id.maya, true);
+    expect(await rows(env, id.maya)).toEqual([{ court: 1, email_pending: 0 }]);
+  });
+
+  it("marks the notification to email when the kind's email is on", async () => {
+    const { env, id } = await seed();
+    await env.DB.prepare("INSERT INTO notification_prefs (user_id, kind, in_app, email) VALUES (?, 'posting.closed', 1, 1)").bind(id.eli).run();
+    await send(env, id.eli);
+    await send(env, id.maya);
+    expect(await rows(env, id.eli)).toEqual([{ court: 0, email_pending: 1 }]);
+    expect(await rows(env, id.maya)).toEqual([{ court: 0, email_pending: 0 }]);
   });
 });
 

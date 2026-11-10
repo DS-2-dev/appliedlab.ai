@@ -28,7 +28,7 @@
 // posting, status, stage bar, the moves the viewer may make, the notes it
 // came back with and what to do next. While the plan is written the header
 // holds the plan editor, and the board's own stage moves wait until the plan
-// is approved. A colleague gets the card's outline only.
+// is approved.
 
 import * as React from "react";
 import Image from "next/image";
@@ -75,7 +75,7 @@ import { useAccount } from "@/lib/account";
 import { MeetingActions, PhasePanel } from "@/components/projectum/phase-two";
 import { boardStageFor } from "@/lib/pipeline/machines";
 import { SubmissionPanel } from "@/components/projectum/pipeline-ui";
-import { type BoardEntry, boardOf, useProjects, useVisibleProjects, whenSaved } from "@/components/projectum/project-store";
+import { type BoardEntry, useProjects, useVisibleProjects, whenSaved } from "@/components/projectum/project-store";
 import { boardMode, canMoveStage, findBoard } from "@/components/projectum/board-mode";
 import type { CopyCtx } from "@/lib/pipeline/handoffs";
 import { NextSteps } from "@/components/projectum/next-steps";
@@ -606,11 +606,11 @@ export function ProjectCard({
   );
 }
 
-// The notes a plan or submission came back with.
-function ReturnNotes({ text }: { text: string }) {
+// The notes a plan or submission came back with, or why a claim was released.
+function ReturnNotes({ text, label = P.planEditor.notes }: { text: string; label?: string }) {
   return (
     <div data-return-notes="" className="grid gap-1 rounded-lg border p-3 text-sm">
-      <p className="text-xs font-medium text-muted-foreground">{P.planEditor.notes}</p>
+      <p className="text-xs font-medium text-muted-foreground">{label}</p>
       <p className="whitespace-pre-line">{text}</p>
     </div>
   );
@@ -680,23 +680,10 @@ function ProjectHeader({ entry }: { entry: BoardEntry }) {
         />
       )}
       {notes && <ReturnNotes text={notes} />}
+      {status === "withdrawn" && project?.withdrawnReason && <ReturnNotes text={project.withdrawnReason} label={P.transition.withdrawnReason} />}
       {project?.nextSteps && <NextSteps copyKey={project.nextSteps} ctx={ctx} />}
       {writing && project && <PlanEditor project={project} ctx={ctx} />}
     </header>
-  );
-}
-
-// A colleague's board: the project's header and the card's outline.
-function OutlineBoard({ entry }: { entry: BoardEntry }) {
-  return (
-    <div data-board="" data-board-mode="outline" className="mx-auto grid w-full min-w-0 max-w-6xl content-start [overflow-wrap:anywhere] gap-6 p-6">
-      <ProjectHeader entry={entry} />
-      <p className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Eye className="size-4 shrink-0" />
-        <span>{P.board.outline}</span>
-      </p>
-      <ProjectCard project={boardOf(entry)} overview />
-    </div>
   );
 }
 
@@ -723,7 +710,6 @@ export function ProjectBoard({ projectId }: { projectId: string }) {
   // Back to hands focus to Move to, since Back to fades out once clicked.
   const moveRef = React.useRef<HTMLButtonElement>(null);
 
-  if (entry && !project) return <OutlineBoard entry={entry} />;
   if (!entry || !project) return null;
   // The board's own moves wait for an approved plan on a project's board.
   const next = canMoveStage(entry.status) ? NEXT[project.stage] : undefined;

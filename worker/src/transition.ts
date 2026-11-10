@@ -47,7 +47,7 @@ export type TransitionInput = {
   message?: string;
 };
 
-export type TransitionError = "not-found" | "state" | "forbidden" | "own-project" | "feedback" | "plan" | "unknown-transition" | "effects";
+export type TransitionError = "not-found" | "state" | "forbidden" | "own-project" | "feedback" | "plan" | "unknown-transition" | "effects" | "blocked";
 
 export type TransitionContext = {
   posting: PostingRow;
@@ -84,6 +84,8 @@ export const TRANSITION_STATUS: Record<TransitionError, number> = {
   plan: 400,
   "unknown-transition": 400,
   effects: 500,
+  // A move the rules hold back for now (reopen while the posting is off the board).
+  blocked: 409,
 };
 
 export type TransitionResult = { ok: true; status: string } | { ok: false; error: TransitionError; issues?: string[] };
@@ -161,10 +163,12 @@ export async function transition(env: Env, actor: UserRow, input: TransitionInpu
   const at = now();
   const effects: Awaited<ReturnType<Hooks["effects"]>> = hook ? await hook.effects(ctx, input, at) : { stmts: [], notify: [] };
 
-  // The lock: alone, first. See the comment at the top of the file.
+  // The lock: alone, first. See the comment at the top of the file. A
+  // restoring move (reopen) goes back to the status the row left.
   const table = TABLE[input.kind];
+  const target = def.restore ? (ctx.project?.withdrawn_from ?? def.to) : def.to;
   const moved = await env.DB.prepare(`UPDATE ${table} SET status = ?, updated_at = ? WHERE id = ? AND status IN (${marks(def.from.length)})`)
-    .bind(def.to, at, input.id, ...def.from)
+    .bind(target, at, input.id, ...def.from)
     .run();
   if (moved.meta.changes === 0) return { ok: false, error: "state" };
 
@@ -186,7 +190,7 @@ export async function transition(env: Env, actor: UserRow, input: TransitionInpu
     // Put the row back, unless someone has moved it on since.
     try {
       await env.DB.prepare(`UPDATE ${table} SET status = ?, updated_at = ? WHERE id = ? AND status = ?`)
-        .bind(current, at, input.id, def.to)
+        .bind(current, at, input.id, target)
         .run();
     } catch {
       throw err;
@@ -200,5 +204,5 @@ export async function transition(env: Env, actor: UserRow, input: TransitionInpu
       console.error("transition after failed", input.kind, input.id, input.name, err);
     }
   }
-  return { ok: true, status: def.to };
+  return { ok: true, status: target };
 }

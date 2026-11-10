@@ -18,7 +18,7 @@ import { NextSteps } from "@/components/projectum/next-steps";
 import { type PipelineProject, type Posting, type Review, useApi } from "@/components/projectum/pipeline-store";
 import { DisciplineTags, LoadError, Loading, Team, formatDate, useTaxonomy } from "@/components/projectum/pipeline-ui";
 import { PostingFormDialog } from "@/components/projectum/posting-form";
-import { latestReturnNotes } from "@/components/projectum/posting-helpers";
+import { emptyTeamsNote, latestReturnNotes } from "@/components/projectum/posting-helpers";
 import { decisionLabel } from "@/components/projectum/review-helpers";
 import { StatusPill } from "@/components/projectum/status-pill";
 import { TransitionBar } from "@/components/projectum/transition-bar";
@@ -80,18 +80,35 @@ export function ReviewHistory({ reviews }: { reviews: Review[] }) {
 
 // The details beside what the organization wants back, the deadline, the
 // effort and the tags. The review page shows the posting as it was sent.
+const MORE = ["businessModel", "why", "dependencies", "achieves", "goal", "keyMilestones"] as const;
+
 export function PostingFields({ draft }: { draft: PostingDraft }) {
+  const more = MORE.filter((k) => draft[k]);
   return (
     <div className="grid gap-4 sm:grid-cols-[1fr_16rem]">
       <section className="grid content-start gap-2">
         <h2 className="text-xs font-medium text-muted-foreground">{V.details}</h2>
         <p className="text-sm whitespace-pre-line">{draft.details || draft.summary}</p>
+        {more.map((k) => (
+          <div key={k} className="mt-2 grid gap-1">
+            <h3 className="text-xs font-medium text-muted-foreground">{V[k]}</h3>
+            <p className="text-sm whitespace-pre-line">{draft[k]}</p>
+          </div>
+        ))}
       </section>
       <aside className="grid content-start gap-4 rounded-lg border p-4 text-sm">
         {draft.deliverable && (
           <section className="grid gap-1">
             <h2 className="text-xs font-medium text-muted-foreground">{V.deliverable}</h2>
             <p className="whitespace-pre-line">{draft.deliverable}</p>
+          </section>
+        )}
+        {draft.driveUrl && (
+          <section className="grid gap-1">
+            <h2 className="text-xs font-medium text-muted-foreground">{V.driveUrl}</h2>
+            <a href={draft.driveUrl} target="_blank" rel="noopener noreferrer" className="underline underline-offset-2">
+              {draft.driveUrl}
+            </a>
           </section>
         )}
         {draft.deadline && (
@@ -126,7 +143,8 @@ export function PostingFields({ draft }: { draft: PostingDraft }) {
   );
 }
 
-function Projects({ postingId, partner }: { postingId: string; partner: boolean }) {
+function Projects({ posting, partner }: { posting: Posting; partner: boolean }) {
+  const postingId = posting.id;
   const { data, error, retry } = useApi<{ projects: PipelineProject[] }>(`/projects?posting=${encodeURIComponent(postingId)}`);
   return (
     <section className="grid gap-3">
@@ -159,7 +177,7 @@ function Projects({ postingId, partner }: { postingId: string; partner: boolean 
         </ul>
       ) : (
         <p className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-          {partner ? V.noProjectsPartner : V.noProjects}
+          {V.emptyTeams[emptyTeamsNote(partner, posting.counts)]}
         </p>
       )}
     </section>
@@ -250,7 +268,7 @@ export function PostingView({ id }: { id: string }) {
 
       {posting.reviews.length > 0 && <ReviewHistory reviews={posting.reviews} />}
 
-      <Projects postingId={posting.id} partner={ours} />
+      <Projects posting={posting} partner={ours} />
 
       {canEdit && (
         <PostingFormDialog open={editing} onOpenChange={setEditing} posting={posting} orgName={posting.org?.name ?? ""} />

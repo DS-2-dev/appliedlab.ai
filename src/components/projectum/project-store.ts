@@ -5,8 +5,7 @@
 // and everyone else reads them. Each entry carries the project it belongs
 // to (its id, status and posting), or nulls for a board of the owner's own.
 // `editable` marks the boards this account can change now: its team's while
-// the project is in the team's court, or any for an admin. A colleague gets
-// only the card (`project` null, `brief` filled).
+// the project is in the team's court, or any for an admin.
 //
 // A small external store read through useSyncExternalStore, so every
 // component on the page sees the same list. Edits show at once and save in
@@ -22,7 +21,7 @@ import type { Meeting, Selection, Submission } from "@/components/projectum/pipe
 
 export type BoardOwner = { id: string; name: string; role: Account["role"] };
 
-// The card's fields, sent for every board, the colleague's outline included.
+// The card's fields, sent for every board.
 export type BoardBrief = {
   id: string;
   name: string;
@@ -33,7 +32,7 @@ export type BoardBrief = {
 };
 
 export type BoardEntry = {
-  // The whole board, or null for a colleague, who gets the brief only.
+  // The whole board, or null when it could not be read.
   project: Project | null;
   brief: BoardBrief;
   owner: BoardOwner;
@@ -51,38 +50,15 @@ export type BoardEntry = {
   status: ProjectStatus | null;
   postingId: string | null;
   postingTitle: string | null;
-  // The posting's organization (null on a colleague's outline).
+  // The posting's organization.
   postingOrgId: string | null;
-  view: "full" | "partner" | "colleague";
+  view: "full" | "partner";
 };
 
 /** @deprecated use BoardEntry */
 export type ProjectEntry = BoardEntry;
 /** @deprecated use BoardOwner */
 export type ProjectOwner = BoardOwner;
-
-// A board to show where only the brief came: the card's fields, nothing
-// else, so a colleague's entry renders without the board itself.
-export function boardOf(entry: BoardEntry): Project {
-  if (entry.project) return entry.project;
-  const b = entry.brief;
-  return {
-    id: b.id,
-    name: b.name,
-    description: b.description,
-    thumbnail: b.thumbnail,
-    notesUrl: "",
-    color: null,
-    people: b.people,
-    stage: b.stage,
-    plan: null,
-    prototype: null,
-    builds: [],
-    history: {},
-    launch: null,
-    roleMeanings: {},
-  };
-}
 
 const EMPTY: BoardEntry[] = [];
 let entries: BoardEntry[] = EMPTY;

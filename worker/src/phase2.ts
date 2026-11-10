@@ -37,13 +37,6 @@ export function phase2Hooks(env: Env, actor: UserRow): Record<string, Hooks> {
         const chosen = input.memberIds ?? ctx.memberIds;
         const rest = ctx.memberIds.filter((id) => !chosen.includes(id));
         const message = input.message ?? "";
-        const list = JSON.stringify(chosen);
-        // Who moves up to Builder; the UPDATE re-checks (see approvePlan in projects.ts).
-        const { results: promoted } = await env.DB.prepare(
-          "SELECT id FROM users WHERE id IN (SELECT value FROM json_each(?)) AND level IN ('affiliate', 'sponsored') AND level_locked = 0",
-        )
-          .bind(list)
-          .all<{ id: string }>();
         const stmts = [
           env.DB.prepare(
             "INSERT INTO selections (project_id, selected_by, message, milestones, created_at) VALUES (?, ?, ?, '[]', ?) " +
@@ -51,20 +44,7 @@ export function phase2Hooks(env: Env, actor: UserRow): Record<string, Hooks> {
           ).bind(p.id, actor.id, message, at),
           env.DB.prepare("UPDATE projects SET phase = 'integrated', integrated_at = ? WHERE id = ?").bind(at, p.id),
           env.DB.prepare("INSERT INTO milestone_baselines (id, project_id, reason, snapshot, taken_at) VALUES (?, ?, 'integrated', '[]', ?)").bind(uuid(), p.id, at),
-          env.DB.prepare(
-            "UPDATE users SET level = 'builder' WHERE id IN (SELECT value FROM json_each(?)) AND level IN ('affiliate', 'sponsored') AND level_locked = 0",
-          ).bind(list),
         ];
-        for (const { id } of promoted) {
-          emit(env, stmts, {
-            type: "member.level_changed",
-            actor,
-            subject: { kind: "user", id },
-            projectId: p.id,
-            payload: { level: "builder" },
-            notify: [{ userIds: [id], title: "You are now a Builder", href: "/projectum" }],
-          });
-        }
         const org = await env.DB.prepare("SELECT name FROM orgs WHERE id = ?").bind(ctx.orgId).first<{ name: string }>();
         const who = org?.name || actor.name;
         const title = ctx.posting.title;

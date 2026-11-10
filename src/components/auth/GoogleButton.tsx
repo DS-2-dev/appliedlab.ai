@@ -10,9 +10,9 @@
 import * as React from "react";
 import { copy } from "@/content/copy";
 import { type AccountRole, googleStartUrl } from "@/lib/account";
-import { authButton } from "./AuthShell";
+import { authButton, authSecondary } from "./AuthShell";
 
-const BUTTON = `${authButton} border border-black/10 bg-white text-ink hover:border-black/20 hover:bg-black/[0.03]`;
+const BUTTON = `${authButton} ${authSecondary}`;
 
 function GoogleMark() {
   return (

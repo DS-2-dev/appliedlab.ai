@@ -49,3 +49,15 @@ test("the stage bar marks the current stage, and none for a status off the flow"
   assert.equal(stageBarState("withdrawn", true).current, null);
   assert.equal(stageBarState("delivered", true).current, self.flow.length - 1);
 });
+
+test("a released claim takes a reason, and an admin reopens it where it was", () => {
+  const { withdraw, reopen } = MACHINES.project.transitions;
+  assert.equal(withdraw.feedback, "required");
+  assert.deepEqual(reopen.from, ["withdrawn"]);
+  assert.equal(reopen.to, "claimed");
+  assert.deepEqual(reopen.by, ["admin"]);
+  assert.equal(reopen.restore, true);
+  assert.equal(reopen.event, "project.reopened");
+  assert.deepEqual(transitionsFrom("project", "withdrawn", ["member", "rep"]), []);
+  assert.deepEqual(transitionsFrom("project", "withdrawn", ["admin"]).map((t) => t.name), ["reopen"]);
+});

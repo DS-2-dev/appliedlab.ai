@@ -24,7 +24,7 @@ export function SubmitButton({
     <button
       type="submit"
       disabled={pending}
-      className={`${authButton} bg-black text-white hover:bg-black/80 disabled:cursor-wait disabled:opacity-70`}
+      className={`${authButton} bg-[#1f1f1f] text-white hover:bg-black disabled:cursor-wait disabled:opacity-70`}
     >
       {pending ? (
         <>

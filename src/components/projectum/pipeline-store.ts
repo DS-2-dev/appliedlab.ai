@@ -61,8 +61,7 @@ export type Posting = PostingDraft & {
   reviews: Review[];
 };
 
-// GET /projects/mine, /projects?posting=, /projects/:id. A colleague gets
-// the outline: an empty plan, no board, no transitions and no reviews.
+// GET /projects/mine, /projects?posting=, /projects/:id.
 export type PipelineProject = {
   id: string;
   postingId: string;
@@ -81,7 +80,9 @@ export type PipelineProject = {
   transitions: string[];
   nextSteps: string | null;
   reviews: Review[];
-  view: "full" | "partner" | "colleague";
+  // Why the team released its claim, for full viewers while it is withdrawn.
+  withdrawnReason?: string;
+  view: "full" | "partner";
 };
 
 // GET /reviews: an open review and what it is about. Ids starting "sub:"
@@ -127,7 +128,8 @@ export type OrgPage = { org: Org; people: OrgPerson[]; requests: OrgRequest[] };
 
 // GET /taxonomy.
 export type TaxonomyItem = { slug: string; name: string };
-export type Taxonomy = { disciplines: TaxonomyItem[]; tags: TaxonomyItem[] };
+// `retired` are archived terms, kept to name old postings, never to pick from.
+export type Taxonomy = { disciplines: TaxonomyItem[]; tags: TaxonomyItem[]; retired?: (TaxonomyItem & { kind: string })[] };
 
 // A team's latest submission. Partners only ever get accepted ones.
 export type Submission = {

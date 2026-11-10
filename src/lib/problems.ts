@@ -28,6 +28,8 @@ export const LIMITS = {
   summary: 280,
   details: 4000,
   deliverable: 500,
+  detail: 2000,
+  driveUrl: 500,
   approach: 2000,
   milestoneTitle: 120,
   milestoneCriterion: 200,
@@ -130,6 +132,15 @@ export type PostingDraft = {
   deliverable: string;
   // YYYY-MM-DD, or "" for none.
   deadline: string;
+  // The optional "more detail".
+  businessModel: string;
+  why: string;
+  dependencies: string;
+  achieves: string;
+  goal: string;
+  keyMilestones: string;
+  // An https:// link, or "" for none.
+  driveUrl: string;
 };
 
 function cleanTag(value: unknown): string {
@@ -157,16 +168,35 @@ export function cleanPosting(value: unknown, allowedDisciplines: readonly string
     effort: isEffort(v.effort) ? v.effort : "",
     deliverable: cleanText(v.deliverable, LIMITS.deliverable),
     deadline: cleanDate(v.deadline),
+    businessModel: cleanText(v.businessModel, LIMITS.detail),
+    why: cleanText(v.why, LIMITS.detail),
+    dependencies: cleanText(v.dependencies, LIMITS.detail),
+    achieves: cleanText(v.achieves, LIMITS.detail),
+    goal: cleanText(v.goal, LIMITS.detail),
+    keyMilestones: cleanText(v.keyMilestones, LIMITS.detail),
+    driveUrl: cleanLine(v.driveUrl, LIMITS.driveUrl),
   };
 }
 
-export type PostingIssue = "title" | "summary" | "disciplines";
+// Only a web link over https: javascript:, data:, http: and the rest are out.
+export function isHttpsUrl(value: string): boolean {
+  try {
+    return new URL(value).protocol === "https:" && /^https:\/\/[^\s]+$/i.test(value);
+  } catch {
+    return false;
+  }
+}
+
+export type PostingIssue = "title" | "summary" | "disciplines" | "driveUrl";
 
 // What a posting still needs: a draft only a title; sending it for review a
 // title of at least 4 characters, a summary of at least 20 and a discipline.
+// A Drive link, when given, must be https either way.
 export function postingIssues(draft: PostingDraft, { forSubmit }: { forSubmit: boolean }): PostingIssue[] {
-  if (!forSubmit) return draft.title ? [] : ["title"];
+  const link = draft.driveUrl && !isHttpsUrl(draft.driveUrl);
+  if (!forSubmit) return [...(draft.title ? [] : ["title" as const]), ...(link ? ["driveUrl" as const] : [])];
   const issues: PostingIssue[] = [];
+  if (link) issues.push("driveUrl");
   if (draft.title.length < 4) issues.push("title");
   if (draft.summary.length < 20) issues.push("summary");
   if (!draft.disciplines.length) issues.push("disciplines");

@@ -45,20 +45,20 @@ export function viewerOf(env: Env, user: UserRow): Viewer {
 
 type Person = { id: string; name: string };
 
-export type View = "full" | "partner" | "colleague" | "none";
+export type View = "full" | "partner" | "none";
 
 // Statuses a partner does not see a project in: before its plan is
 // approved, and once withdrawn.
 export const PRE_APPROVAL: readonly ProjectStatus[] = ["claimed", "plan_review", "plan_returned", "withdrawn"];
 
 // Gantry's projectView: everything for the team and staff, the partner's
-// view for the posting's organization once the plan is approved, an outline
-// for any other member.
+// view for the posting's organization once the plan is approved, nothing for
+// anyone else.
 export function projectView(status: ProjectStatus, posting: { kind: string; org_id: string | null }, onTeam: boolean, v: Viewer): View {
   if (onTeam || v.staff) return "full";
   const inOrg = posting.kind !== "self" && !!posting.org_id && v.user.org_id === posting.org_id;
   if (inOrg && !PRE_APPROVAL.includes(status)) return "partner";
-  return v.roles.includes("member") ? "colleague" : "none";
+  return "none";
 }
 
 const EMPTY_PLAN: PlanDraft = { approach: "", milestones: [], finishBy: "" };
@@ -125,14 +125,12 @@ function viewIn(row: ProjectRow, v: Viewer, x: Extras): View {
   return projectView(row.status, posting, (x.teams.get(row.id) ?? []).some((p) => p.id === v.user.id), v);
 }
 
-// The project as the viewer may see it. A colleague gets the outline: the
-// posting, the status and the team, without the plan, the board or reviews.
+// The project as the viewer may see it (callers drop what viewIn calls "none").
 export function projectOut(row: ProjectRow, v: Viewer, x: Extras) {
   const posting = x.postings.get(row.posting_id)!;
   const team = x.teams.get(row.id) ?? [];
   const onTeam = team.some((p) => p.id === v.user.id);
   const view = projectView(row.status, posting, onTeam, v);
-  const outline = view === "colleague";
   const steps = onTeam ? `project.${row.status}.member` : view === "partner" ? `project.${row.status}.partner` : "";
   return {
     id: row.id,
@@ -140,18 +138,19 @@ export function projectOut(row: ProjectRow, v: Viewer, x: Extras) {
     posting: { id: posting.id, title: posting.title, kind: posting.kind, org: posting.org_id ? { id: posting.org_id, name: posting.org_name ?? "" } : null },
     status: row.status,
     phase: row.phase,
-    plan: outline ? EMPTY_PLAN : cleanPlan(parse<unknown>(row.plan, {})),
+    plan: cleanPlan(parse<unknown>(row.plan, {})),
     lead: team.find((p) => p.id === row.lead_id) ?? { id: row.lead_id, name: "" },
     team,
-    boardId: outline ? null : (x.boards.get(row.id) ?? null),
+    boardId: x.boards.get(row.id) ?? null,
     plannedTerms: row.planned_terms,
     claimedAt: row.claimed_at,
     activatedAt: row.activated_at,
     submittedAt: row.submitted_at,
     deliveredAt: row.delivered_at,
-    transitions: outline ? [] : allowedTransitions(row, posting, onTeam, v),
+    transitions: allowedTransitions(row, posting, onTeam, v),
     nextSteps: steps && Object.hasOwn(NEXT_STEPS, steps) ? steps : null,
     reviews: view === "full" ? (x.reviews.get(row.id) ?? []) : [],
+    ...(view === "full" && row.withdrawn_reason ? { withdrawnReason: row.withdrawn_reason } : {}),
     view,
   };
 }
@@ -375,35 +374,12 @@ function hooksFor(env: Env, actor: UserRow): Record<string, Hooks> {
       effects: async (ctx, input, at) => {
         const p = ctx.project!;
         const feedback = input.feedback ?? "";
-        const team = JSON.stringify(ctx.memberIds);
-        // Who moves up to Sponsored. The UPDATE re-checks, so a level that
-        // changed in the meantime is left alone, but its notice is still sent:
-        // a level changed or locked between this read and the batch gets a
-        // stale "now Sponsored" notification.
-        const { results: promoted } = await env.DB.prepare(
-          "SELECT id FROM users WHERE id IN (SELECT value FROM json_each(?)) AND level = 'affiliate' AND level_locked = 0",
-        )
-          .bind(team)
-          .all<{ id: string }>();
         const board = await env.DB.prepare("SELECT id FROM boards WHERE project_id = ?").bind(p.id).first<{ id: string }>();
         const stmts = [
           env.DB.prepare("UPDATE projects SET activated_at = ? WHERE id = ?").bind(at, p.id),
           closeOpenReview(env, "action_plan", p.id, { status: "approved", by: actor.id, at, feedback }),
           baseline(env, p.id, "plan_approved", planOf(p), at),
-          env.DB.prepare(
-            "UPDATE users SET level = 'sponsored' WHERE id IN (SELECT value FROM json_each(?)) AND level = 'affiliate' AND level_locked = 0",
-          ).bind(team),
         ];
-        for (const { id } of promoted) {
-          emit(env, stmts, {
-            type: "member.level_changed",
-            actor,
-            subject: { kind: "user", id },
-            projectId: p.id,
-            payload: { level: "sponsored" },
-            notify: [{ userIds: [id], title: "You are now a Sponsored member", href: "/projectum" }],
-          });
-        }
         const subject = `Your plan for “${ctx.posting.title}” was approved`;
         const title = `${subject}. Your board is open.`;
         const href = board ? `/projectum?project=${board.id}` : "/projectum?view=myprojects";
@@ -455,12 +431,20 @@ function hooksFor(env: Env, actor: UserRow): Record<string, Hooks> {
       },
     },
     withdraw: {
-      effects: async (ctx, _input, at) => {
+      // The reason, and the status it left for reopen to go back to. No move
+      // leaves a withdrawable status for another withdrawable one, so the
+      // status read here is the one the lock moved it from.
+      effects: async (ctx, input, at) => {
         const p = ctx.project!;
         const lead = await nameOf(env, p.lead_id);
         return {
           stmts: [
-            env.DB.prepare("UPDATE projects SET withdrawn_at = ? WHERE id = ?").bind(at, p.id),
+            env.DB.prepare("UPDATE projects SET withdrawn_at = ?, withdrawn_from = ?, withdrawn_reason = ? WHERE id = ?").bind(
+              at,
+              p.status,
+              (input.feedback ?? "").trim(),
+              p.id,
+            ),
             closeOpenReview(env, "action_plan", p.id, { status: "withdrawn", by: actor.id, at }),
             closeOpenReview(env, "submission", p.id, { status: "withdrawn", by: actor.id, at }),
           ],
@@ -468,6 +452,31 @@ function hooksFor(env: Env, actor: UserRow): Record<string, Hooks> {
             ctx.self || !ctx.orgId
               ? []
               : [{ userIds: await orgUserIds(env, ctx.orgId), title: `${lead}'s team released its claim on “${ctx.posting.title}”`, href: `/projectum?view=posting&id=${ctx.posting.id}` }],
+          payload: { feedback: (input.feedback ?? "").trim() },
+        };
+      },
+    },
+    // An admin puts a released claim back where it was (transition.ts reads
+    // withdrawn_from). Refused as "blocked" while the posting is off the board, or while
+    // anyone on the team holds another project on it: the one_active_project
+    // trigger only guards inserts, so this is its check for a reopen.
+    reopen: {
+      guard: async (ctx) => {
+        if (!ctx.self && ctx.posting.status !== "live") return "blocked";
+        const held = await env.DB.prepare(
+          "SELECT 1 FROM project_members m JOIN projects p ON p.id = m.project_id " +
+            "WHERE m.user_id IN (SELECT value FROM json_each(?)) AND p.posting_id = ? AND p.id <> ? AND p.status NOT IN ('withdrawn', 'complete') LIMIT 1",
+        )
+          .bind(JSON.stringify(ctx.memberIds), ctx.posting.id, ctx.project!.id)
+          .first();
+        return held ? "blocked" : null;
+      },
+      effects: async (ctx) => {
+        const p = ctx.project!;
+        return {
+          stmts: [env.DB.prepare("UPDATE projects SET withdrawn_from = NULL, withdrawn_reason = NULL WHERE id = ?").bind(p.id)],
+          notify: [{ userIds: ctx.memberIds, title: `Your project on “${ctx.posting.title}” was reopened`, href: "/projectum?view=myprojects" }],
+          payload: { from: p.withdrawn_from },
         };
       },
     },

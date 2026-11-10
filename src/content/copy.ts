@@ -32,6 +32,174 @@ export const copy = {
     join: "Join the Lab",
     // Scrolls to the first step of How it works, below the hero.
     how: "See how it works",
+    // The redesign (2026-11-09, PROVISIONAL): a short intro over a grid of
+    // tiles, one per part of the Lab. Each tile's art is drawn in
+    // components/home/TileArt.tsx, keyed by `id`.
+    intro:
+      "The Applied AI Lab at Weber State University pairs students from any major with organizations, and together they solve industry challenges with AI. Meetings are free, and no experience is needed.",
+    // One tile for the Lab, one for how a project runs, and one for each
+    // kind of member: students, faculty and partner organizations.
+    tiles: [
+      { id: "about", slug: "about", title: "About the Lab" },
+      { id: "how", slug: "how-it-works", title: "How it works" },
+      { id: "students", slug: "students", title: "For students" },
+      { id: "faculty", slug: "faculty", title: "For faculty" },
+      { id: "partners", slug: "partners", title: "For partners" },
+    ],
+    // Each tile's page (app/[slug]/page.tsx), keyed by its tile id: a few
+    // grey facts under the title, the body, a link onward, and panels that
+    // stack beside the text. PROVISIONAL, drawn from How it works below.
+    pages: {
+      about: {
+        meta: ["Weber State University", "Open to every major"],
+        body: [
+          "Students from any major take on industry challenges and solve them with AI. Meetings are free, and no experience is needed.",
+          "Founded by Kylar Vierra and advised by Gavin Roberts, Chair of Economics.",
+        ],
+        cta: { label: "Join the Lab", href: "/signup" },
+        panels: [
+          {
+            label: "Our purpose",
+            items: [{ title: "", body: "To bring people together, ask hard questions, and elevate everyone involved." }],
+          },
+          {
+            label: "What the Lab works toward",
+            items: [
+              { title: "Hands-on experience", body: "Members work industry problems through to a finished deliverable." },
+              { title: "Industry adoption", body: "Utah organizations put AI to work on the problems they bring." },
+              { title: "Deeper relationships", body: "Students learn by building alongside peers and faculty." },
+            ],
+          },
+          {
+            label: "The model",
+            items: [
+              { title: "Students ask", body: "What can I do for you?" },
+              { title: "Employers ask", body: "What can you do for me?" },
+              { title: "The Lab", body: "Answers both." },
+            ],
+          },
+        ],
+      },
+      how: {
+        meta: ["Seven steps", "From a posted problem to an internship"],
+        body: [
+          "Partners and members work side by side until a review gate, where a partner who moves to implement can hire the member as an intern.",
+          "The pipeline turns low-stakes experience into student-business relationships, with little friction.",
+        ],
+        cta: { label: "Open Projectum", href: "/projectum" },
+        panels: [
+          {
+            label: "Phase 1, the parallel pipeline",
+            items: [
+              { title: "Partners post problems", body: "Partner organizations submit their challenges to the notice board." },
+              { title: "Members claim and start work", body: "A member claims a project with an action plan, faculty approve it, and the work begins." },
+              { title: "Project milestones", body: "Members post their progress, and partners follow it from a distance." },
+              { title: "Submission review", body: "Faculty reps evaluate the submission with the member, and partners read the submission report." },
+            ],
+          },
+          {
+            label: "The gate, meet and discuss",
+            items: [
+              { title: "Partners and members meet", body: "At the partner's request, reps introduce the two to go over the prototype and discuss implementation." },
+            ],
+          },
+          {
+            label: "Phase 2, the integrated pipeline",
+            items: [
+              { title: "Hired as an intern", body: "If the partner moves to implement, the member joins the organization as an intern and reps stay in the loop." },
+              { title: "Project completion", body: "The work ships, and the member leaves with an industry relationship and a line on the résumé." },
+            ],
+          },
+        ],
+      },
+      students: {
+        meta: ["Any major", "No experience needed"],
+        body: [
+          "Every student starts as an Affiliate. An approved project earns funding, and implementing it with a partner can lead to an internship.",
+          "Members claim problems from the notice board with an action plan, and faculty approve it before the work begins.",
+          "Every level up is earned and recognized.",
+        ],
+        cta: { label: "Start as an Affiliate", href: "/signup" },
+        panels: [
+          {
+            label: "Three levels",
+            items: [
+              { title: "Affiliate", body: "Registered with the Lab, comes to meetings and events, and carries no responsibilities." },
+              { title: "Sponsored", body: "Works an approved project, attends two meetings a month, and gets a funded Claude account." },
+              { title: "Builder", body: "Implements the work with a partner, is hired as an intern, and is featured on the partner's profile." },
+            ],
+          },
+          {
+            label: "What you earn",
+            items: [
+              { title: "At Sponsored", body: "A Lab-funded Claude account" },
+              { title: "At Builder", body: "An internship with a partner" },
+            ],
+          },
+        ],
+      },
+      faculty: {
+        meta: ["Faculty reps", "Sign up with an @weber.edu email"],
+        body: [
+          "Faculty join the Lab as reps, and they guide each project from its first plan to the partner's decision.",
+          "Reps approve the plans members write, evaluate the work they submit, and introduce members to the partners who want to meet them.",
+        ],
+        cta: { label: "Join as faculty", href: "/signup" },
+        panels: [
+          {
+            label: "What reps do",
+            items: [
+              { title: "Approve action plans", body: "A member claims a project with an action plan, and a rep approves it before the work begins." },
+              { title: "Review submissions", body: "Reps evaluate each submission with the member who built it, and partners read the report." },
+              { title: "Introduce partners and members", body: "When a partner asks to meet, a rep makes the introduction and stays in the loop through the internship." },
+            ],
+          },
+          {
+            label: "In Projectum",
+            items: [
+              { title: "Approvals", body: "Claim and submission approvals in one queue." },
+              { title: "An overview", body: "Every team and partner at a glance." },
+            ],
+          },
+        ],
+      },
+      partners: {
+        meta: ["Partner organizations", "Sign up with your work email"],
+        body: [
+          "Organizations post as many problems as they like, and members from any discipline build the solutions.",
+          "Partners review each submission, meet the student behind it, and can hire that student as an intern to implement the work.",
+        ],
+        cta: { label: "Post a problem", href: "/signup" },
+        panels: [
+          {
+            label: "How you can help",
+            items: [
+              { title: "Find the people", body: "The workers, managers and engineers closest to the work." },
+              { title: "Find their problems", body: "The ones that surface at the front line or in the heat of operations." },
+              { title: "Connect them with us", body: "Every connection becomes a project for a member." },
+            ],
+          },
+          {
+            label: "Problems we take on",
+            items: [
+              { title: "Finance", body: "An annual snow removal pricing model" },
+              { title: "Business management", body: "A business model" },
+              { title: "Accounting", body: "An accounting structure" },
+              { title: "Graphic design", body: "Document style enforcement" },
+              { title: "Mathematics", body: "The fastest maintenance routine" },
+              { title: "Computer science", body: "Automatic schedule creation" },
+            ],
+          },
+        ],
+      },
+    },
+    footerSchool: "Weber State University",
+    footerSchoolHref: "https://www.weber.edu",
+    footerLinks: [
+      { label: "E-mail", href: "mailto:ailab@weber.edu" },
+      { label: "LinkedIn", href: "https://www.linkedin.com/company/applied-ai-lab-at-wsu/" },
+      { label: "Projectum", href: "/projectum" },
+    ],
   },
 
   // How it works (2026-09-16): the landing's scroll-driven section, one step
@@ -250,12 +418,6 @@ export const copy = {
     heading: "Ask anything about the Lab",
     placeholder: "Ask about meetings, projects or partnering",
     send: "Send",
-    suggestions: [
-      "Do I need experience with AI to join?",
-      "How does a project go from a problem to an internship?",
-      "What does a Sponsored member get?",
-      "How can my organization bring a problem?",
-    ],
     thinking: "Thinking",
     footnote: "Answers are written by AI and can be wrong. For anything that matters, email ailab@weber.edu.",
     offline: "The assistant isn't connected on this version of the site yet. Email ailab@weber.edu and we'll answer there.",
@@ -274,15 +436,22 @@ export const copy = {
     email: "ailab@weber.edu",
     copyEmail: "Copy the email address ailab@weber.edu",
     linkedin: "LinkedIn",
-    // TODO: the Lab's LinkedIn page. Until its address is known, this opens
-    // a LinkedIn search for the Lab.
-    linkedinHref: "https://www.linkedin.com/search/results/companies/?keywords=Applied%20AI%20Lab%20Weber%20State",
+    linkedinHref: "https://www.linkedin.com/company/applied-ai-lab-at-wsu/",
     place: "Shepherd Union, Ogden, Utah",
   },
 
   notFound: {
+    title: "Page not found",
     line: "There's nothing at this address.",
     cta: "Back to the Lab",
+  },
+
+  // The site's fallback when a page fails while rendering (app/error.tsx).
+  siteError: {
+    title: "Something went wrong",
+    body: "This page hit an error, and the Lab has been told. Try again, and if it keeps happening, reload the page.",
+    retry: "Try again",
+    home: "Back to the Lab",
   },
 
   // Join the Lab (2026-09-17), in its own file (join.ts).
@@ -361,10 +530,12 @@ export const copy = {
         googleUnavailable: "Google sign-in is still being set up. Use a code for now.",
       },
     },
-    // A partner organization's account before the Lab approves it.
+    // A partner organization's or a faculty member's account before the Lab
+    // approves it.
     pending: {
       heading: "Your account is waiting for approval",
       body: "The Lab reviews each new partner organization, and we'll email you once yours is approved.",
+      repBody: "The Lab confirms each faculty account, and we'll email you once yours is approved.",
       waitingFor: (org: string) => `Waiting for ${org} to approve you`,
       waitingForBody: "We'll email you once they answer.",
     },
@@ -629,7 +800,7 @@ export const copy = {
     },
     // Placeholder Settings view until what it controls is decided.
     settingsPage: {
-      description: "Your profile, how Projectum looks, and your account.",
+      description: "Your profile, how Projectum looks, your notifications, and your account.",
       // The dialog's nav, one entry per section.
       sectionsLabel: "Settings sections",
       profileTitle: "Profile",
@@ -652,6 +823,58 @@ export const copy = {
       darkModeHelp: "Switch Projectum to dark colors.",
       accountTitle: "Account",
       accountDescription: "Log out of Projectum on this device.",
+      // Which notifications show in the bell and which also come by email
+      // (notification-settings.tsx). One row per kind in
+      // src/lib/notification-kinds.ts, keyed by its event type.
+      notificationsTitle: "Notifications",
+      notificationsDescription: "What shows in the bell, and what also comes by email.",
+      notificationsInApp: "In the app",
+      notificationsEmail: "Email",
+      notificationsCourtHelp: "Needs you, so it always shows in the app.",
+      notificationsLoading: "Loading your notifications…",
+      notificationsFailed: "Your notification settings didn't load. Try again.",
+      notificationsSaveFailed: "That didn't save. Try again.",
+      notificationsRetry: "Try again",
+      digestLabel: "Daily digest",
+      digestHelp: "One email a day listing what you haven't read yet. Nothing is sent on a day with nothing new.",
+      notificationGroups: {
+        postings: "Postings",
+        projects: "Projects",
+        reviews: "Reviews",
+        accounts: "Accounts",
+        organizations: "Organizations",
+      },
+      notificationKinds: {
+        "posting.submitted": "A posting is sent for review",
+        "posting.published": "A posting goes on the board",
+        "posting.returned": "A posting comes back with notes",
+        "posting.closed": "A posting closes to new claims",
+        "project.claimed": "Someone claims a posting",
+        "project.plan_approved": "An action plan is approved",
+        "project.plan_returned": "An action plan comes back with notes",
+        "project.work_approved": "Work is approved and delivered",
+        "project.work_returned": "Work comes back with notes",
+        "project.integrated": "A team is brought on to implement",
+        "project.completion_requested": "A team asks for sign-off",
+        "project.completion_returned": "Sign-off is held back",
+        "project.completed": "A project is complete",
+        "project.withdrawn": "A team releases its claim",
+        "project.reopened": "A project is reopened",
+        "meeting.requested": "A partner asks to meet a team",
+        "meeting.scheduled": "A meeting is being arranged",
+        reminder: "Reminders about due dates and quiet boards",
+        "project.plan_submitted": "An action plan is ready for review",
+        "project.work_submitted": "Work is ready for review",
+        "review.assigned": "A review is assigned to you",
+        "account.pending": "A new account waits for approval",
+        "account.approved": "Your account is approved",
+        "member.level_changed": "Your level changes",
+        "org.join_requested": "Someone asks to join your organization",
+        "org.join_approved": "Your request to join is approved",
+        "org.join_declined": "Your request to join is declined",
+        "org.primary_transferred": "Your organization has a new primary contact",
+        "org.member_removed": "Someone is removed from your organization",
+      },
     },
     backToSite: "Back to main site",
     logout: "Log out",
@@ -691,6 +914,8 @@ export const copy = {
         stageBar: "Project stages",
         stageCurrent: "current",
         stageReturned: "returned",
+        // Over the reason a released claim gives, on its project page.
+        withdrawnReason: "Why the claim was released",
         errors: {
           state: "Already moved on. Reload to see the latest.",
           // The race loser's note, once the page has loaded the latest.
@@ -700,6 +925,7 @@ export const copy = {
           forbidden: "You can't do that here.",
           plan: "Finish the plan first:",
           effects: "That didn't save. Try again.",
+          blocked: "This can't reopen while its posting is off the board or the team holds another claim on it.",
           fallback: "Something went wrong.",
         },
       },
@@ -750,8 +976,6 @@ export const copy = {
         // A board this account sees but cannot change.
         readOnly: "View only. The team is the only one who can edit this board.",
         locked: "This board is locked until the decision on it comes back. The status above says whose move it is.",
-        // A colleague's board: its card, without the plan or links.
-        outline: "Outline only. The plan and the work stay with the team, the Lab and the partner.",
       },
       // A partner's postings, and every partner posting for admins.
       postings: {
@@ -839,6 +1063,13 @@ export const copy = {
         from: (name: string) => `From ${name}`,
         details: "Details",
         deliverable: "What they want back",
+        businessModel: "Business model",
+        why: "Why it matters",
+        dependencies: "Dependencies",
+        achieves: "What it achieves",
+        goal: "Goal",
+        keyMilestones: "Key milestones",
+        driveUrl: "Drive folder",
         deadline: "Deadline",
         disciplines: "Disciplines",
         effort: "Effort",
@@ -846,8 +1077,12 @@ export const copy = {
         edit: "Edit",
         openBoard: "Open board",
         projects: "Teams",
-        noProjects: "No teams yet.",
-        noProjectsPartner: "No teams to show yet. A team appears here once the Lab approves its action plan.",
+        // The teams list when it comes back empty (posting-helpers.ts emptyTeamsNote).
+        emptyTeams: {
+          none: "No teams yet.",
+          partner: "No teams to show yet. A team appears here once the Lab approves its action plan.",
+          private: "Each team's work is private to its members, the partner and the Lab.",
+        },
         lead: (name: string) => `Lead ${name}`,
         latestNotes: "Notes from the Lab",
         history: "Review history",
@@ -978,6 +1213,16 @@ export const copy = {
         deliverablePlaceholder: "A spreadsheet model we can update each season",
         deadline: "Deadline",
         deadlineHelp: "Optional.",
+        moreDetail: "More detail",
+        moreDetailHelp: "Optional. Anything that helps a team see the whole picture.",
+        businessModel: "Business model",
+        why: "Why it matters",
+        dependencies: "Dependencies",
+        achieves: "What it achieves",
+        goal: "Goal",
+        keyMilestones: "Key milestones",
+        driveUrl: "Drive folder",
+        driveUrlHelp: "A link that starts with https://",
         saveDraft: "Save draft",
         save: "Save changes",
         send: "Send for review",
@@ -986,6 +1231,7 @@ export const copy = {
           title: "Give the posting a title of at least 4 characters.",
           summary: "Write a summary of at least 20 characters.",
           disciplines: "Pick at least one discipline.",
+          driveUrl: "Use a link that starts with https://",
           state: "It's in review, so it can't change now. Reload to see the latest.",
           failed: "That didn't save. Try again.",
         },
@@ -1110,7 +1356,25 @@ export const copy = {
           hired: "Interns hired",
           complete: "Projects complete",
         },
-        tabs: { problems: "Problems", teams: "Teams", people: "People", orgs: "Organizations", requests: "Join requests" },
+        tabs: { problems: "Problems", teams: "Teams", people: "People", orgs: "Organizations", requests: "Join requests", categories: "Categories" },
+        categories: {
+          disciplines: "Disciplines",
+          tags: "Tags",
+          name: "Name",
+          description: "Description",
+          add: "Add",
+          save: "Save",
+          archive: "Archive",
+          restore: "Restore",
+          archived: "Archived",
+          moveUp: (name: string) => `Move ${name} up`,
+          moveDown: (name: string) => `Move ${name} down`,
+          nameLabel: "New category name",
+          descriptionLabel: "Short description",
+          noneYet: "None yet.",
+          duplicate: "A category with that name already exists.",
+          failed: "That did not save. Try again.",
+        },
         search: "Search",
         all: "All",
         empty: "Nothing matches.",
@@ -1151,6 +1415,7 @@ export const copy = {
         activity: (problems: number, claims: number) =>
           [problems ? `${problems} posted` : "", claims ? `${claims} active` : ""].filter(Boolean).join(", "),
         level: "Level",
+        setLevel: "Set level",
         claude: "Claude",
         claudeGive: "Mark given",
         claudeGiven: "Given",
@@ -1160,10 +1425,12 @@ export const copy = {
         turnOn: "Turn on",
         turnOffConfirm: (name: string) => `Turn off ${name}'s account? They're signed out everywhere and can't sign in until it's turned back on.`,
         openBoard: "Board",
+        actionFailed: "That didn't save. Try again.",
+        alreadyApproved: "This account is already approved.",
       },
-      // Member levels, from the board deck. Worked out from claims.
+      // Member levels, from the board deck. An admin sets each one.
       levels: {
-        affiliate: { name: "Affiliate", meaning: "Registered with the Lab. Claim a problem or propose a project to move up." },
+        affiliate: { name: "Affiliate", meaning: "Registered with the Lab, which sets each member's level." },
         sponsored: { name: "Sponsored", meaning: "Working an approved project, with a Lab-funded Claude account." },
         builder: { name: "Builder", meaning: "Hired as an intern by a partner organization to put the work to use." },
       },

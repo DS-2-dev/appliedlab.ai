@@ -53,7 +53,8 @@ export function navItems(me: Who, counts: ShellCounts): NavItem[] {
         : [
             { view: "board", label: N.board, href: HOME },
             { view: "myprojects", label: N.myProjects, href: at("myprojects") },
-            projects,
+            // Projects are private to their people: only an admin lists them all.
+            ...(isAdmin(me) ? [projects] : []),
             court,
           ];
   if (isAdmin(me)) {
@@ -96,7 +97,7 @@ export function pickView(asked: string | null, ctx: ViewContext): ProjectumView 
     case "myprojects":
       return isMember(ctx) ? "myprojects" : home;
     case "projects":
-      return isPartner(ctx) ? home : "projects";
+      return isStaff(ctx) ? "projects" : home;
     case "inbox":
       return "inbox";
     default:

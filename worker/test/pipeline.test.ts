@@ -279,7 +279,7 @@ describe("phase 2", () => {
     return { ...s, id };
   }
 
-  it("the partner integrates the team: integrated, a selection, everyone a Builder", async () => {
+  it("the partner integrates the team: integrated, a selection, levels left alone", async () => {
     const { env, id, dana, theo, maya, eli } = await delivered();
     // Another organization cannot see the project at all.
     expect((await move(env, theo.token, id, "integrate")).status).toBe(404);
@@ -297,7 +297,7 @@ describe("phase 2", () => {
       milestones: "[]",
     });
     const levels = await env.DB.prepare("SELECT level FROM users WHERE id IN (?, ?)").bind(maya.user.id, eli.user.id).all<{ level: string }>();
-    expect(levels.results.map((r) => r.level)).toEqual(["builder", "builder"]);
+    expect(levels.results.map((r) => r.level)).toEqual(["affiliate", "affiliate"]);
     expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM milestone_baselines WHERE project_id = ? AND reason = 'integrated'").bind(id).first()).toEqual({
       n: 1,
     });
@@ -321,26 +321,23 @@ describe("phase 2", () => {
     expect((await call(env, dana.token, "POST", `/projects/${id}/complete`)).status).toBe(409);
   });
 
-  it("integrate with a subset: only the chosen are promoted and hear in court; a locked level stays; a second integrate is refused", async () => {
+  it("integrate with a subset: only the chosen hear in court; levels stay as they were; a second integrate is refused", async () => {
     const s = await seed();
     const { env, rep, maya, eli, dana } = s;
     const sam = await signIn(env, "sam@mail.weber.edu", "Sam Ito");
     const id = await active(env, maya, rep, [eli.user.id, sam.user.id]);
     expect((await submit(env, maya.token, id)).status).toBe(201);
     expect((await move(env, rep.token, id, "approveWork")).status).toBe(200);
-    await env.DB.prepare("UPDATE users SET level_locked = 1 WHERE id = ?").bind(sam.user.id).run();
     expect((await move(env, dana.token, id, "integrate", { memberIds: ["u_nobody"] })).status).toBe(400);
     expect((await move(env, dana.token, id, "integrate", { memberIds: [maya.user.id, sam.user.id] })).status).toBe(200);
     const level = async (uid: string) => (await env.DB.prepare("SELECT level FROM users WHERE id = ?").bind(uid).first<{ level: string }>())?.level;
-    expect(await level(maya.user.id)).toBe("builder");
-    expect(await level(sam.user.id)).toBe("sponsored");
-    expect(await level(eli.user.id)).toBe("sponsored");
+    expect([await level(maya.user.id), await level(sam.user.id), await level(eli.user.id)]).toEqual(["affiliate", "affiliate", "affiliate"]);
     const court = async (uid: string) =>
       (await env.DB.prepare("SELECT court FROM notifications WHERE user_id = ? AND kind = 'project.integrated'").bind(uid).all<{ court: number }>()).results;
     expect(await court(maya.user.id)).toEqual([{ court: 1 }]);
     expect(await court(sam.user.id)).toEqual([{ court: 1 }]);
     expect(await court(eli.user.id)).toEqual([{ court: 0 }]);
-    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM events WHERE type = 'member.level_changed' AND payload LIKE '%builder%'").first()).toEqual({ n: 1 });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM events WHERE type = 'member.level_changed'").first()).toEqual({ n: 0 });
     expect((await move(env, dana.token, id, "integrate")).status).toBe(409);
   });
 
@@ -403,6 +400,92 @@ describe("phase 2", () => {
   });
 });
 
+describe("withdraw and reopen", () => {
+  type Out = { status: string; transitions: string[]; withdrawnReason?: string };
+  const get = async (env: Env, token: string, id: string) => (await (await call(env, token, "GET", `/projects/${id}`)).json()) as Out;
+  const withdrawnRow = (env: Env, id: string) =>
+    env.DB.prepare("SELECT status, withdrawn_from, withdrawn_reason FROM projects WHERE id = ?").bind(id).first();
+
+  it("releasing a claim needs a reason, kept with the status it left; an admin reopens it there", async () => {
+    const { env, rep, maya, admin, dana } = await seed();
+    const id = await active(env, maya, rep);
+    const refused = await move(env, maya.token, id, "withdraw");
+    expect(refused.status).toBe(400);
+    expect(await refused.json()).toEqual({ error: "feedback" });
+    expect((await move(env, maya.token, id, "withdraw", { feedback: "   " })).status).toBe(400);
+    expect((await move(env, maya.token, id, "withdraw", { feedback: "  Took an internship  " })).status).toBe(200);
+    expect(await withdrawnRow(env, id)).toEqual({ status: "withdrawn", withdrawn_from: "active", withdrawn_reason: "Took an internship" });
+    // Full viewers read the reason; the admin is offered Reopen, the team is not.
+    const seen = await get(env, admin.token, id);
+    expect(seen).toMatchObject({ withdrawnReason: "Took an internship" });
+    expect(seen.transitions).toEqual(["reopen"]);
+    expect((await get(env, maya.token, id)).transitions).toEqual([]);
+    expect((await call(env, dana.token, "GET", `/projects/${id}`)).status).toBe(404);
+
+    const res = await move(env, admin.token, id, "reopen");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toMatchObject({ ok: true, status: "active" });
+    expect(await withdrawnRow(env, id)).toEqual({ status: "active", withdrawn_from: null, withdrawn_reason: null });
+    expect((await get(env, maya.token, id)).withdrawnReason).toBeUndefined();
+    const event = await env.DB.prepare("SELECT COUNT(*) AS n FROM events WHERE type = 'project.reopened' AND subject_id = ?").bind(id).first<{ n: number }>();
+    expect(event!.n).toBe(1);
+  });
+
+  it("a claim released while being written reopens as claimed", async () => {
+    const { env, maya, admin } = await seed();
+    const res = await call(env, maya.token, "POST", "/postings/P1/claim", {});
+    const { id } = (await res.json()) as { id: string };
+    expect((await move(env, maya.token, id, "withdraw", { feedback: "Wrong fit" })).status).toBe(200);
+    expect(await withdrawnRow(env, id)).toEqual({ status: "withdrawn", withdrawn_from: "claimed", withdrawn_reason: "Wrong fit" });
+    expect((await move(env, admin.token, id, "reopen")).status).toBe(200);
+    expect(await status(env, id)).toBe("claimed");
+  });
+
+  it("only an admin reopens", async () => {
+    const { env, rep, maya } = await seed();
+    const id = await active(env, maya, rep);
+    await move(env, maya.token, id, "withdraw", { feedback: "Moving away" });
+    expect((await move(env, maya.token, id, "reopen")).status).toBe(403);
+    expect((await move(env, rep.token, id, "reopen")).status).toBe(403);
+    expect(await status(env, id)).toBe("withdrawn");
+  });
+
+  it("reopen is refused, not a 500, while the team holds another project on the posting or the posting is off the board", async () => {
+    const { env, rep, maya, admin, dana } = await seed();
+    const id = await active(env, maya, rep);
+    await move(env, maya.token, id, "withdraw", { feedback: "Starting over" });
+    const again = await call(env, maya.token, "POST", "/postings/P1/claim", {});
+    expect(again.status).toBe(201);
+    const second = ((await again.json()) as { id: string }).id;
+    const res = await move(env, admin.token, id, "reopen");
+    expect(res.status).toBe(409);
+    expect(await res.json()).toEqual({ error: "blocked" });
+    expect(await withdrawnRow(env, id)).toMatchObject({ status: "withdrawn", withdrawn_from: "active" });
+
+    // With the second claim released too, the posting is what stops it.
+    await move(env, maya.token, second, "withdraw", { feedback: "Not now" });
+    expect((await call(env, dana.token, "POST", "/postings/P1/transition", { name: "pause" })).status).toBe(200);
+    const paused = await move(env, admin.token, id, "reopen");
+    expect(paused.status).toBe(409);
+    expect(await paused.json()).toEqual({ error: "blocked" });
+    expect((await call(env, dana.token, "POST", "/postings/P1/transition", { name: "resume" })).status).toBe(200);
+    expect((await move(env, admin.token, id, "reopen")).status).toBe(200);
+    expect(await status(env, id)).toBe("active");
+  });
+
+  it("a member's own project reopens though its posting is closed", async () => {
+    const { env, maya, admin } = await seed();
+    const res = await call(env, maya.token, "POST", "/proposals", {
+      posting: { title: "Campus parking model", summary: "Predict where parking runs out each morning", disciplines: ["mathematics"] },
+    });
+    expect(res.status).toBe(201);
+    const { id } = (await res.json()) as { id: string };
+    expect((await move(env, maya.token, id, "withdraw", { feedback: "Out of time" })).status).toBe(200);
+    expect((await move(env, admin.token, id, "reopen")).status).toBe(200);
+    expect(await status(env, id)).toBe("claimed");
+  });
+});
+
 describe("routes", () => {
   it("the Ask endpoint still answers at the root", async () => {
     const env = makeEnv();
@@ -447,7 +530,7 @@ describe("routes", () => {
       expect.arrayContaining([expect.objectContaining({ id: "o_kestrel", name: "Kestrel", people: 1, primary: { id: "u_dana", name: "Dana Reyes" } })]),
     );
     expect(body.requests).toEqual([]);
-    expect(body.people.find((p) => p.id === maya.user.id)?.level).toBe("sponsored");
+    expect(body.people.find((p) => p.id === maya.user.id)?.level).toBe("affiliate");
     // The account routes are the admin's too.
     expect((await call(env, rep.token, "POST", `/accounts/${maya.user.id}/claude`, { granted: true })).status).toBe(403);
     expect((await call(env, admin.token, "POST", `/accounts/${maya.user.id}/claude`, { granted: true })).status).toBe(200);
@@ -460,14 +543,14 @@ describe("routes", () => {
     let res = await call(env, null, "GET", "/profiles/maya-lin");
     expect(res.status).toBe(200);
     let body = (await res.json()) as { profile: { level: string; projects: Array<{ title: string; partner: string | null }> } };
-    expect(body.profile.level).toBe("sponsored");
+    expect(body.profile.level).toBe("affiliate");
     expect(body.profile.projects).toEqual([]);
     await submit(env, maya.token, id);
     await move(env, rep.token, id, "approveWork");
     await move(env, dana.token, id, "integrate");
     res = await call(env, null, "GET", "/profiles/maya-lin");
     body = (await res.json()) as typeof body;
-    expect(body.profile.level).toBe("builder");
+    expect(body.profile.level).toBe("affiliate");
     expect(body.profile.projects).toEqual([expect.objectContaining({ title: "Snow removal pricing", partner: "Kestrel" })]);
   });
 });

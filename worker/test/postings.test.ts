@@ -11,6 +11,7 @@ type Posting = {
   org: { id: string; name: string; slug: string } | null;
   author: { id: string; name: string };
   title: string;
+  why: string;
   status: string;
   disciplines: string[];
   publishedAt: string | null;
@@ -117,6 +118,45 @@ describe("postings", () => {
       myProject: null,
     });
     expect(p.transitions.sort()).toEqual(["archive", "submit"]);
+  });
+
+  it("the seven detail fields round-trip, and are empty when omitted", async () => {
+    const { env, dana } = await seed();
+    const detail = {
+      businessModel: "Per-push contracts",
+      why: "Margins swing with the weather",
+      dependencies: "Two years of invoices",
+      achieves: "A price we can defend",
+      goal: "Quote annual contracts",
+      keyMilestones: "Data pulled, model built, model tested",
+      driveUrl: "https://drive.google.com/drive/folders/abc",
+    };
+    const res = await call(env, dana.token, "POST", "/postings", { title: "Snow", ...detail });
+    const { id } = (await res.json()) as { id: string };
+    expect(await get(env, dana.token, id)).toMatchObject(detail);
+    const bare = (await (await call(env, dana.token, "POST", "/postings", { title: "Bare" })).json()) as { id: string };
+    expect(await get(env, dana.token, bare.id)).toMatchObject({
+      businessModel: "", why: "", dependencies: "", achieves: "", goal: "", keyMilestones: "", driveUrl: "",
+    });
+    // An edit that leaves them out keeps them, and one that sends them changes them.
+    await call(env, dana.token, "PATCH", `/postings/${id}`, { title: "Snow 2" });
+    expect(await get(env, dana.token, id)).toMatchObject(detail);
+    await call(env, dana.token, "PATCH", `/postings/${id}`, { why: "New reason", driveUrl: "" });
+    expect(await get(env, dana.token, id)).toMatchObject({ ...detail, why: "New reason", driveUrl: "" });
+  });
+
+  it("refuses a Drive link that is not https, and detail text over the limit", async () => {
+    const { env, dana } = await seed();
+    for (const driveUrl of ["javascript:alert(1)", "http://drive.google.com/x", "data:text/html,hi", "drive.google.com/x", "https://"]) {
+      const res = await call(env, dana.token, "POST", "/postings", { title: "Snow", driveUrl });
+      expect(res.status).toBe(400);
+      expect(await res.json()).toMatchObject({ error: "plan", issues: ["driveUrl"] });
+    }
+    const made = (await (await call(env, dana.token, "POST", "/postings", { title: "Snow" })).json()) as { id: string };
+    expect((await call(env, dana.token, "PATCH", `/postings/${made.id}`, { driveUrl: "javascript:alert(1)" })).status).toBe(400);
+    // Over-long text is cut to the limit rather than refused.
+    await call(env, dana.token, "PATCH", `/postings/${made.id}`, { why: "x".repeat(2001) });
+    expect((await get(env, dana.token, made.id)).why).toHaveLength(2000);
   });
 
   it("sending an incomplete draft refuses with the issues and keeps the draft", async () => {
@@ -310,9 +350,30 @@ describe("postings", () => {
       });
       // Sending disciplines checks them against the live list.
       const res2 = await call(env, dana.token, "PATCH", `/postings/${id}`, { disciplines: ["finance", "design"] });
-      expect(((await res2.json()) as Posting).disciplines).toEqual(["design"]);
+      expect(((await res2.json()) as Posting).disciplines).toEqual(["finance", "design"]);
     } finally {
       await env.DB.prepare("UPDATE taxonomy SET active = 1 WHERE kind = 'discipline' AND slug = 'finance'").run();
+    }
+  });
+
+  it("an edit that sends a retired discipline already on the posting keeps it, but cannot add another", async () => {
+    const { env, dana, rep } = await seed();
+    const id = await inReview(env, dana.token);
+    await move(env, rep.token, id, "approve");
+    await env.DB.prepare("UPDATE taxonomy SET active = 0 WHERE kind = 'discipline' AND slug IN ('finance', 'marketing')").run();
+    try {
+      // The form sends the posting's disciplines back with a title fix.
+      const res = await call(env, dana.token, "PATCH", `/postings/${id}`, { title: "Typo fixed", disciplines: ["finance"] });
+      expect(res.status).toBe(200);
+      expect(((await res.json()) as Posting).disciplines).toEqual(["finance"]);
+      expect(await env.DB.prepare("SELECT title, disciplines FROM postings WHERE id = ?").bind(id).first()).toEqual({
+        title: "Typo fixed",
+        disciplines: '["finance"]',
+      });
+      const res2 = await call(env, dana.token, "PATCH", `/postings/${id}`, { disciplines: ["finance", "marketing"] });
+      expect(((await res2.json()) as Posting).disciplines).toEqual(["finance"]);
+    } finally {
+      await env.DB.prepare("UPDATE taxonomy SET active = 1 WHERE kind = 'discipline' AND slug IN ('finance', 'marketing')").run();
     }
   });
 

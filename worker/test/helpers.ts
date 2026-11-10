@@ -72,8 +72,10 @@ export async function call(
 
 export const TEST_PASSWORD = "correct horse battery";
 
-// Signs in through the real endpoints using the dev code.
-export async function signIn(env: Env, email: string, name?: string): Promise<{ token: string; user: UserRow }> {
+// Signs in through the real endpoints using the dev code. New faculty
+// accounts wait for approval, so by default a pending rep is approved here
+// (as the admin would); pass hold to keep it pending.
+export async function signIn(env: Env, email: string, name?: string, hold = false): Promise<{ token: string; user: UserRow }> {
   const start = await call(env, null, "POST", "/auth/start", { email });
   if (start.status !== 200) throw new Error(`/auth/start ${start.status}: ${await start.text()}`);
   const { devCode } = (await start.json()) as { devCode: string };
@@ -85,6 +87,10 @@ export async function signIn(env: Env, email: string, name?: string): Promise<{ 
     verify = await call(env, null, "POST", "/auth/verify", { email, code: devCode, name, password: TEST_PASSWORD });
     if (verify.status !== 200) throw new Error(`/auth/verify ${verify.status}: ${await verify.text()}`);
     out = (await verify.json()) as typeof out;
+  }
+  if (!hold && out.user.role === "rep" && out.user.status === "pending") {
+    await env.DB.prepare("UPDATE users SET status = 'active' WHERE id = ?").bind(out.user.id).run();
+    out.user.status = "active";
   }
   return out;
 }

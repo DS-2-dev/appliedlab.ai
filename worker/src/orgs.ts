@@ -171,15 +171,15 @@ export async function onPartnerSignUp(
   return queueJoinRequest(env, stmts, user, org, "");
 }
 
-// The admins' bell for a partner who needs the Lab's approval.
-export async function notifyAdminsOfPartner(env: AccountEnv, stmts: D1PreparedStatement[], user: UserRow): Promise<void> {
+// The admins' bell for a partner or faculty member who needs the Lab's approval.
+export async function notifyAdminsOfPending(env: AccountEnv, stmts: D1PreparedStatement[], user: UserRow): Promise<void> {
   emit(env, stmts, {
     type: "account.pending",
     actor: user,
     subject: { kind: "user", id: user.id },
     payload: {},
     notify: [
-      { userIds: await adminIds(env), court: true, title: `${user.name} signed up as a business and is waiting for approval`, href: "/projectum?view=overview" },
+      { userIds: await adminIds(env), court: true, title: `${user.name} signed up as ${user.role === "rep" ? "faculty" : "a business"} and is waiting for approval`, href: "/projectum?view=overview" },
     ],
   });
 }

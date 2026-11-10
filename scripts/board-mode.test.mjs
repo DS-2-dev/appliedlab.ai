@@ -24,13 +24,6 @@ test("the team edits, finds it locked at a gate, and everyone else views", () =>
   assert.equal(boardMode(entry("a", { onTeam: false, status: null })), "view");
 });
 
-test("a colleague's entry, with only the brief, is found by its board id", () => {
-  const colleague = { project: null, brief: { id: "c" }, editable: false, onTeam: false, status: "active" };
-  const list = [entry("a"), colleague];
-  assert.equal(findBoard(list, "c"), colleague);
-  assert.equal(findBoard(list, "a"), list[0]);
-});
-
 test("stage moves open on a board of one's own and while the team works the approved plan", () => {
   assert.equal(canMoveStage(null), true);
   assert.equal(canMoveStage("active"), true);

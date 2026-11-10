@@ -2,12 +2,14 @@
 // the sidebar (app-sidebar.tsx). settings-tabs.tsx lays the sections out, a
 // nav at the left and the chosen one at the right. The account's name,
 // email, picture, level and profile switches are read in the browser
-// (profile-fields.tsx, profile-photo.tsx, profile-settings.tsx), and so is
-// Log out (account-gate.tsx), since the account lives on the Worker.
+// (profile-fields.tsx, profile-photo.tsx, profile-settings.tsx), and so are
+// the notification switches (notification-settings.tsx) and Log out
+// (account-gate.tsx), since the account lives on the Worker.
 
-import { KeyRound, SlidersHorizontal, UserRound } from "lucide-react";
+import { Bell, KeyRound, SlidersHorizontal, UserRound } from "lucide-react";
 import { copy } from "@/content/copy";
 import { LogoutButton } from "@/components/projectum/account-gate";
+import { NotificationSettings } from "@/components/projectum/notification-settings";
 import { ProfileFields } from "@/components/projectum/profile-fields";
 import { ProfilePhoto } from "@/components/projectum/profile-photo";
 import { ProfileSettings } from "@/components/projectum/profile-settings";
@@ -46,6 +48,13 @@ export function SettingsPanel({ dark }: { dark: boolean }) {
           <DarkModeSwitch id="settings-dark-mode" initial={dark} />
         </div>
       ),
+    },
+    {
+      id: "notifications",
+      title: P.notificationsTitle,
+      description: P.notificationsDescription,
+      icon: <Bell />,
+      content: <NotificationSettings />,
     },
     {
       id: "account",

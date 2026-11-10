@@ -36,6 +36,13 @@ export interface PostingRow {
   effort: "" | "small" | "medium" | "large" | "multi";
   deliverable: string;
   deadline: string;
+  business_model: string;
+  why: string;
+  dependencies: string;
+  achieves: string;
+  goal: string;
+  key_milestones: string;
+  drive_url: string;
   status: PostingStatus;
   kind: "partner" | "self";
   sealed: number;
@@ -65,5 +72,8 @@ export interface ProjectRow {
   integrated_at: string | null;
   completed_at: string | null;
   withdrawn_at: string | null;
+  // The status a released claim left, and why it was released.
+  withdrawn_from: string | null;
+  withdrawn_reason: string | null;
   updated_at: string;
 }

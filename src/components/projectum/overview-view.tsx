@@ -5,21 +5,25 @@
 // account, with Approve for a waiting partner and Turn off or on for anyone
 // but staff, with each member's level and whether their funded Claude
 // account has been given; every organization; and the join requests still
-// waiting, which link to the organization page where they are answered.
+// waiting, which link to the organization page where they are answered; and
+// the categories postings are filed under.
 // Counts across the top, then one table per tab, each searched.
 
 import * as React from "react";
 import Link from "next/link";
 import { copy } from "@/content/copy";
+import { ApiError } from "@/lib/account";
 import type { AccountRole } from "@/lib/email-rules";
 import type { ClaimStatus } from "@/lib/problems";
-import { type Person, type Problem, send, useApi } from "@/components/projectum/pipeline-store";
+import { type Person, type Problem, refresh, send, useApi } from "@/components/projectum/pipeline-store";
+import { CategoriesAdmin } from "@/components/projectum/categories-admin";
 import { useShell } from "@/components/projectum/shell-store";
-import { type Level, LevelBadge, LoadError, Loading, ViewFrame, formatDate } from "@/components/projectum/pipeline-ui";
+import { type Level, LoadError, Loading, ViewFrame, formatDate } from "@/components/projectum/pipeline-ui";
 import { Badge } from "@/components/ui/badge";
 import { Button, buttonVariants } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsIndicator, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const P = copy.projectum.pipeline;
@@ -265,39 +269,73 @@ function TeamsTab({ claims }: { claims: OverviewClaim[] }) {
   );
 }
 
-function PersonAction({ person }: { person: OverviewPerson }) {
+// Runs an admin change, and says so beside the control if the Worker
+// refused it. A 409 means the account already moved (an approve sent twice),
+// so the list reloads to show where it stands.
+function useAdminAction() {
   const [busy, setBusy] = React.useState(false);
-  const act = async (path: string, body?: unknown) => {
+  const [failed, setFailed] = React.useState<string | null>(null);
+  const run = async (path: string, body?: unknown) => {
     setBusy(true);
+    setFailed(null);
     try {
       await send(path, "POST", body);
+    } catch (e) {
+      const stale = e instanceof ApiError && e.status === 409;
+      setFailed(stale ? V.alreadyApproved : V.actionFailed);
+      if (stale) refresh();
     } finally {
       setBusy(false);
     }
   };
-  if (person.status === "pending" && person.role === "partner") {
-    return (
-      <Button size="sm" disabled={busy} onClick={() => void act(`/partners/${person.id}/approve`)}>
+  return { busy, failed, run };
+}
+
+function ActionError({ text }: { text: string | null }) {
+  return text ? (
+    <p role="alert" className="text-xs text-destructive">
+      {text}
+    </p>
+  ) : null;
+}
+
+function PersonAction({ person }: { person: OverviewPerson }) {
+  const { busy, failed, run: act } = useAdminAction();
+  let control: React.ReactNode = null;
+  if (person.status === "pending" && (person.role === "partner" || person.role === "rep")) {
+    control = (
+      <Button size="sm" disabled={busy} onClick={() => void act(`/accounts/${person.id}/approve`)}>
         {V.approve}
       </Button>
     );
+  } else if (person.staff) {
+    // Staff accounts are not turned off here.
+  } else if (person.status === "removed") {
+    control = (
+      <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(`/accounts/${person.id}/status`, { status: "active" })}>
+        {V.turnOn}
+      </Button>
+    );
+  } else {
+    control = (
+      <Button
+        size="sm"
+        variant="outline"
+        disabled={busy}
+        onClick={() => {
+          if (window.confirm(V.turnOffConfirm(person.name))) void act(`/accounts/${person.id}/status`, { status: "removed" });
+        }}
+      >
+        {V.turnOff}
+      </Button>
+    );
   }
-  if (person.staff) return null;
-  return person.status === "removed" ? (
-    <Button size="sm" variant="outline" disabled={busy} onClick={() => void act(`/accounts/${person.id}/status`, { status: "active" })}>
-      {V.turnOn}
-    </Button>
-  ) : (
-    <Button
-      size="sm"
-      variant="outline"
-      disabled={busy}
-      onClick={() => {
-        if (window.confirm(V.turnOffConfirm(person.name))) void act(`/accounts/${person.id}/status`, { status: "removed" });
-      }}
-    >
-      {V.turnOff}
-    </Button>
+  if (!control && !failed) return null;
+  return (
+    <div className="grid justify-items-start gap-1">
+      {control}
+      <ActionError text={failed} />
+    </div>
   );
 }
 
@@ -329,6 +367,34 @@ function ClaudeCell({ person }: { person: OverviewPerson }) {
 }
 
 const LEVELS: Level[] = ["affiliate", "sponsored", "builder"];
+
+// A member's level is the Admin's to set; nothing else moves it.
+function LevelCell({ person }: { person: OverviewPerson }) {
+  const { busy, failed, run } = useAdminAction();
+  if (!person.level) return null;
+  const change = (level: Level) => run(`/accounts/${person.id}/level`, { level });
+  return (
+    <div className="grid justify-items-start gap-1">
+      <Select
+        value={person.level}
+        disabled={busy}
+        onValueChange={(v) => LEVELS.includes(v as Level) && v !== person.level && void change(v as Level)}
+      >
+        <SelectTrigger size="sm" className="w-32" aria-label={`${V.setLevel}: ${person.name}`}>
+          <SelectValue>{(v: string | null) => (v ? P.levels[v as Level].name : "")}</SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {LEVELS.map((l) => (
+            <SelectItem key={l} value={l}>
+              {P.levels[l].name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <ActionError text={failed} />
+    </div>
+  );
+}
 
 function PeopleTab({ people }: { people: OverviewPerson[] }) {
   const [query, setQuery] = React.useState("");
@@ -373,7 +439,9 @@ function PeopleTab({ people }: { people: OverviewPerson[] }) {
                 </Badge>
               )}
             </td>
-            <td className="px-3 py-2">{p.level && <LevelBadge level={p.level} />}</td>
+            <td className="px-3 py-2">
+              <LevelCell person={p} />
+            </td>
             <td className="px-3 py-2">
               <ClaudeCell person={p} />
             </td>
@@ -489,7 +557,7 @@ export function OverviewView() {
           <Tabs value={tab} onValueChange={(v) => setTab(String(v))} className="gap-4">
             <TabsList className="relative">
               <TabsIndicator />
-              {(["problems", "teams", "people", "orgs", "requests"] as const).map((t) => (
+              {(["problems", "teams", "people", "orgs", "requests", "categories"] as const).map((t) => (
                 <TabsTrigger
                   key={t}
                   value={t}
@@ -516,6 +584,9 @@ export function OverviewView() {
             </TabsContent>
             <TabsContent value="requests">
               <RequestsTab requests={data.requests} />
+            </TabsContent>
+            <TabsContent value="categories">
+              <CategoriesAdmin />
             </TabsContent>
           </Tabs>
         </>

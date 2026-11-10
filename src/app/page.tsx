@@ -1,86 +1,41 @@
-/* Landing page, rebuilt from 2026-09-16 (design/STYLE.md): the header, then
-   a hero led by the chrome mark (ChromeMark, public/better.svg) with the copy
-   beneath it. */
+/* Landing page, redesigned 2026-11-09 (PROVISIONAL): a short intro low on
+   the first screen, then a grid of tiles, one per part of the Lab, each
+   with its name beneath and leading to its page (app/[slug]/page.tsx): one
+   row of five on a wide screen, wrapping to four and two columns on a
+   tablet and a phone, with each row starting level and its tiles keeping
+   their own heights. Ask the Lab follows, as the page's questions. The
+   header and footer are SiteFrame's. */
 
 import Link from "next/link";
-import { ArrowDown, ArrowRight } from "lucide-react";
 import { copy } from "@/content/copy";
+import { TileArt } from "@/components/home/TileArt";
+import { INK, SiteFrame, at } from "@/components/home/SiteFrame";
 import { AskTheLab } from "@/components/AskTheLab";
-import { ChromeMark } from "@/components/ChromeMark";
-import { HowItWorks } from "@/components/HowItWorks";
-import { JoinCta } from "@/components/JoinCta";
-import { Reveal } from "@/components/Reveal";
-import { SiteFooter } from "@/components/SiteFooter";
-import { SmoothScroll } from "@/components/SmoothScroll";
-import { ScrollLink } from "@/components/ScrollLink";
-import { SiteHeader } from "@/components/SiteHeader";
-import { JOIN_HREF } from "@/lib/site";
 
 const H = copy.home;
 
 export default function Home() {
   return (
-    <>
-      <SmoothScroll />
-      <SiteHeader />
-      <main id="main" className="font-archivo bg-white text-ink">
-        {/* The hero: the shape (better.svg, for now) in chrome, in a box across the top of the first
-            screen, then one row beneath it, the large heading at the left
-            and the rest of the copy with the buttons at the right. */}
-        <section className="min-h-svh">
-          <Reveal className="flex min-h-svh flex-col gap-10 px-5 pt-24 pb-10 lg:px-15 lg:pb-12">
-            <div className="flex min-h-[10rem] flex-1 items-center">
-              <ChromeMark src="/better.svg" className="aspect-[1349/498] max-h-[62svh] w-full" />
-            </div>
+    <SiteFrame>
+      {/* 180px above the intro, less on a short screen so the footer still
+          fits without scrolling. */}
+      <div className="home-rise pt-[clamp(80px,calc(100svh-690px),180px)] pb-5" style={at(1)}>
+        <h1 className={INK}>{copy.nav.wordmark}</h1>
+        <p className="mt-2 max-w-[300px] text-sm/[17px] font-medium text-[#737378]">{H.intro}</p>
+      </div>
 
-            {/* From lg the right column stretches to the heading block's
-                height: its paragraph starts level with the kicker and its
-                button row ends level with the heading's last line. */}
-            <div className="grid gap-8 lg:grid-cols-12 lg:items-stretch lg:gap-12">
-              <div className="lg:col-span-8">
-                <p className="mb-4 text-base font-medium tracking-tight text-black/60">{H.kicker}</p>
-                <h1 className="max-w-4xl text-[2rem] leading-[1.02] font-light tracking-tight sm:text-5xl lg:text-6xl xl:text-7xl">
-                  {H.heading.split(H.headingTilt).map((part, i) =>
-                    i === 0 ? (
-                      part
-                    ) : (
-                      <span key={i}>
-                        <span className="tilt-word">{H.headingTilt}</span>
-                        {part}
-                      </span>
-                    ),
-                  )}
-                </h1>
-              </div>
+      <ul className="grid grid-cols-2 items-start gap-x-3 gap-y-8 min-[810px]:grid-cols-4 min-[1200px]:grid-cols-5">
+        {H.tiles.map((t, i) => (
+          <li key={t.id} className="home-rise" style={at(i + 2)}>
+            <Link href={`/${t.slug}`} className="home-lift block">
+              <TileArt id={t.id} />
+              <p className={`mt-2.5 ${INK}`}>{t.title}</p>
+            </Link>
+          </li>
+        ))}
+      </ul>
 
-              <div className="flex flex-col justify-between gap-6 lg:col-span-4">
-                <p className="max-w-md text-sm leading-relaxed font-light opacity-60 lg:text-[15px]">{H.lede}</p>
-                <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
-                  <Link
-                    href={JOIN_HREF}
-                    className="group inline-flex h-10 items-center gap-2 rounded-full bg-black px-5 text-sm text-white transition hover:bg-black/80"
-                  >
-                    {H.join}
-                    <ArrowRight aria-hidden className="size-4 transition group-hover:translate-x-0.5" strokeWidth={1.5} />
-                  </Link>
-                  <ScrollLink
-                    href={`#${copy.how.steps[0].id}`}
-                    className="group inline-flex items-center gap-1.5 text-sm opacity-60 transition hover:opacity-100"
-                  >
-                    {H.how}
-                    <ArrowDown aria-hidden className="size-3.5 transition group-hover:translate-y-0.5" strokeWidth={1.5} />
-                  </ScrollLink>
-                </div>
-              </div>
-            </div>
-          </Reveal>
-        </section>
-
-        <HowItWorks />
-        <AskTheLab />
-        <JoinCta />
-      </main>
-      <SiteFooter />
-    </>
+      <AskTheLab />
+    </SiteFrame>
   );
 }

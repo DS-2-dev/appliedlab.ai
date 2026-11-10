@@ -27,6 +27,8 @@ export type TransitionDef<S extends string> = {
   /** Visual weight of the button. */
   intent?: "primary" | "danger" | "default";
   hotkey?: string;
+  /** Goes back to the status the entity left (projects.withdrawn_from), `to` when none is kept. */
+  restore?: boolean;
   event: string;
 };
 
@@ -242,8 +244,17 @@ export const projectMachine = machine<ProjectStatus, Record<string, TransitionDe
       to: "withdrawn",
       by: ["member", "admin"],
       handsTo: "none",
+      feedback: "required",
       intent: "danger",
       event: "project.withdrawn",
+    },
+    reopen: {
+      label: "Reopen",
+      from: ["withdrawn"],
+      to: "claimed",
+      by: ["admin"],
+      restore: true,
+      event: "project.reopened",
     },
   },
 });

@@ -1,4 +1,4 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, vi } from "vitest";
 import { makeEnv, applyMigrations, signIn, call } from "./helpers";
 import { isAdmin, isStaff, rolesOf, type UserRow } from "../src/accounts";
 
@@ -15,6 +15,66 @@ describe("accounts", () => {
     expect(await me(env, p.token)).toMatchObject({ admin: false, roles: ["rep"], level: null });
   });
 
+  it("a new faculty account is pending until the Lab approves it, with no organization", async () => {
+    const env = makeEnv();
+    await applyMigrations(env.DB);
+    const log = vi.spyOn(console, "log").mockImplementation(() => {});
+    const admin = await signIn(env, "dantesmith@mail.weber.edu", "Dante");
+    const prof = await signIn(env, "new-prof@weber.edu", "New Prof", true);
+    const asked = log.mock.calls.map((c) => String(c[0])).find((l) => l.startsWith("Approve faculty new-prof@weber.edu"));
+    log.mockRestore();
+    expect(asked).toContain("/approve?u=" + prof.user.id);
+    expect(await me(env, prof.token)).toMatchObject({ status: "pending", pendingOrgName: null });
+    const bell = await env.DB.prepare("SELECT title FROM notifications WHERE kind = 'account.pending' AND title LIKE '%New Prof%'").all<{ title: string }>();
+    expect(bell.results).toEqual([{ title: "New Prof signed up as faculty and is waiting for approval" }]);
+
+    const post = (token: string, path: string) => call(env, token, "POST", path);
+    expect((await post(prof.token, `/accounts/${prof.user.id}/approve`)).status).toBe(403);
+    expect((await post(admin.token, `/accounts/${prof.user.id}/approve`)).status).toBe(200);
+    expect(await me(env, prof.token)).toMatchObject({ status: "active", org: null, orgId: null });
+    expect(await env.DB.prepare("SELECT COUNT(*) AS n FROM orgs WHERE primary_user_id = ?").bind(prof.user.id).first()).toEqual({ n: 0 });
+    const events = await env.DB.prepare("SELECT type FROM events WHERE subject_id = ? AND type = 'account.approved'").bind(prof.user.id).all();
+    expect(events.results).toHaveLength(1);
+    expect((await post(admin.token, `/accounts/${prof.user.id}/approve`)).status).toBe(409);
+    expect(await (await post(admin.token, `/accounts/${prof.user.id}/approve`)).json()).toEqual({ error: "state" });
+  });
+
+  it("the server refuses a held faculty account until it is approved", async () => {
+    const env = makeEnv();
+    await applyMigrations(env.DB);
+    const admin = await signIn(env, "dantesmith@mail.weber.edu", "Dante");
+    const prof = await signIn(env, "held-prof@weber.edu", "Held Prof", true);
+    const held = await call(env, prof.token, "GET", "/reviews");
+    expect(held.status).toBe(403);
+    expect(await held.json()).toEqual({ error: "pending" });
+    expect((await call(env, admin.token, "POST", `/accounts/${prof.user.id}/approve`)).status).toBe(200);
+    expect((await call(env, prof.token, "GET", "/reviews")).status).toBe(200);
+  });
+
+  it("keeps /partners/:id/approve working for a pending faculty account", async () => {
+    const env = makeEnv();
+    await applyMigrations(env.DB);
+    const admin = await signIn(env, "dantesmith@mail.weber.edu", "Dante");
+    const prof = await signIn(env, "alias-prof@weber.edu", "Alias Prof", true);
+    expect((await call(env, admin.token, "POST", `/partners/${prof.user.id}/approve`)).status).toBe(200);
+    expect(await me(env, prof.token)).toMatchObject({ status: "active" });
+  });
+
+  it("an address listed in APPROVERS signs up active even at a faculty domain", async () => {
+    const env = { ...makeEnv(), APPROVERS: "boss@weber.edu" };
+    await applyMigrations(env.DB);
+    const boss = await signIn(env, "boss@weber.edu", "Boss", true);
+    expect(await me(env, boss.token)).toMatchObject({ status: "active", admin: true });
+  });
+
+  it("signing in again leaves an active faculty row untouched", async () => {
+    const env = makeEnv();
+    await applyMigrations(env.DB);
+    await env.DB.prepare("INSERT INTO users (id, email, name, role, roles, status, created_at) VALUES ('u_old_prof', 'old-prof@weber.edu', 'Old Prof', 'rep', '[\"rep\"]', 'active', '2026-01-01')").run();
+    const prof = await signIn(env, "old-prof@weber.edu", "Old Prof", true);
+    expect(await me(env, prof.token)).toMatchObject({ id: "u_old_prof", status: "active" });
+  });
+
   it("a member's level comes from the row", async () => {
     const env = makeEnv();
     await applyMigrations(env.DB);
@@ -22,6 +82,38 @@ describe("accounts", () => {
     expect(await me(env, s.token)).toMatchObject({ level: "affiliate", org: null, orgId: null });
     await env.DB.prepare("UPDATE users SET level = 'sponsored' WHERE email = 'sam@mail.weber.edu'").run();
     expect(await me(env, s.token)).toMatchObject({ level: "sponsored" });
+  });
+
+  it("an admin sets a member's level", async () => {
+    const env = makeEnv();
+    await applyMigrations(env.DB);
+    const admin = await signIn(env, "dantesmith@mail.weber.edu", "Dante");
+    const sam = await signIn(env, "level-sam@mail.weber.edu", "Sam");
+    const prof = await signIn(env, "level-prof@weber.edu", "Prof");
+    const post = (token: string, id: string, level: string) => call(env, token, "POST", `/accounts/${id}/level`, { level });
+    const res = await post(admin.token, sam.user.id, "builder");
+    expect(res.status).toBe(200);
+    expect(await res.json()).toEqual({ ok: true, level: "builder" });
+    expect(await me(env, sam.token)).toMatchObject({ level: "builder" });
+    const notes = await env.DB.prepare("SELECT title, href FROM notifications WHERE user_id = ? AND kind = 'member.level_changed'")
+      .bind(sam.user.id)
+      .all();
+    expect(notes.results).toEqual([{ title: "You are now a Builder", href: "/projectum" }]);
+    // Setting the level they already hold changes nothing and tells nobody.
+    const again = await post(admin.token, sam.user.id, "builder");
+    expect(again.status).toBe(200);
+    expect(await again.json()).toEqual({ ok: true, level: "builder" });
+    const events = await env.DB.prepare("SELECT COUNT(*) AS n FROM events WHERE type = 'member.level_changed' AND subject_id = ?")
+      .bind(sam.user.id)
+      .first<{ n: number }>();
+    expect(events!.n).toBe(1);
+    expect(
+      (await env.DB.prepare("SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND kind = 'member.level_changed'").bind(sam.user.id).first<{ n: number }>())!.n,
+    ).toBe(1);
+    expect((await post(sam.token, sam.user.id, "affiliate")).status).toBe(403);
+    expect((await post(admin.token, sam.user.id, "senior")).status).toBe(400);
+    expect((await post(admin.token, prof.user.id, "builder")).status).toBe(400);
+    expect((await post(admin.token, "u_nobody", "builder")).status).toBe(404);
   });
 
   it("the account carries its organization", async () => {

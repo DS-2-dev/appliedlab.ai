@@ -1,55 +1,45 @@
-// The frame every account page shares, in the landing's look: the star and
-// the Lab's name at the top left, then one narrow centred column with the
-// star over a light heading, like the ChatGPT and Claude sign-in screens.
-// Deliberately not the site header. Someone on a log in form has one job,
-// and the nav's links and buttons would only be ways out of it.
+// The frame every account page shares: the site's frame (SiteFrame) without
+// its two links, since someone on a log in form has one job. The heading
+// and its note sit in a column at the left, as a tile's page has them, and
+// the form takes the right half. One column on a phone.
 
-import Link from "next/link";
 import type { ReactNode } from "react";
-import { StarMark } from "@/components/StarMark";
 import { copy } from "@/content/copy";
+import { INK, SiteFrame, at } from "@/components/home/SiteFrame";
 
 export function AuthShell({
   heading,
   body,
   children,
   footer,
-  wide,
 }: {
   heading: string;
-  wide?: boolean;
   body?: string;
   children: ReactNode;
   footer?: ReactNode;
 }) {
   return (
-    <div className="font-archivo flex min-h-svh flex-col bg-white text-ink">
-      <header className="flex h-16 items-center px-5 lg:px-15">
-        <Link href="/" className="flex items-center gap-2.5 whitespace-nowrap">
-          <StarMark className="w-9" />
-          <span className="text-[15px] font-medium tracking-tight">{copy.nav.wordmark}</span>
-        </Link>
-      </header>
-
-      <main id="main" className="flex flex-1 justify-center px-5 pt-8 pb-20 md:items-center md:pt-0 md:pb-28">
-        <div className={`w-full ${wide ? "max-w-[440px]" : "max-w-[380px]"} animate-in fade-in-0 slide-in-from-bottom-2 duration-500 motion-reduce:animate-none`}>
-          <StarMark className="mx-auto w-28" />
-          <h1 className="mt-6 text-center text-3xl font-light tracking-tight text-balance">{heading}</h1>
-          {body && <p className="mt-3 text-center text-[15px] leading-relaxed font-light text-black/55">{body}</p>}
-          <div className="mt-9">{children}</div>
-          {footer && <p className="mt-8 text-center text-sm text-black/55">{footer}</p>}
+    <SiteFrame links={false}>
+      <div className="grid gap-x-5 gap-y-10 pt-[clamp(60px,calc(100svh-640px),180px)] pb-24 min-[810px]:grid-cols-2">
+        <div className="home-rise max-w-[400px]" style={at(1)}>
+          <h1 className={INK}>{heading}</h1>
+          {body && <p className="mt-2 text-sm/[17px] font-medium text-[#737378]">{body}</p>}
         </div>
-      </main>
-    </div>
+        <div className="home-rise w-full max-w-[400px]" style={at(2)}>
+          {children}
+          {footer && <p className="mt-8 text-sm/[17px] font-medium text-[#737378]">{footer}</p>}
+        </div>
+      </div>
+    </SiteFrame>
   );
 }
 
 export function AuthDivider() {
   return (
-    <div className="kicker my-6 flex items-center gap-4 text-black/35">
-      <span aria-hidden className="h-px flex-1 bg-black/10" />
+    <div className="my-5 flex items-center gap-3 text-xs/[14px] font-semibold text-[#9a9aa1]">
+      <span aria-hidden className="h-px flex-1 bg-[#e4e4e4]" />
       {copy.auth.divider}
-      <span aria-hidden className="h-px flex-1 bg-black/10" />
+      <span aria-hidden className="h-px flex-1 bg-[#e4e4e4]" />
     </div>
   );
 }
@@ -59,19 +49,17 @@ export function AuthDivider() {
 export function AuthAlert({ message }: { message?: string }) {
   if (!message) return null;
   return (
-    <p
-      role="alert"
-      className="rounded-2xl bg-black/[0.04] px-4 py-3 text-center text-sm leading-snug text-black/75 animate-in fade-in-0 duration-300"
-    >
+    <p role="alert" className="rounded-lg bg-[#f4f4f4] px-4 py-3 text-sm/[17px] font-medium text-[#1f1f1f]">
       {message}
     </p>
   );
 }
 
-// Link styling for the small switches under each form.
-export const authLink =
-  "font-medium text-ink underline decoration-black/20 underline-offset-4 transition hover:decoration-black";
+// The small switches under each form, coloured like the site's links.
+export const authLink = "font-semibold text-[#1f1f1f] transition-colors hover:text-[#737378]";
 
-// The round buttons every account form uses.
+// The buttons every account form uses, and the outlined look for the
+// ones that aren't the form's main action.
 export const authButton =
-  "flex h-12 w-full cursor-pointer items-center justify-center gap-2.5 rounded-full text-[15px] transition disabled:cursor-not-allowed";
+  "flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-lg text-sm font-semibold transition-colors disabled:cursor-not-allowed";
+export const authSecondary = "border border-[#e4e4e4] bg-white text-[#1f1f1f] hover:bg-[#f4f4f4]";

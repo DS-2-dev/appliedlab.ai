@@ -65,7 +65,7 @@ function Body({ copy: c, feedback, onConfirm, onCancel, busy, error }: Props) {
       {feedback && (
         <div className="grid gap-1.5">
           <label htmlFor={id} className="text-xs font-medium text-muted-foreground">
-            {feedback === "required" ? T.notesRequired : T.notesOptional}
+            {c.prompt ?? (feedback === "required" ? T.notesRequired : T.notesOptional)}
           </label>
           <Textarea id={id} value={notes} onChange={(e) => setNotes(e.target.value)} autoFocus />
         </div>

@@ -18,7 +18,7 @@ import { copy } from "@/content/copy";
 import { initials } from "@/lib/initials";
 import { type Project, STAGES, type Stage } from "@/lib/projects";
 import { ProjectCard } from "@/components/projectum/project-board";
-import { boardOf, useVisibleProjects } from "@/components/projectum/project-store";
+import { useVisibleProjects } from "@/components/projectum/project-store";
 import { StatusPill } from "@/components/projectum/status-pill";
 import type { ProjectStatus } from "@/lib/pipeline/domain";
 import { Avatar, AvatarFallback, AvatarGroup, AvatarGroupCount } from "@/components/ui/avatar";
@@ -47,7 +47,6 @@ const TILE_MOTION = {
 
 // `owner` is null for your own, or the owner's name for someone else's.
 // `status` is the project's, or null for a board of the owner's own. A
-// colleague's card is built from the brief alone (boardOf), its outline.
 type Entry = { project: Project; own: boolean; editable: boolean; owner: string | null; status: ProjectStatus | null };
 
 function ProjectTile({ entry, onView }: { entry: Entry; onView: () => void }) {
@@ -126,8 +125,8 @@ export function AllProjects() {
   const mine = visible.filter((e) => e.onTeam);
   const others = visible.filter((e) => !e.onTeam);
   const entries: Entry[] = [
-    ...mine.map((e) => ({ project: boardOf(e), own: true, editable: e.editable, owner: null, status: e.status })),
-    ...others.map((e) => ({ project: boardOf(e), own: false, editable: e.editable, owner: e.owner.name, status: e.status })),
+    ...mine.flatMap((e) => (e.project ? [{ project: e.project, own: true, editable: e.editable, owner: null, status: e.status }] : [])),
+    ...others.flatMap((e) => (e.project ? [{ project: e.project, own: false, editable: e.editable, owner: e.owner.name, status: e.status }] : [])),
   ];
   const inFilter = (f: Filter) => (f === "all" ? entries : entries.filter((e) => e.project.stage === f));
   const shown = inFilter(filter);

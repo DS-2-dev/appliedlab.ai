@@ -1,15 +1,17 @@
 "use client";
 
 /*
-  Ask the Lab: the landing's questions section, as a chat instead of an
-  accordion. Visitors pick a suggested question or type their own, and the
-  answer streams in from /api/ask (Claude, grounded in
-  src/content/lab-knowledge.ts).
+  Ask the Lab: the landing's questions section, as a chat in place of an
+  accordion of answers. Visitors type a question, and the answer streams in
+  from the Worker (Claude, grounded in src/content/lab-knowledge.ts).
 
-  Where the questions go depends on the build (ASK_URL, src/lib/site.ts):
-  the static site sends them to the Cloudflare Worker in worker/. A server
-  with no Claude key answers 503, and the chat shows the offline note and
-  the Lab's email.
+  Laid out like a tile's page: the heading and its note in a column at the
+  left, the conversation and the box to type in at the right. One column
+  on a phone.
+
+  Where the questions go depends on the build (ASK_URL, src/lib/site.ts). A
+  Worker with no Claude key answers 503, and the chat shows the offline
+  note and the Lab's email.
 */
 
 import { useEffect, useRef, useState } from "react";
@@ -17,7 +19,7 @@ import { ArrowUp, RotateCcw } from "lucide-react";
 import { copy } from "@/content/copy";
 import { MAX_CHARS, type Turn } from "@/lib/ask-limits";
 import { ASK_URL } from "@/lib/site";
-import { Reveal } from "@/components/Reveal";
+import { INK } from "@/components/home/SiteFrame";
 
 const A = copy.ask;
 
@@ -61,7 +63,13 @@ export function AskTheLab() {
         signal: ctrl.signal,
       });
       if (!res.ok || !res.body) {
-        reply(res.status === 503 ? A.offline : res.status === 429 ? await res.text() : A.error);
+        reply(
+          res.status === 503
+            ? A.offline
+            : res.status === 429
+              ? await res.text()
+              : A.error,
+        );
         return;
       }
       // Pieces arrive faster than the screen redraws, so the answer is
@@ -99,35 +107,43 @@ export function AskTheLab() {
   const started = turns.length > 0;
 
   return (
-    <section id="ask" className="flex min-h-svh flex-col justify-center px-5 py-24 text-ink lg:px-15">
-      {/* Laid out like the ChatGPT and Claude home screens: a centred
-          heading over one large composer, with the suggestions under it.
-          Once a conversation starts, it runs in a centred column above the
-          composer. The whole block sits in the middle of its own screen. */}
-      <Reveal leave={false} className="mx-auto flex w-full max-w-3xl flex-col items-center">
-        <p className="kicker mb-3 opacity-35">{A.kicker}</p>
-        <h2 className="text-center text-3xl font-light tracking-tight md:text-4xl">{A.heading}</h2>
+    <section
+      id="ask"
+      className="grid scroll-mt-5 gap-x-5 gap-y-8 pt-40 pb-8 min-[810px]:grid-cols-2"
+    >
+      <div className="max-w-[400px] min-[810px]:sticky min-[810px]:top-5 min-[810px]:self-start">
+        <h2 className={INK}>{A.kicker}</h2>
+        <p className="mt-2 text-sm/[17px] font-medium text-[#737378]">
+          {A.heading}
+        </p>
+        <p className="mt-6 text-xs/[14px] font-semibold text-[#9a9aa1]">
+          {A.footnote}
+        </p>
+      </div>
 
+      <div className="grid gap-3">
         {started && (
           <div
             ref={log}
             aria-live="polite"
-            data-lenis-prevent
-            className="mt-10 max-h-[28rem] w-full space-y-6 overflow-y-auto px-1"
+            className="grid max-h-[32rem] gap-5 overflow-y-auto bg-[#f4f4f4] p-6 text-sm/[20px] font-medium"
           >
             {turns.map((t, i) =>
               t.role === "user" ? (
                 <p
                   key={i}
-                  className="ml-auto w-fit max-w-[80%] rounded-3xl bg-black/[0.05] px-5 py-2.5 text-[15px] leading-relaxed whitespace-pre-wrap"
+                  className={`ml-auto w-fit max-w-[85%] rounded-lg bg-white px-4 py-2.5 whitespace-pre-wrap ${INK}`}
                 >
                   {t.content}
                 </p>
               ) : (
-                <div key={i} className="text-[15px] leading-relaxed whitespace-pre-wrap">
+                <div
+                  key={i}
+                  className={`max-w-[90%] whitespace-pre-wrap ${INK}`}
+                >
                   {t.content || (
-                    <span className="inline-flex items-center gap-2 opacity-50">
-                      <span className="size-2 animate-pulse rounded-full bg-current" />
+                    <span className="inline-flex items-center gap-2 text-[#9a9aa1]">
+                      <span className="size-1.5 animate-pulse rounded-full bg-current" />
                       {A.thinking}
                     </span>
                   )}
@@ -142,7 +158,7 @@ export function AskTheLab() {
             e.preventDefault();
             ask(draft);
           }}
-          className="mt-10 w-full rounded-[28px] border border-black/10 bg-white p-3 shadow-[0_4px_24px_-8px_rgba(0,0,0,0.12)] transition focus-within:border-black/25"
+          className="flex items-end gap-2 rounded-lg border border-[#e4e4e4] bg-white p-2 pl-3 transition-colors focus-within:border-[#1f1f1f]"
         >
           <label htmlFor="ask-input" className="sr-only">
             {A.placeholder}
@@ -153,56 +169,41 @@ export function AskTheLab() {
             onChange={(e) => setDraft(e.target.value)}
             onKeyDown={(e) => {
               // Enter sends, Shift+Enter starts a new line.
-              if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+              if (
+                e.key === "Enter" &&
+                !e.shiftKey &&
+                !e.nativeEvent.isComposing
+              ) {
                 e.preventDefault();
                 ask(draft);
               }
             }}
-            rows={2}
+            rows={1}
             maxLength={MAX_CHARS}
             placeholder={A.placeholder}
-            className="field-sizing-content max-h-40 min-h-12 w-full resize-none bg-transparent px-2 pt-1 text-[15px] leading-relaxed outline-none placeholder:text-black/40"
+            className={`field-sizing-content max-h-40 min-h-8 flex-1 resize-none bg-transparent py-1.5 text-sm/[20px] font-medium outline-none placeholder:text-[#9a9aa1] ${INK}`}
           />
-          <div className="flex items-center justify-end gap-1.5">
-            {started && (
-              <button
-                type="button"
-                onClick={reset}
-                aria-label={A.reset}
-                title={A.reset}
-                className="grid size-9 place-items-center rounded-full text-black/50 transition hover:bg-black/5 hover:text-black"
-              >
-                <RotateCcw className="size-4" strokeWidth={1.75} />
-              </button>
-            )}
+          {started && (
             <button
-              type="submit"
-              disabled={busy || !draft.trim()}
-              aria-label={A.send}
-              className="grid size-9 place-items-center rounded-full bg-black text-white transition hover:bg-black/80 disabled:bg-black/15"
+              type="button"
+              onClick={reset}
+              aria-label={A.reset}
+              title={A.reset}
+              className="grid size-8 shrink-0 place-items-center rounded-md text-[#9a9aa1] transition-colors hover:bg-[#f4f4f4] hover:text-[#1f1f1f]"
             >
-              <ArrowUp className="size-4" strokeWidth={2} />
+              <RotateCcw className="size-4" strokeWidth={2} />
             </button>
-          </div>
+          )}
+          <button
+            type="submit"
+            disabled={busy || !draft.trim()}
+            aria-label={A.send}
+            className="grid size-8 shrink-0 place-items-center rounded-md bg-[#1f1f1f] text-white transition-colors hover:bg-black disabled:bg-[#e4e4e4]"
+          >
+            <ArrowUp className="size-4" strokeWidth={2.25} />
+          </button>
         </form>
-
-        {!started && (
-          <div className="mt-4 flex flex-wrap justify-center gap-2">
-            {A.suggestions.map((q) => (
-              <button
-                key={q}
-                type="button"
-                onClick={() => ask(q)}
-                className="rounded-full border border-black/10 px-4 py-2 text-sm text-black/70 transition hover:border-black/25 hover:text-black"
-              >
-                {q}
-              </button>
-            ))}
-          </div>
-        )}
-
-        <p className="mt-4 text-center text-xs opacity-40">{A.footnote}</p>
-      </Reveal>
+      </div>
     </section>
   );
 }

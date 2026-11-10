@@ -19,7 +19,8 @@
 //   (reviews.ts).
 // - /court: what waits on the signed-in person (court.ts); /shell: the
 //   sidebar badges and the bell's count (shell.ts); /notifications: the
-//   bell (notify.ts).
+//   bell, and /me/notification-prefs: what shows there and what is emailed
+//   (notify.ts).
 // - /overview, /accounts/:id/*, /partners/:id/approve (the admin's) and the
 //   public /profiles/:handle (overview.ts). Any other path but / is a 404.
 //
@@ -46,7 +47,7 @@ import {
 } from "@/lib/ask";
 import { type GoogleEnv, type Json, type UserRow, approvePartner, handleAccounts, handleGoogle, sessionUser } from "./accounts";
 import { type AlertEnv, alert, clientError, errorText, healthCheck } from "./alerts";
-import { clearOldNotifications, handleNotifications } from "./notify";
+import { clearOldNotifications, handleNotifications, sendDigests, sendPendingEmails } from "./notify";
 import { handleCourt } from "./court";
 import { handleShell } from "./shell";
 import { sendReminders } from "./reminders";
@@ -125,10 +126,14 @@ function streamFree(env: Env, turns: Turn[], schedule: string): ReadableStream<U
 
 export default {
   // Every request goes through route(); one that throws gets a plain 500 the
-  // site can show, and an alert by email (alerts.ts).
+  // site can show, and an alert by email (alerts.ts). A change that went
+  // through may have written notifications to email, so those go out after
+  // the response (notify.ts).
   async fetch(req: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     try {
-      return await route(req, env, ctx);
+      const res = await route(req, env, ctx);
+      if (res.ok && !["GET", "HEAD", "OPTIONS"].includes(req.method)) ctx.waitUntil(emailNotifications(env));
+      return res;
     } catch (e) {
       const { summary, detail } = errorText(e);
       const url = new URL(req.url);
@@ -141,15 +146,24 @@ export default {
   },
 
   // Daily (the cron in wrangler.jsonc): the health check, reminders
-  // (reminders.ts), clearing read notifications older than 60 days, and a
-  // board for any project without one (boards.ts).
+  // (reminders.ts), clearing read notifications older than 60 days, a board
+  // for any project without one (boards.ts), and a sweep of notifications
+  // still to email.
   async scheduled(_event: ScheduledController, env: Env, ctx: ExecutionContext): Promise<void> {
     ctx.waitUntil(healthCheck(env).then(() => undefined));
     ctx.waitUntil(clearOldNotifications(env).catch((e) => alert(env, "Cleanup failed", errorText(e).summary)));
     ctx.waitUntil(sendReminders(env).then(() => undefined).catch((e) => alert(env, "Reminders failed", errorText(e).summary, errorText(e).detail)));
     ctx.waitUntil(ensureBoards(env).then(() => undefined).catch((e) => alert(env, "Boards failed", errorText(e).summary, errorText(e).detail)));
+    ctx.waitUntil(emailNotifications(env));
+    ctx.waitUntil(sendDigests(env, new Date()).then(() => undefined).catch((e) => alert(env, "Digests failed", errorText(e).summary, errorText(e).detail)));
   },
 } satisfies ExportedHandler<Env>;
+
+function emailNotifications(env: Env): Promise<void> {
+  return sendPendingEmails(env)
+    .then(() => undefined)
+    .catch((e) => alert(env, "Notification emails failed", errorText(e).summary, errorText(e).detail));
+}
 
 // Runs the handlers that need an active signed-in account. Each handler
 // returns null for a path that is not its own; the session is only looked up
@@ -192,6 +206,7 @@ const USER_PATHS = [
   "/accounts",
   "/partners",
   "/notifications",
+  "/me/notification-prefs",
   "/court",
   "/shell",
 ];

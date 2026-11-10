@@ -11,6 +11,7 @@ import { useAccount } from "@/lib/account";
 import { initials } from "@/lib/initials";
 import { type ClaimStatus, type Field, LIMITS } from "@/lib/problems";
 import type { Launch, Person as BoardPerson } from "@/lib/projects";
+import { disciplineNames } from "@/components/projectum/posting-helpers";
 import { usePeople } from "@/components/projectum/people-store";
 import { type Claim, type Person, type Submission, type Taxonomy, downloadReport, useApi } from "@/components/projectum/pipeline-store";
 import { Avatar, AvatarFallback, AvatarGroup } from "@/components/ui/avatar";
@@ -22,10 +23,11 @@ import { Skeleton } from "@/components/ui/skeleton";
 const P = copy.projectum.pipeline;
 
 // The live taxonomy (GET /taxonomy), loaded once and shared, with a name
-// for any discipline slug. A slug since retired shows as itself.
+// for any discipline slug, archived ones included. Only a slug the Worker has
+// never heard of shows as itself.
 export function useTaxonomy(): { taxonomy: Taxonomy | undefined; name: (slug: string) => string } {
   const { data } = useApi<Taxonomy>("/taxonomy");
-  const names = React.useMemo(() => new Map((data?.disciplines ?? []).map((d) => [d.slug, d.name])), [data]);
+  const names = React.useMemo(() => disciplineNames(data), [data]);
   const name = React.useCallback((slug: string) => names.get(slug) ?? slug, [names]);
   return { taxonomy: data, name };
 }

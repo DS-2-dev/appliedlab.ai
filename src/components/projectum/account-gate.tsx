@@ -2,7 +2,7 @@
 
 // Projectum opens only for a signed-in account. Signed out, it goes to Log
 // in and comes back here after. A partner organization the Lab has not yet
-// approved sees a note instead, with Log out.
+// approved sees a note instead, with Log out, in the site's frame.
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
@@ -12,24 +12,29 @@ import { logout, useAccountState } from "@/lib/account";
 import { watchErrors } from "@/lib/report-error";
 import { clearPipeline } from "@/components/projectum/pipeline-store";
 import { Button } from "@/components/ui/button";
+import { MessagePage, onward } from "@/components/home/MessagePage";
 
 const P = copy.auth.pending;
 
-export function LogoutButton() {
+// `plain` is the site's ↳ link look, for the pages in the site's frame.
+export function LogoutButton({ plain = false }: { plain?: boolean }) {
   const router = useRouter();
   const [pending, setPending] = React.useState(false);
+  const out = async () => {
+    setPending(true);
+    await logout();
+    clearPipeline();
+    router.replace("/login");
+  };
+  if (plain) {
+    return (
+      <button type="button" className={onward} disabled={pending} onClick={out}>
+        ↳ {copy.projectum.logout}
+      </button>
+    );
+  }
   return (
-    <Button
-      type="button"
-      variant="outline"
-      disabled={pending}
-      onClick={async () => {
-        setPending(true);
-        await logout();
-        clearPipeline();
-        router.replace("/login");
-      }}
-    >
+    <Button type="button" variant="outline" disabled={pending} onClick={out}>
       <LogOut />
       {copy.projectum.logout}
     </Button>
@@ -52,16 +57,9 @@ export function AccountGate({ children }: { children: React.ReactNode }) {
     // A partner who asked an organization to let them in sees whose answer it is.
     const org = state.account.pendingOrgName;
     return (
-      <main className="projectum-ui grid min-h-svh place-items-center p-6">
-        <div className="grid max-w-md gap-3 text-center">
-          <h1 className="text-xl font-medium">{org ? P.waitingFor(org) : P.heading}</h1>
-          <p className="text-muted-foreground">{org ? P.waitingForBody : P.body}</p>
-          <p className="text-sm text-muted-foreground">{state.account.email}</p>
-          <div className="mt-2">
-            <LogoutButton />
-          </div>
-        </div>
-      </main>
+      <MessagePage kicker={state.account.email} title={org ? P.waitingFor(org) : P.heading} body={org ? P.waitingForBody : state.account.role === "rep" ? P.repBody : P.body}>
+        <LogoutButton plain />
+      </MessagePage>
     );
   }
   return children;

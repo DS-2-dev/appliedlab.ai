@@ -1,8 +1,8 @@
 "use client";
 
 // The buttons for the moves a viewer may make on a posting or project. A move
-// that hands the ball over, or takes notes, asks first in a HandoffDialog;
-// the rest post straight away.
+// that hands the ball over, takes notes or has hand-off copy asks first in a
+// HandoffDialog; the rest post straight away.
 
 import * as React from "react";
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,7 @@ export function TransitionBar({
 
   function click(b: TransitionButton) {
     setError(null);
-    if (b.handsTo || b.feedback) setPending(b);
+    if (b.handsTo || b.feedback || Object.hasOwn(HANDOFF, `${kind}.${b.name}`)) setPending(b);
     else void post(b);
   }
 

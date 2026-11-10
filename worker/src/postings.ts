@@ -69,6 +69,13 @@ function draftOf(row: PostingRow): PostingDraft {
     effort: row.effort,
     deliverable: row.deliverable,
     deadline: row.deadline,
+    businessModel: row.business_model,
+    why: row.why,
+    dependencies: row.dependencies,
+    achieves: row.achieves,
+    goal: row.goal,
+    keyMilestones: row.key_milestones,
+    driveUrl: row.drive_url,
   };
 }
 
@@ -310,7 +317,8 @@ async function body(req: Request): Promise<Record<string, unknown>> {
   return b && typeof b === "object" && !Array.isArray(b) ? (b as Record<string, unknown>) : {};
 }
 
-const DRAFT_KEYS = ["title", "summary", "details", "disciplines", "tags", "effort", "deliverable", "deadline"] as const;
+const DRAFT_KEYS = ["title", "summary", "details", "disciplines", "tags", "effort", "deliverable", "deadline",
+  "businessModel", "why", "dependencies", "achieves", "goal", "keyMilestones", "driveUrl"] as const;
 
 async function list(req: Request, env: Env, v: Viewer, json: Json): Promise<Response> {
   const partner = v.roles.includes("partner") && !v.staff;
@@ -353,12 +361,14 @@ async function create(req: Request, env: Env, v: Viewer, json: Json): Promise<Re
   const id = uuid();
   const at = now();
   await env.DB.prepare(
-    "INSERT INTO postings (id, org_id, author_id, title, summary, details, disciplines, tags, effort, deliverable, deadline, status, kind, created_at, updated_at) " +
-      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 'partner', ?, ?)",
+    "INSERT INTO postings (id, org_id, author_id, title, summary, details, disciplines, tags, effort, deliverable, deadline, " +
+      "business_model, why, dependencies, achieves, goal, key_milestones, drive_url, status, kind, created_at, updated_at) " +
+      "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'draft', 'partner', ?, ?)",
   )
     .bind(
       id, orgId, v.user.id, draft.title, draft.summary, draft.details, JSON.stringify(draft.disciplines), JSON.stringify(draft.tags),
-      draft.effort, draft.deliverable, draft.deadline, at, at,
+      draft.effort, draft.deliverable, draft.deadline, draft.businessModel, draft.why, draft.dependencies, draft.achieves, draft.goal,
+      draft.keyMilestones, draft.driveUrl, at, at,
     )
     .run();
   if (b.send !== true) return json({ id, status: "draft" }, 201);
@@ -374,19 +384,21 @@ async function patch(req: Request, env: Env, v: Viewer, row: PostingRow, json: J
   const current = draftOf(row);
   const next: Record<string, unknown> = { ...current };
   for (const k of DRAFT_KEYS) if (k in b) next[k] = b[k];
-  // Stored disciplines stand unless the edit sends new ones, so one retired
-  // from the taxonomy since is not dropped by an unrelated edit.
-  const allowed = "disciplines" in b ? await activeDisciplineSlugs(env) : current.disciplines;
+  // A discipline retired from the taxonomy since may stay on the posting it is
+  // already on, but no edit can newly add one.
+  const allowed = [...new Set([...(await activeDisciplineSlugs(env)), ...current.disciplines])];
   const draft = cleanPosting(next, allowed);
   const issues = postingIssues(draft, { forSubmit: false });
   if (issues.length) return json({ error: "plan", issues }, 400);
   const moved = await env.DB.prepare(
-    "UPDATE postings SET title = ?, summary = ?, details = ?, disciplines = ?, tags = ?, effort = ?, deliverable = ?, deadline = ?, updated_at = ? " +
+    "UPDATE postings SET title = ?, summary = ?, details = ?, disciplines = ?, tags = ?, effort = ?, deliverable = ?, deadline = ?, " +
+      "business_model = ?, why = ?, dependencies = ?, achieves = ?, goal = ?, key_milestones = ?, drive_url = ?, updated_at = ? " +
       "WHERE id = ? AND status NOT IN ('in_review', 'archived')",
   )
     .bind(
       draft.title, draft.summary, draft.details, JSON.stringify(draft.disciplines), JSON.stringify(draft.tags), draft.effort,
-      draft.deliverable, draft.deadline, now(), row.id,
+      draft.deliverable, draft.deadline, draft.businessModel, draft.why, draft.dependencies, draft.achieves, draft.goal, draft.keyMilestones,
+      draft.driveUrl, now(), row.id,
     )
     .run();
   if (moved.meta.changes === 0) return json({ error: "state" }, 409);

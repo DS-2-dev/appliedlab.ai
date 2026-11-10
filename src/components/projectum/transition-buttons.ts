@@ -62,6 +62,8 @@ export function errorText(code: string, issues?: readonly string[]): string {
       return issues?.length ? `${E.plan} ${issues.join(", ")}` : E.plan;
     case "effects":
       return E.effects;
+    case "blocked":
+      return E.blocked;
     default:
       return E.fallback;
   }

@@ -19,7 +19,7 @@ import { looksLikeEmail, normalizeEmail, roleForEmail, type AccountRole } from "
 import { type AlertEnv, alert } from "./alerts";
 import { emit } from "./events";
 import { activeDisciplineSlugs } from "./taxonomy";
-import { ensureOrgFor, notifyAdminsOfPartner, onPartnerSignUp } from "./orgs";
+import { ensureOrgFor, notifyAdminsOfPending, onPartnerSignUp } from "./orgs";
 import { isThumbnail } from "@/lib/projects";
 import { ROLES, type Level, type Role } from "@/lib/pipeline/domain";
 import { MAX_PASSWORD, checkPassword, hashPassword, passwordProblem } from "./passwords";
@@ -54,7 +54,7 @@ const MAX_PERSON_NAME = 80;
 type Status = "active" | "pending" | "removed";
 
 export const USER_COLS =
-  "id, email, name, role, status, avatar, profile_public, handle, claude_access, hide_name, roles, org_id, level, level_locked, interests";
+  "id, email, name, role, status, avatar, profile_public, handle, claude_access, hide_name, roles, org_id, level, level_locked, interests, digest, digest_sent_at";
 
 export type { Level };
 
@@ -77,6 +77,9 @@ export interface UserRow {
   level_locked: number;
   // A JSON array of tags.
   interests: string;
+  // Whether they get the daily digest email (notify.ts), and when the last one went.
+  digest?: number;
+  digest_sent_at?: string | null;
 }
 
 function parseList(text: string | undefined): unknown[] {
@@ -161,6 +164,7 @@ async function accountOut(u: UserRow, env: AccountEnv) {
     claudeAccess: Boolean(u.claude_access),
     hideName: Boolean(u.hide_name),
     interests: parseList(u.interests).filter((t): t is string => typeof t === "string"),
+    digest: Boolean(u.digest),
   };
 }
 
@@ -371,8 +375,9 @@ async function passwordLogin(req: Request, env: AccountEnv, ip: string, json: Js
   return json({ token: await issueSession(env, user.id), user: await accountOut(user, env) });
 }
 
-// A new account, with the role its address gives it. Partners start pending
-// and the approver is asked.
+// A new account, with the role its address gives it. Partners and faculty
+// start pending and the approver is asked, unless the address is itself an
+// approver's.
 async function createUser(
   env: AccountEnv,
   req: Request,
@@ -386,7 +391,7 @@ async function createUser(
     email,
     name,
     role,
-    status: role === "partner" ? "pending" : "active",
+    status: "active",
     avatar,
     roles: JSON.stringify([role]),
     org_id: null,
@@ -394,10 +399,12 @@ async function createUser(
     level_locked: 0,
     interests: "[]",
   };
+  // isAdmin needs status "active", so the row starts active before this check.
+  if ((role === "partner" || role === "rep") && !isAdmin(env, user)) user.status = "pending";
   await env.DB.prepare("INSERT INTO users (id, email, name, role, roles, status, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
     .bind(user.id, email, name, role, user.roles, user.status, avatar, new Date().toISOString())
     .run();
-  if (role === "partner") {
+  if (user.status === "pending") {
     const stmts: D1PreparedStatement[] = [];
     const asked = await onPartnerSignUp(env, stmts, user);
     if (asked) {
@@ -406,7 +413,7 @@ async function createUser(
       await asked.after();
     } else {
       await askApproval(env, req, user);
-      await notifyAdminsOfPartner(env, stmts, user);
+      await notifyAdminsOfPending(env, stmts, user);
       await env.DB.batch(stmts);
     }
   }
@@ -441,17 +448,28 @@ export async function approvalLink(env: AccountEnv, req: Request, userId: string
   return url.toString();
 }
 
+// What an approved account is told, by role.
+export function approvedTitle(role: string): string {
+  return role === "rep" ? "The Lab approved your account." : "The Lab approved your account. Post your first problem.";
+}
+
+export function approvedEmail(user: { name: string; role: string }, siteUrl: string): string {
+  const what = user.role === "rep" ? "Log in to review student work" : "Log in to post problems for our students";
+  return `Hi ${user.name},\n\nThe Applied AI Lab approved your account. ${what}:\n${siteUrl}/login\n\nApplied AI Lab, Weber State University`;
+}
+
 async function askApproval(env: AccountEnv, req: Request, user: UserRow): Promise<void> {
   const link = await approvalLink(env, req, user.id);
   if (!env.RESEND_API_KEY) {
-    console.log(`Approve partner ${user.email}: ${link}`);
+    console.log(`Approve ${user.role === "rep" ? "faculty" : "partner"} ${user.email}: ${link}`);
     return;
   }
+  const faculty = user.role === "rep";
   await sendEmail(
     env,
     env.APPROVER_EMAIL,
-    `New partner on Projectum: ${user.name}`,
-    `${user.name} (${user.email}) signed up as a partner organization.\n\nApprove them, so they can post problems:\n${link}\n\nIf you don't recognize them, ignore this email and they stay pending.`,
+    `New ${faculty ? "faculty" : "partner"} on Projectum: ${user.name}`,
+    `${user.name} (${user.email}) signed up as ${faculty ? "faculty" : "a partner organization"}.\n\nApprove them, so they can ${faculty ? "review student work" : "post problems"}:\n${link}\n\nIf you don't recognize them, ignore this email and they stay pending.`,
   );
 }
 
@@ -481,32 +499,33 @@ export async function approvePartner(req: Request, env: AccountEnv): Promise<Res
     .first<UserRow>();
   if (!user) return page("No such account", "It may have been deleted.", 404);
   if (req.method !== "POST") {
-    if (user.status !== "pending") return page("Already approved", `${escapeHtml(user.name)} can post problems.`);
+    const faculty = user.role === "rep";
+    if (user.status !== "pending") return page("Already approved", `${escapeHtml(user.name)} is approved.`);
     return page(
       `Approve ${user.name}?`,
-      `${escapeHtml(user.name)} (${escapeHtml(user.email)}) signed up as a partner organization. Once approved, they can post problems for students.` +
+      `${escapeHtml(user.name)} (${escapeHtml(user.email)}) signed up as ${faculty ? "faculty. Once approved, they can review student work" : "a partner organization. Once approved, they can post problems for students"}.` +
         `</p><form method="post"><button style="font:inherit;padding:.6rem 1.2rem;border-radius:999px;border:0;background:#111;color:#fff;cursor:pointer">Approve</button></form><p>`,
     );
   }
   if (user.status === "pending") {
     await env.DB.prepare("UPDATE users SET status = 'active' WHERE id = ?").bind(id).run();
-    await ensureOrgFor(env, user);
+    if (user.role === "partner") await ensureOrgFor(env, user);
     const stmts: D1PreparedStatement[] = [];
     emit(env, stmts, {
       type: "account.approved",
       actor: null,
       subject: { kind: "user", id },
-      notify: [{ userIds: [id], title: "The Lab approved your account. Post your first problem.", href: "/projectum" }],
+      notify: [{ userIds: [id], title: approvedTitle(user.role), href: "/projectum" }],
     });
     await env.DB.batch(stmts);
     await sendEmail(
       env,
       user.email,
       "You're approved on Projectum",
-      `Hi ${user.name},\n\nThe Applied AI Lab approved your account. Log in to post problems for our students:\n${env.SITE_URL}/login\n\nApplied AI Lab, Weber State University`,
+      approvedEmail(user, env.SITE_URL),
     );
   }
-  return page("Approved", `${escapeHtml(user.name)} (${escapeHtml(user.email)}) can now post problems.`);
+  return page("Approved", `${escapeHtml(user.name)} (${escapeHtml(user.email)}) is approved.`);
 }
 
 // --- Signed-in requests ----------------------------------------------------
@@ -550,13 +569,17 @@ async function updateMe(req: Request, env: AccountEnv, user: UserRow, json: Json
     const picked = [...new Set(body.interests.filter((t): t is string => typeof t === "string" && offered.has(t)))];
     next.interests = JSON.stringify(picked);
   }
+  if ("digest" in body) {
+    if (typeof body.digest !== "boolean") return json({ error: "digest" }, 400);
+    next.digest = body.digest ? 1 : 0;
+  }
   if ("avatar" in body) {
     if (body.avatar !== null && !isThumbnail(body.avatar)) return json({ error: "avatar" }, 400);
     next.avatar = body.avatar as string | null;
   }
   for (let tries = 0; ; tries++) {
-    const r = await env.DB.prepare("UPDATE users SET name = ?, avatar = ?, profile_public = ?, handle = ?, hide_name = ?, interests = ? WHERE id = ?")
-      .bind(next.name, next.avatar, next.profile_public ?? 0, next.handle ?? null, next.hide_name ?? 0, next.interests ?? "[]", user.id)
+    const r = await env.DB.prepare("UPDATE users SET name = ?, avatar = ?, profile_public = ?, handle = ?, hide_name = ?, interests = ?, digest = ? WHERE id = ?")
+      .bind(next.name, next.avatar, next.profile_public ?? 0, next.handle ?? null, next.hide_name ?? 0, next.interests ?? "[]", next.digest ?? 0, user.id)
       .run()
       .catch((e: unknown) => e);
     if (!(r instanceof Error)) break;

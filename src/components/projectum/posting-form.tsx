@@ -8,6 +8,7 @@
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
+import { ChevronDown } from "lucide-react";
 import { copy } from "@/content/copy";
 import { ApiError, useAccount } from "@/lib/account";
 import { HANDOFF } from "@/lib/pipeline/handoffs";
@@ -18,6 +19,7 @@ import { useTaxonomy } from "@/components/projectum/pipeline-ui";
 import { tagsFromText } from "@/components/projectum/posting-helpers";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import {
   Dialog,
   DialogClose,
@@ -35,6 +37,9 @@ import { Textarea } from "@/components/ui/textarea";
 const P = copy.projectum.pipeline;
 const F = P.postingForm;
 const NO_EFFORT = "none";
+
+// The optional "more detail" text fields, in the order they show.
+const DETAIL_FIELDS = ["businessModel", "why", "dependencies", "achieves", "goal", "keyMilestones"] as const;
 
 type Errors = Partial<Record<PostingIssue | "form", string>>;
 
@@ -69,6 +74,17 @@ function PostingFormBody({
   const [effort, setEffort] = React.useState<"" | Effort>(posting?.effort ?? "");
   const [deliverable, setDeliverable] = React.useState(posting?.deliverable ?? "");
   const [deadline, setDeadline] = React.useState(posting?.deadline ?? "");
+  const [detail, setDetail] = React.useState<Record<(typeof DETAIL_FIELDS)[number], string>>({
+    businessModel: posting?.businessModel ?? "",
+    why: posting?.why ?? "",
+    dependencies: posting?.dependencies ?? "",
+    achieves: posting?.achieves ?? "",
+    goal: posting?.goal ?? "",
+    keyMilestones: posting?.keyMilestones ?? "",
+  });
+  const [driveUrl, setDriveUrl] = React.useState(posting?.driveUrl ?? "");
+  // Open from the start when there is already something in it.
+  const [moreOpen, setMoreOpen] = React.useState(!!posting && (!!posting.driveUrl || DETAIL_FIELDS.some((k) => !!posting[k])));
   const [errors, setErrors] = React.useState<Errors>({});
   const [pending, setPending] = React.useState(false);
   const [confirming, setConfirming] = React.useState(false);
@@ -80,12 +96,17 @@ function PostingFormBody({
   // Kept disciplines stand even if the taxonomy retired them since.
   const allowed = [...(taxonomy?.disciplines.map((d) => d.slug) ?? []), ...(posting?.disciplines ?? [])];
   const draft = () =>
-    cleanPosting({ title, summary, details, disciplines, tags: tagsFromText(tags), effort, deliverable, deadline }, allowed);
+    cleanPosting(
+      { title, summary, details, disciplines, tags: tagsFromText(tags), effort, deliverable, deadline, ...detail, driveUrl },
+      allowed,
+    );
 
   const showIssues = (issues: string[]) => {
-    const known = issues.filter((i): i is PostingIssue => i === "title" || i === "summary" || i === "disciplines");
+    const known = issues.filter((i): i is PostingIssue => i === "title" || i === "summary" || i === "disciplines" || i === "driveUrl");
     setErrors(Object.fromEntries(known.map((i) => [i, F.errors[i]])));
-    if (known[0]) document.getElementById(`${ids}-${known[0]}`)?.focus();
+    if (known[0] === "driveUrl") setMoreOpen(true);
+    // The link's field is not on the page until the disclosure has opened.
+    if (known[0]) setTimeout(() => document.getElementById(`${ids}-${known[0]}`)?.focus(), 0);
     return known.length > 0;
   };
 
@@ -289,6 +310,47 @@ function PostingFormBody({
           </div>
         </div>
       </div>
+
+      <Collapsible open={moreOpen} onOpenChange={setMoreOpen} className="grid gap-4 rounded-lg border p-4">
+        <CollapsibleTrigger className="flex w-full items-center justify-between text-left text-sm font-medium">
+          {F.moreDetail}
+          <ChevronDown className={`size-4 transition-transform ${moreOpen ? "rotate-180" : ""}`} />
+        </CollapsibleTrigger>
+        <CollapsibleContent className="grid gap-5">
+          <p className="text-xs text-muted-foreground">{F.moreDetailHelp}</p>
+          <div className="grid gap-x-8 gap-y-5 md:grid-cols-2">
+            {DETAIL_FIELDS.map((k) => (
+              <div key={k} className="grid gap-2">
+                <Label htmlFor={`${ids}-${k}`}>{F[k]}</Label>
+                <Textarea
+                  id={`${ids}-${k}`}
+                  value={detail[k]}
+                  rows={3}
+                  className="min-h-20"
+                  maxLength={LIMITS.detail}
+                  onChange={(e) => setDetail((d) => ({ ...d, [k]: e.target.value }))}
+                />
+              </div>
+            ))}
+          </div>
+          <div className="grid gap-2">
+            <Label htmlFor={`${ids}-driveUrl`}>{F.driveUrl}</Label>
+            <Input
+              id={`${ids}-driveUrl`}
+              type="url"
+              value={driveUrl}
+              maxLength={LIMITS.driveUrl}
+              aria-invalid={errors.driveUrl ? true : undefined}
+              aria-describedby={describe("driveUrl", true)}
+              onChange={(e) => setDriveUrl(e.target.value)}
+            />
+            <p id={`${ids}-driveUrl-help`} className="text-xs text-muted-foreground">
+              {F.driveUrlHelp}
+            </p>
+            <FieldError id={`${ids}-driveUrl-error`} text={errors.driveUrl} />
+          </div>
+        </CollapsibleContent>
+      </Collapsible>
 
       {errors.form && (
         <p role="alert" className="text-sm text-destructive">

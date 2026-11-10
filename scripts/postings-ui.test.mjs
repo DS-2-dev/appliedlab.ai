@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-const { disciplineFacets, matchesDisciplines, postingSortKey, sortPostings, tagsFromText, latestReturnNotes } = await import(
+const { disciplineFacets, matchesDisciplines, postingSortKey, sortPostings, tagsFromText, latestReturnNotes, disciplineNames, emptyTeamsNote } = await import(
   "../src/components/projectum/posting-helpers.ts"
 );
 
@@ -60,4 +60,44 @@ test("latestReturnNotes gives the newest decided round's notes only when it was 
   assert.equal(latestReturnNotes([{ round: 2, status: "open", feedback: "" }, returned]), "Say who uses it.");
   assert.equal(latestReturnNotes([returned, { round: 2, status: "approved", feedback: "" }]), "");
   assert.equal(latestReturnNotes([]), "");
+});
+
+const { cleanPosting, postingIssues, isHttpsUrl } = await import("../src/lib/problems.ts");
+
+test("a posting's Drive link must be empty or https", () => {
+  const issues = (driveUrl) => postingIssues(cleanPosting({ title: "Snow", driveUrl }, []), { forSubmit: false });
+  assert.deepEqual(issues(""), []);
+  assert.deepEqual(issues("https://drive.google.com/drive/folders/abc"), []);
+  for (const bad of ["javascript:alert(1)", "http://example.com", "data:text/html,hi", "example.com", "https://"]) {
+    assert.deepEqual(issues(bad), ["driveUrl"], bad);
+  }
+  assert.equal(isHttpsUrl("https://a b.com"), false);
+});
+
+test("cleanPosting keeps the detail fields and defaults them to empty", () => {
+  assert.equal(cleanPosting({}, []).why, "");
+  assert.equal(cleanPosting({ keyMilestones: " one\r\ntwo " }, []).keyMilestones, "one\ntwo");
+  assert.equal(cleanPosting({ goal: "x".repeat(2500) }, []).goal.length, 2000);
+});
+
+test("disciplineNames names an archived discipline too, and ignores archived tags", () => {
+  const names = disciplineNames({
+    disciplines: [{ slug: "finance", name: "Finance" }],
+    retired: [
+      { slug: "design", name: "Design", kind: "discipline" },
+      { slug: "pricing", name: "Pricing", kind: "tag" },
+    ],
+  });
+  assert.equal(names.get("finance"), "Finance");
+  assert.equal(names.get("design"), "Design");
+  assert.equal(names.has("pricing"), false);
+  assert.equal(disciplineNames(undefined).size, 0);
+});
+
+test("emptyTeamsNote says the teams are private when the posting has some the viewer cannot see", () => {
+  assert.equal(emptyTeamsNote(false, { open: 0, delivered: 0 }), "none");
+  assert.equal(emptyTeamsNote(false, { open: 2, delivered: 0 }), "private");
+  assert.equal(emptyTeamsNote(false, { open: 0, delivered: 1 }), "private");
+  assert.equal(emptyTeamsNote(true, { open: 0, delivered: 0 }), "partner");
+  assert.equal(emptyTeamsNote(true, { open: 3, delivered: 0 }), "partner");
 });

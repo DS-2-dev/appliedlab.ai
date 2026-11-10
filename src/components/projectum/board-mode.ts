@@ -1,6 +1,6 @@
 // How the board page treats a board from GET /boards: which entry an id
 // names, whether this account edits it, finds it locked while a gate
-// decides (its own team), or only views it (a partner, staff, a colleague),
+// decides (its own team), or only views it (a partner, staff),
 // and when its stage moves are open.
 // Pure, for scripts/board-mode.test.mjs.
 
@@ -13,13 +13,9 @@ export type BoardMode = "edit" | "locked" | "view";
 // (worker/src/boards.ts LOCKED).
 const LOCKED: readonly ProjectStatus[] = ["plan_review", "submission_review", "delivered", "completion_review"];
 
-// The entry with this board: the whole board, or for a colleague only its
-// brief.
-export function findBoard<E extends Pick<BoardEntry, "project"> & { brief?: Pick<BoardEntry["brief"], "id"> }>(
-  entries: readonly E[],
-  id: string,
-): E | null {
-  return entries.find((e) => (e.project?.id ?? e.brief?.id) === id) ?? null;
+// The entry with this board.
+export function findBoard<E extends Pick<BoardEntry, "project">>(entries: readonly E[], id: string): E | null {
+  return entries.find((e) => e.project?.id === id) ?? null;
 }
 
 // Whether the board's own stage moves (Move to Prototype, Submit work) are

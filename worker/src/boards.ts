@@ -18,7 +18,7 @@ import { boardStageFor } from "@/lib/pipeline/machines";
 import type { ProjectStatus } from "@/lib/pipeline/domain";
 import { isAdmin, type AccountEnv, type Json, type UserRow } from "./accounts";
 import { json as parse, marks, now, uuid } from "./db";
-import { projectView, viewerOf, PRE_APPROVAL } from "./projects";
+import { projectView, viewerOf } from "./projects";
 
 type Env = AccountEnv;
 
@@ -266,8 +266,7 @@ async function latestMeetings(env: Env, projectIds: string[]) {
 let ensured = false;
 
 // Every board the viewer may see: their own and their team's, every one for
-// staff, a partner's once the plan is approved, a colleague's once its plan
-// is approved (read-only). A board with no project shows only to its owner
+// staff, a partner's once the plan is approved. A board with no project shows only to its owner
 // and admins.
 async function listBoards(env: Env, user: UserRow, json: Json): Promise<Response> {
   if (!ensured) {
@@ -288,7 +287,6 @@ async function listBoards(env: Env, user: UserRow, json: Json): Promise<Response
     if (!r.project_id || !r.status) return r.owner_id === user.id || v.admin ? [{ r, view: "full" as const }] : [];
     const view = projectView(r.status, { kind: r.posting_kind ?? "partner", org_id: r.posting_org }, Boolean(r.on_team), v);
     if (view === "none" || (r.status === "withdrawn" && !v.admin)) return [];
-    if (view === "colleague" && PRE_APPROVAL.includes(r.status)) return [];
     return [{ r, view }];
   });
   const ids = shown.flatMap(({ r }) => (r.project_id ? [r.project_id] : []));
@@ -298,11 +296,9 @@ async function listBoards(env: Env, user: UserRow, json: Json): Promise<Response
       const project = readBoard(r.data, r.status);
       if (!project) return [];
       const pid = r.project_id;
-      // A colleague gets the card, not the board: no plan, links or notes.
-      const outline = view === "colleague";
       return [
         {
-          project: outline ? null : project,
+          project: project,
           brief: {
             id: project.id,
             name: project.name,
@@ -313,16 +309,16 @@ async function listBoards(env: Env, user: UserRow, json: Json): Promise<Response
           },
           owner: { id: r.owner_id, name: r.owner_name, role: r.owner_role },
           onTeam: pid ? Boolean(r.on_team) : r.owner_id === user.id,
-          editable: !outline && accessFor(r, user, v.admin) === "edit",
-          submission: pid && !outline ? ((view === "partner" ? subs.accepted : subs.latest).get(pid) ?? null) : null,
-          selection: pid && !outline ? (picked.get(pid) ?? null) : null,
-          meeting: pid && !outline ? (met.get(pid) ?? null) : null,
+          editable: accessFor(r, user, v.admin) === "edit",
+          submission: pid ? ((view === "partner" ? subs.accepted : subs.latest).get(pid) ?? null) : null,
+          selection: pid ? (picked.get(pid) ?? null) : null,
+          meeting: pid ? (met.get(pid) ?? null) : null,
           projectId: pid,
           status: r.status,
           postingId: r.posting_id,
           postingTitle: r.posting_title,
           // The posting's organization, so the page knows its partners.
-          postingOrgId: outline ? null : r.posting_org,
+          postingOrgId: r.posting_org,
           view,
         },
       ];

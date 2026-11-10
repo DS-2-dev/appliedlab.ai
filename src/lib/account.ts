@@ -39,6 +39,8 @@ export interface Account {
   claudeAccess: boolean;
   hideName: boolean;
   interests: string[];
+  // Whether the daily digest email of unread notifications is on.
+  digest: boolean;
 }
 
 export type AccountState =
@@ -280,6 +282,7 @@ export async function updateAccount(patch: {
   profilePublic?: boolean;
   hideName?: boolean;
   interests?: string[];
+  digest?: boolean;
 }): Promise<void> {
   const { user } = await api<{ user: Account }>("/me", { method: "PATCH", body: JSON.stringify(patch) });
   set({ status: "signed-in", account: user });

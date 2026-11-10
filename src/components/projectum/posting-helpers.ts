@@ -1,6 +1,6 @@
 // Small pure rules the posting views share: the notice board's discipline
-// filter, when a posting last moved, the tags box, and the notes a returned
-// posting came back with. Pure, so scripts/postings-ui.test.mjs runs them.
+// filter, when a posting last moved, the tags box, the notes a returned
+// posting came back with, and the empty teams note. Pure, so scripts/postings-ui.test.mjs runs them.
 
 type Moved = {
   createdAt: string;
@@ -62,4 +62,24 @@ export function tagsFromText(text: string): string[] {
 export function latestReturnNotes(reviews: readonly { round: number; status: string; feedback: string }[]): string {
   const decided = reviews.filter((r) => r.status !== "open").sort((a, b) => b.round - a.round)[0];
   return decided?.status === "returned" ? decided.feedback : "";
+}
+
+// Discipline slug to name, from the active terms and the archived ones, so an
+// old posting still reads by name.
+export function disciplineNames(
+  t: { disciplines: { slug: string; name: string }[]; retired?: { slug: string; name: string; kind: string }[] } | undefined,
+): Map<string, string> {
+  const names = new Map<string, string>();
+  for (const r of t?.retired ?? []) if (r.kind === "discipline") names.set(r.slug, r.name);
+  for (const d of t?.disciplines ?? []) names.set(d.slug, d.name);
+  return names;
+}
+
+// Which note the teams list shows when it comes back empty. The organization
+// that posted sees teams once the Lab approves their plans. Anyone else gets
+// no rows for teams they are not on, so a posting that has teams says their
+// work is private rather than that there are none.
+export function emptyTeamsNote(partner: boolean, counts: { open: number; delivered: number }): "partner" | "private" | "none" {
+  if (partner) return "partner";
+  return counts.open + counts.delivered > 0 ? "private" : "none";
 }

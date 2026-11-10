@@ -23,5 +23,6 @@ test("errorText maps codes", () => {
   assert.match(errorText("plan", ["title"]), /title/);
   assert.match(errorText("state"), /Reload/);
   assert.match(errorText("feedback"), /notes/);
+  assert.match(errorText("blocked"), /can't reopen/);
   assert.equal(errorText("zzz"), "Something went wrong.");
 });

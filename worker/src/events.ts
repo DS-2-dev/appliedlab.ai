@@ -21,6 +21,12 @@ export type EmitInput = {
 // Pushes one events row and one notifications row per recipient. The actor
 // never hears about their own action; ids repeat within a group only once,
 // but a person in two groups gets a notification for each.
+//
+// Each person's notification_prefs for the kind apply as the row is
+// written: in_app = 0 skips it, unless it is a court item (the court list
+// and the bell's count need those), and email sets email_pending for
+// sendPendingEmails (notify.ts). With no saved pref, the role default
+// applies, which is email off for every role (src/lib/notification-kinds.ts).
 export function emit(env: AccountEnv, stmts: D1PreparedStatement[], e: EmitInput): void {
   const id = crypto.randomUUID();
   const at = new Date().toISOString();
@@ -34,10 +40,13 @@ export function emit(env: AccountEnv, stmts: D1PreparedStatement[], e: EmitInput
   for (const group of e.notify) {
     const ids = [...new Set(group.userIds.filter((u) => u && u !== actorId))];
     for (const userId of ids) {
+      const court = group.court ? 1 : 0;
       stmts.push(
         env.DB.prepare(
-          "INSERT INTO notifications (id, user_id, kind, title, href, court, event_id, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-        ).bind(crypto.randomUUID(), userId, e.type, group.title.slice(0, 200), group.href, group.court ? 1 : 0, id, at),
+          "INSERT INTO notifications (id, user_id, kind, title, href, court, event_id, created_at, email_pending) " +
+            "SELECT ?, ?, ?, ?, ?, ?, ?, ?, COALESCE((SELECT email FROM notification_prefs WHERE user_id = ? AND kind = ?), 0) " +
+            "WHERE ? = 1 OR NOT EXISTS (SELECT 1 FROM notification_prefs WHERE user_id = ? AND kind = ? AND in_app = 0)",
+        ).bind(crypto.randomUUID(), userId, e.type, group.title.slice(0, 200), group.href, court, id, at, userId, e.type, court, userId, e.type),
       );
     }
   }

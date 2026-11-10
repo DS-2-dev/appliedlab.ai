@@ -3,7 +3,9 @@
 //   GET  /overview                every posting, project and account, the organizations and pending join requests (admin)
 //   POST /accounts/:id/status     { status: active|removed } (admin)
 //   POST /accounts/:id/claude     { granted } a member's funded Claude account (admin)
-//   POST /partners/:id/approve    a pending partner, in the app (admin)
+//   POST /accounts/:id/level      { level: affiliate|sponsored|builder } a member's level, set only here (admin)
+//   POST /accounts/:id/approve    a pending partner or faculty account, in the app (admin)
+//   POST /partners/:id/approve    the same, kept as an alias
 //   GET  /profiles/:handle        public, no account needed
 //
 // /overview keeps the shape the site's overview reads (problems, claims,
@@ -13,7 +15,7 @@
 import type { AccountRole } from "@/lib/email-rules";
 import type { ProjectStatus } from "@/lib/pipeline/domain";
 import { cleanProjects } from "@/lib/projects";
-import { isAdmin, isStaff, sendEmail, type AccountEnv, type Json, type UserRow } from "./accounts";
+import { approvedEmail, approvedTitle, isAdmin, isStaff, sendEmail, type AccountEnv, type Json, type UserRow } from "./accounts";
 import { json as parse } from "./db";
 import { emit } from "./events";
 import { ensureOrgFor } from "./orgs";
@@ -209,35 +211,64 @@ async function setClaudeAccess(req: Request, env: Env, id: string, json: Json): 
   return r.meta.changes ? json({ ok: true }) : json({ error: "not-found" }, 404);
 }
 
-async function approvePartnerInApp(env: Env, actor: UserRow, id: string, json: Json): Promise<Response> {
-  const p = await env.DB.prepare("SELECT id, email, name, status, org_id FROM users WHERE id = ? AND role = 'partner'")
+const LEVEL_TITLES: Record<string, string> = {
+  affiliate: "You are now an Affiliate",
+  sponsored: "You are now a Sponsored member",
+  builder: "You are now a Builder",
+};
+
+// An admin sets a member's level. Nothing else moves it, and the member hears
+// when it changes. Setting the level they already hold is a quiet no-op.
+async function setLevel(req: Request, env: Env, actor: UserRow, id: string, json: Json): Promise<Response> {
+  const body = ((await req.json().catch(() => null)) ?? {}) as Record<string, unknown>;
+  const level = typeof body.level === "string" && Object.hasOwn(LEVEL_TITLES, body.level) ? body.level : null;
+  if (!level) return json({ error: "level" }, 400);
+  const target = await env.DB.prepare("SELECT role, level FROM users WHERE id = ?").bind(id).first<{ role: AccountRole; level: string | null }>();
+  if (!target) return json({ error: "not-found" }, 404);
+  if (target.role !== "member") return json({ error: "level" }, 400);
+  if (target.level === level) return json({ ok: true, level });
+  const stmts = [env.DB.prepare("UPDATE users SET level = ? WHERE id = ? AND role = 'member'").bind(level, id)];
+  emit(env, stmts, {
+    type: "member.level_changed",
+    actor,
+    subject: { kind: "user", id },
+    payload: { level },
+    notify: [{ userIds: [id], title: LEVEL_TITLES[level], href: "/projectum" }],
+  });
+  await env.DB.batch(stmts);
+  return json({ ok: true, level });
+}
+
+async function approveAccountInApp(env: Env, actor: UserRow, id: string, json: Json): Promise<Response> {
+  const p = await env.DB.prepare("SELECT id, email, name, role, status, org_id FROM users WHERE id = ? AND role IN ('partner', 'rep')")
     .bind(id)
-    .first<{ id: string; email: string; name: string; status: string; org_id: string | null }>();
+    .first<{ id: string; email: string; name: string; role: string; status: string; org_id: string | null }>();
   if (!p) return json({ error: "not-found" }, 404);
   if (p.status === "pending") {
     const r = await env.DB.prepare("UPDATE users SET status = 'active' WHERE id = ? AND status = 'pending'").bind(id).run();
-    if (!r.meta.changes) return json({ ok: true });
-    const org = await ensureOrgFor(env, p);
+    if (!r.meta.changes) return json({ error: "state" }, 409);
+    const org = p.role === "partner" ? await ensureOrgFor(env, p) : null;
     const stmts: D1PreparedStatement[] = [];
     emit(env, stmts, {
       type: "account.approved",
       actor,
       subject: { kind: "user", id },
-      orgId: org.id,
-      notify: [{ userIds: [id], title: "The Lab approved your account. Post your first problem.", href: "/projectum" }],
+      orgId: org?.id,
+      notify: [{ userIds: [id], title: approvedTitle(p.role), href: "/projectum" }],
     });
     await env.DB.batch(stmts);
     await sendEmail(
       env,
       p.email,
       "You're approved on Projectum",
-      `Hi ${p.name},\n\nThe Applied AI Lab approved your account. Log in to post problems for our students:\n${env.SITE_URL}/login\n\nApplied AI Lab, Weber State University`,
+      approvedEmail(p, env.SITE_URL),
     );
+    return json({ ok: true });
   }
-  return json({ ok: true });
+  return json({ error: "state" }, 409);
 }
 
-// /overview, /accounts/:id/(status|claude) and /partners/:id/approve, all
+// /overview, /accounts/:id/(status|claude|level|approve) and /partners/:id/approve, all
 // the admin's.
 export async function handleAdmin(req: Request, env: Env, user: UserRow, json: Json): Promise<Response | null> {
   const { pathname } = new URL(req.url);
@@ -245,13 +276,15 @@ export async function handleAdmin(req: Request, env: Env, user: UserRow, json: J
   if (!isAdmin(env, user)) return json({ error: "forbidden" }, 403);
   const m = req.method;
   if (pathname === "/overview") return m === "GET" ? overview(env, json) : json({ error: "method" }, 405);
-  let match = pathname.match(/^\/accounts\/([\w-]{1,64})\/(status|claude)$/);
+  let match = pathname.match(/^\/accounts\/([\w-]{1,64})\/(status|claude|level|approve)$/);
   if (match) {
     if (m !== "POST") return json({ error: "method" }, 405);
+    if (match[2] === "level") return setLevel(req, env, user, match[1], json);
+    if (match[2] === "approve") return approveAccountInApp(env, user, match[1], json);
     return match[2] === "status" ? setPersonStatus(req, env, user, match[1], json) : setClaudeAccess(req, env, match[1], json);
   }
   match = pathname.match(/^\/partners\/([\w-]{1,64})\/approve$/);
-  if (match) return m === "POST" ? approvePartnerInApp(env, user, match[1], json) : json({ error: "method" }, 405);
+  if (match) return m === "POST" ? approveAccountInApp(env, user, match[1], json) : json({ error: "method" }, 405);
   return json({ error: "not-found" }, 404);
 }
 

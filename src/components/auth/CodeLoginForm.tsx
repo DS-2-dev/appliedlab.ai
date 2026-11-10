@@ -24,7 +24,7 @@ import {
 } from "@/lib/account";
 import { type AccountRole, looksLikeEmail, normalizeEmail, roleForEmail } from "@/lib/email-rules";
 import { Field, describedBy, inputClass } from "@/components/ui/Field";
-import { AuthAlert, AuthDivider, authButton, authLink } from "./AuthShell";
+import { AuthAlert, AuthDivider, authButton, authLink, authSecondary } from "./AuthShell";
 import { GoogleButton } from "./GoogleButton";
 import { SubmitButton } from "./SubmitButton";
 
@@ -216,7 +216,7 @@ export function CodeLoginForm({
     return (
       <div className="space-y-4">
         <AuthAlert message={formError} />
-        <p className="px-5 text-[13px] leading-none font-medium text-black/70">{C.rolePrompt}</p>
+        <p className="text-sm/4 font-semibold text-[#1f1f1f]">{C.rolePrompt}</p>
         <div role="group" aria-label={C.rolePrompt} className="grid gap-2">
           {ROLES.map((r) => (
             <button
@@ -226,7 +226,7 @@ export function CodeLoginForm({
                 setRole(r);
                 setError(null);
               }}
-              className={`${authButton} border border-black/10 bg-white text-ink hover:border-black/20 hover:bg-black/[0.03]`}
+              className={`${authButton} ${authSecondary}`}
             >
               {C.roles[r].label}
             </button>
@@ -239,10 +239,10 @@ export function CodeLoginForm({
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-4">
       {role && step === "email" && (
-        <div className="flex items-baseline justify-between gap-4 rounded-2xl bg-black/[0.04] px-5 py-3 text-sm">
+        <div className="flex items-baseline justify-between gap-4 rounded-lg bg-[#f4f4f4] px-4 py-3 text-sm/[17px]">
           <span>
-            <span className="font-medium">{C.roles[role].label}.</span>{" "}
-            <span className="text-black/60">{C.roles[role].hint}</span>
+            <span className="font-semibold text-[#1f1f1f]">{C.roles[role].label}.</span>{" "}
+            <span className="font-medium text-[#737378]">{C.roles[role].hint}</span>
           </span>
           <button
             type="button"
@@ -287,7 +287,7 @@ export function CodeLoginForm({
 
       {step === "password" && (
         <>
-          <p className="px-5 text-center text-sm leading-snug text-black/60">{email}</p>
+          <p className="text-sm/[17px] font-medium text-[#737378]">{email}</p>
           {/* The address rides along hidden so password managers pair the two. */}
           <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
           <Field id="password" label={C.passwordLabel} error={fieldError("password")}>
@@ -310,13 +310,13 @@ export function CodeLoginForm({
 
       {(step === "code" || step === "details") && (
         <>
-          <p role="status" className="px-5 text-center text-sm leading-snug text-black/60">
+          <p role="status" className="text-sm/[17px] font-medium text-[#737378]">
             {C.codeSent.replace("{email}", email)}
           </p>
           {devCode && (
-            <p className="px-5 text-center text-xs text-black/45">{C.devNote.replace("{code}", devCode)}</p>
+            <p className="text-xs/[14px] font-medium text-[#9a9aa1]">{C.devNote.replace("{code}", devCode)}</p>
           )}
-          {note && <p className="px-5 text-center text-xs text-black/45">{note}</p>}
+          {note && <p className="text-xs/[14px] font-medium text-[#9a9aa1]">{note}</p>}
           <Field id="code" label={C.codeLabel} error={fieldError("code")}>
             <input
               id="code"
@@ -329,14 +329,14 @@ export function CodeLoginForm({
               readOnly={step === "details"}
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
-              className={`${inputClass} tracking-[0.4em] tabular-nums`}
+              className={`${inputClass} tracking-[0.3em] tabular-nums`}
               aria-invalid={fieldError("code") ? true : undefined}
               aria-describedby={describedBy("code", undefined, fieldError("code"))}
             />
           </Field>
           {step === "details" && needs.name && (
             <>
-              <p className="px-5 text-sm leading-snug text-black/60">{C.nameIntro}</p>
+              <p className="text-sm/[17px] font-medium text-[#737378]">{C.nameIntro}</p>
               <Field id="name" label={C.nameLabel} help={C.nameHelp} error={fieldError("name")}>
                 <input
                   id="name"
@@ -356,7 +356,7 @@ export function CodeLoginForm({
           {step === "details" && needs.password && (
             <>
               {!needs.name && (
-                <p className="px-5 text-sm leading-snug text-black/60">{reset ? C.resetIntro : C.newPasswordIntro}</p>
+                <p className="text-sm/[17px] font-medium text-[#737378]">{reset ? C.resetIntro : C.newPasswordIntro}</p>
               )}
               <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
               <Field id="newPassword" label={C.newPasswordLabel} help={C.passwordHelp} error={fieldError("newPassword")}>
@@ -396,7 +396,7 @@ export function CodeLoginForm({
       />
 
       {step === "password" && (
-        <p className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm">
+        <p className="flex flex-wrap gap-x-5 gap-y-2 text-sm/4">
           <button type="button" className={authLink} onClick={() => void send(true)}>
             {C.forgot}
           </button>
@@ -410,7 +410,7 @@ export function CodeLoginForm({
       )}
 
       {(step === "code" || step === "details") && (
-        <p className="flex justify-center gap-5 text-sm">
+        <p className="flex flex-wrap gap-x-5 gap-y-2 text-sm/4">
           <button
             type="button"
             className={authLink}

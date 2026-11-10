@@ -22,6 +22,8 @@ export type HandoffCopy = {
   lead?: string;
   steps: string[];
   note?: string;
+  /** The label over the notes box, for a move that asks its own question. */
+  prompt?: string;
   confirm: string;
 };
 
@@ -195,7 +197,13 @@ export const HANDOFF: Record<string, (c: CopyCtx) => HandoffCopy> = {
       "The project moves to Withdrawn. Your milestones and history are kept for the record.",
       "The posting stays open for other members, and you can claim it again later.",
     ],
+    prompt: "Why are you releasing this claim?",
     confirm: "Release claim",
+  }),
+  "project.reopen": (c) => ({
+    title: "Reopen this project?",
+    steps: [`The project goes back to where ${c.member}'s team left it, with its milestones and history.`, "The team is notified."],
+    confirm: "Reopen",
   }),
 };
 

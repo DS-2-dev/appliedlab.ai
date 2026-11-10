@@ -23,7 +23,6 @@ type Project = {
 };
 type BoardData = { id: string; name: string; stage: string; plan: { thesis: string; reasoning: string; techStack: string; steps: Array<{ id: string; text: string; ownerId: string }> } | null };
 type BoardEntry = {
-  // Null for a colleague, who gets the brief.
   project: BoardData;
   brief: { id: string; name: string; description: string; thumbnail: string | null; stage: string; people: Array<{ id: string; name: string; role: string | null }> };
   submission: unknown;
@@ -146,8 +145,10 @@ describe("projects", () => {
     expect(p.transitions.sort()).toEqual(["submitPlan", "withdraw"]);
     expect(await boardStage(env, id)).toBe("solidifying");
 
-    const outline = await project(env, eli.token, id);
-    expect(outline).toMatchObject({ view: "colleague", status: "claimed", reviews: [], transitions: [], boardId: null });
+    // Another member sees nothing of it, staff see all of it.
+    expect((await getProject(env, eli.token, id)).status).toBe(404);
+    expect(((await (await call(env, eli.token, "GET", "/projects?posting=P1")).json()) as { projects: Project[] }).projects).toEqual([]);
+    expect(await boards(env, eli.token)).toEqual([]);
     expect((await getProject(env, dana.token, id)).status).toBe(404);
     expect((await getProject(env, theo.token, id)).status).toBe(404);
 
@@ -187,7 +188,7 @@ describe("projects", () => {
     expect(empty.status).toBe(400);
     expect(await empty.json()).toEqual({ error: "plan", issues: ["approach", "milestones"] });
 
-    expect((await call(env, eli.token, "PUT", `/projects/${id}/plan`, PLAN)).status).toBe(403);
+    expect((await call(env, eli.token, "PUT", `/projects/${id}/plan`, PLAN)).status).toBe(404);
     const saved = await call(env, maya.token, "PUT", `/projects/${id}/plan`, PLAN);
     expect(saved.status).toBe(200);
     expect(((await saved.json()) as Project).plan).toEqual(PLAN);
@@ -218,7 +219,7 @@ describe("projects", () => {
   });
 
   it("the action-plan gate: submit, own-project refusal, return with notes, round 2, approve", async () => {
-    const { env, dana, rep, rep2, maya, sam, eli } = await seed();
+    const { env, dana, rep, rep2, maya, sam, eli, admin } = await seed();
     const sent: Array<{ to: string[]; subject: string; text: string }> = [];
     env.RESEND_API_KEY = "test";
     vi.spyOn(globalThis, "fetch").mockImplementation(async (_url, init) => {
@@ -281,8 +282,8 @@ describe("projects", () => {
     expect(live.status).toBe("active");
     expect(live.reviews[0]).toMatchObject({ round: 2, status: "approved", feedback: "Good plan" });
     const levels = await env.DB.prepare("SELECT id, level FROM users WHERE id IN (?, ?)").bind(maya.user.id, sam.user.id).all<{ level: string }>();
-    expect(levels.results.map((r) => r.level)).toEqual(["sponsored", "sponsored"]);
-    expect(await notes(env, maya.user.id, "member.level_changed")).toHaveLength(1);
+    expect(levels.results.map((r) => r.level)).toEqual(["affiliate", "affiliate"]);
+    expect(await notes(env, maya.user.id, "member.level_changed")).toEqual([]);
     expect(await notes(env, maya.user.id, "project.plan_approved")).toEqual([
       { court: 1, title: "Your plan for “Snow removal pricing” was approved. Your board is open.", href: `/projectum?project=${live.boardId}` },
     ]);
@@ -295,23 +296,19 @@ describe("projects", () => {
     const onPosting = (await (await call(env, dana.token, "GET", "/projects?posting=P1")).json()) as { projects: Project[] };
     expect(onPosting.projects.map((x) => x.id)).toEqual([id]);
     expect((await boards(env, dana.token)).map((x) => x.view)).toEqual(["partner"]);
-    // A colleague gets the card, never the board or the Lab's notes.
     await env.DB.prepare(
       "INSERT INTO submissions (id, project_id, board_id, submitted_by, report_name, report_size, status, review_note, created_at) " +
         "VALUES ('s_1', ?, ?, ?, 'r.pdf', 10, 'returned', 'Secret notes for the team', ?)",
     )
       .bind(id, live.boardId, maya.user.id, AT)
       .run();
-    const seen = await boards(env, eli.token);
-    expect(seen).toEqual([
-      expect.objectContaining({ view: "colleague", project: null, submission: null, selection: null, editable: false, onTeam: false }),
-    ]);
-    expect(seen[0].brief).toMatchObject({ id: live.boardId, name: "Snow removal pricing", stage: "solidifying" });
-    expect(seen[0].brief.people.map((p) => p.id).sort()).toEqual([maya.user.id, sam.user.id].sort());
-    const text = JSON.stringify(seen[0]);
-    expect(text).not.toContain("reviewNote");
-    expect(text).not.toContain("Secret notes");
-    expect(text).not.toContain(PLAN.approach);
+    // Another member sees neither the project nor its board.
+    expect((await getProject(env, eli.token, id)).status).toBe(404);
+    expect(await boards(env, eli.token)).toEqual([]);
+    // Staff still see it.
+    expect((await getProject(env, rep.token, id)).status).toBe(200);
+    expect((await getProject(env, admin.token, id)).status).toBe(200);
+    expect((await boards(env, rep.token)).map((x) => x.view)).toEqual(["full"]);
     // The team still gets the board and the notes.
     expect((await boards(env, maya.token))[0].submission).toMatchObject({ reviewNote: "Secret notes for the team" });
     const base2 = await env.DB.prepare("SELECT reason FROM milestone_baselines WHERE project_id = ? ORDER BY taken_at, reason").bind(id).all<{ reason: string }>();
@@ -327,22 +324,17 @@ describe("projects", () => {
     expect(await lost.json()).toEqual({ error: "state" });
     expect(await notes(env, maya.user.id, "project.plan_approved")).toHaveLength(1);
     expect(await notes(env, eli.user.id, "project.plan_approved")).toHaveLength(1);
-    expect(await notes(env, eli.user.id, "member.level_changed")).toHaveLength(1);
+    expect(await notes(env, eli.user.id, "member.level_changed")).toEqual([]);
   });
 
-  it("approval leaves locked and already sponsored members alone, and tells only those promoted", async () => {
+  it("approval leaves every team member's level as it was", async () => {
     const { env, rep, maya, eli, sam } = await seed();
     const id = await inReview(env, maya.token, [eli.user.id, sam.user.id]);
-    await env.DB.batch([
-      env.DB.prepare("UPDATE users SET level_locked = 1 WHERE id = ?").bind(eli.user.id),
-      env.DB.prepare("UPDATE users SET level = 'sponsored' WHERE id = ?").bind(sam.user.id),
-    ]);
+    await env.DB.prepare("UPDATE users SET level = 'sponsored' WHERE id = ?").bind(sam.user.id).run();
     expect((await move(env, rep.token, id, "approvePlan")).status).toBe(200);
     const level = async (uid: string) => (await env.DB.prepare("SELECT level FROM users WHERE id = ?").bind(uid).first<{ level: string }>())!.level;
-    expect([await level(maya.user.id), await level(eli.user.id), await level(sam.user.id)]).toEqual(["sponsored", "affiliate", "sponsored"]);
-    expect(await notes(env, maya.user.id, "member.level_changed")).toHaveLength(1);
-    expect(await notes(env, eli.user.id, "member.level_changed")).toEqual([]);
-    expect(await notes(env, sam.user.id, "member.level_changed")).toEqual([]);
+    expect([await level(maya.user.id), await level(eli.user.id), await level(sam.user.id)]).toEqual(["affiliate", "affiliate", "sponsored"]);
+    expect(await notes(env, maya.user.id, "member.level_changed")).toEqual([]);
   });
 
   it("withdraw from active closes open reviews and the board", async () => {
@@ -353,7 +345,7 @@ describe("projects", () => {
       .bind(id, AT)
       .run();
     const [b] = await boards(env, maya.token);
-    expect((await move(env, maya.token, id, "withdraw")).status).toBe(200);
+    expect((await move(env, maya.token, id, "withdraw", "Took an internship")).status).toBe(200);
     const row = await env.DB.prepare("SELECT status, withdrawn_at FROM projects WHERE id = ?").bind(id).first<{ status: string; withdrawn_at: string }>();
     expect(row).toMatchObject({ status: "withdrawn", withdrawn_at: expect.any(String) });
     expect((await env.DB.prepare("SELECT COUNT(*) AS n FROM reviews WHERE subject_id = ? AND status = 'open'").bind(id).first<{ n: number }>())!.n).toBe(0);

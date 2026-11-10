@@ -387,3 +387,54 @@ html.theme-fade::view-transition-new(theme-switch) {
   background: var(--background);
   color: var(--foreground);
 }
+
+/* The landing (app/page.tsx). Hovered, the mark turns a sixth of a turn
+   and settles, then turns back quicker when the pointer leaves; a tile and
+   its name lift 10px together, easing in and out, and drop back quicker
+   with a slight dip past rest; links fade to grey. On load the page rises in, a beat
+   apart. */
+.home-mark {
+  transition: transform 200ms cubic-bezier(0.5, 1, 0.89, 1);
+}
+.home-mark:hover,
+.home-mark:focus-visible {
+  transform: rotate(60deg);
+  transition: transform 600ms cubic-bezier(0.35, 0.2, 0, 1);
+}
+.home-lift {
+  transition: transform 320ms cubic-bezier(0.4, 1.6, 0.4, 1);
+}
+.home-lift:hover,
+.home-lift:focus-visible {
+  transform: translateY(-10px);
+  transition: transform 400ms cubic-bezier(0.65, 0, 0.45, 1);
+}
+.home-link {
+  transition: color 200ms ease-out;
+}
+.home-link:hover,
+.home-link:focus-visible {
+  color: #737378;
+}
+@keyframes home-rise {
+  from {
+    opacity: 0;
+    transform: translateY(16px);
+  }
+}
+.home-rise {
+  animation: home-rise 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
+  animation-delay: calc(var(--i, 0) * 70ms);
+}
+@media (prefers-reduced-motion: reduce) {
+  .home-mark,
+  .home-mark:hover,
+  .home-lift,
+  .home-lift:hover {
+    transform: none;
+    transition: none;
+  }
+  .home-rise {
+    animation: none;
+  }
+}
