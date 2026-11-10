@@ -3,6 +3,7 @@ import { Archivo, Inter, JetBrains_Mono, Geist } from "next/font/google";
 import { copy } from "@/content/copy";
 import "./globals.css";
 import { cn } from "@/lib/utils";
+import { DARK_FIRST_PAINT, THEME_COOKIE } from "@/components/projectum/theme";
 
 // shadcn's face (2026-09-11), scoped to the Projectum app by .projectum-ui in
 // globals.css. The rest of the site keeps Inter.
@@ -27,6 +28,13 @@ export const metadata: Metadata = {
   description: copy.meta.description,
 };
 
+// Projectum's saved dark theme, applied before the first paint when a page
+// load lands on it. It lives here because the root layout is only rendered
+// into the HTML: React won't run a script a client navigation renders, and
+// warns about one, so arriving by navigation is left to ThemeSync
+// (projectum-view.tsx).
+const DARK_IF_SAVED = `if(location.pathname.startsWith("/projectum")&&document.cookie.split("; ").includes("${THEME_COOKIE}=dark")){${DARK_FIRST_PAINT}}`;
+
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     // Projectum's dark mode adds a class here before React hydrates.
@@ -35,6 +43,9 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       suppressHydrationWarning
       className={cn("h-full antialiased", inter.variable, jetbrains.variable, geist.variable, archivo.variable)}
     >
+      <head>
+        <script dangerouslySetInnerHTML={{ __html: DARK_IF_SAVED }} />
+      </head>
       <body className="min-h-full flex flex-col">{children}</body>
     </html>
   );
