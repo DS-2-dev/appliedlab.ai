@@ -33,8 +33,8 @@ const ART: Record<string, () => ReactNode> = {
   students: () => <Photo src="/tiles/students.webp" position="center 40%" />,
   // A shelf of books, from language and poetry to typography and finance.
   faculty: () => <Photo src="/tiles/faculty.webp" position="center 62%" />,
-  // A working office: a leather-topped desk among shelves of books.
-  partners: () => <Photo src="/tiles/partners.webp" position="45% center" />,
+  // A glass bridge joining two buildings: the Lab and its partners.
+  partners: () => <Photo src="/tiles/partners.webp" />,
 };
 
 // `ratio` overrides the tile's own shape, for the wide picture at the top

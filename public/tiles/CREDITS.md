@@ -9,4 +9,4 @@ Lab may use each one on a public site before relying on it.
 | how.webp | An illustration of a chip, with an arm carrying work along a path | Supplied by Dante, artist unknown | Unknown |
 | students.webp | Three students at a Commodore PET 2001 | Supplied by Dante, original source unknown | Unknown |
 | faculty.webp | A shelf of books | Supplied by Dante | Unknown (confirm with Dante) |
-| partners.webp | An office with a leather-topped desk and bookshelves (architectural interior photograph) | Supplied by Dante, photographer unknown | Unknown |
+| partners.webp | A glass bridge between two buildings at dusk (architectural photograph) | Supplied by Dante, photographer unknown | Unknown |
