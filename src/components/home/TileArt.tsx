@@ -31,8 +31,8 @@ const ART: Record<string, () => ReactNode> = {
   how: () => <Photo src="/tiles/how.webp" />,
   // Students at a computer, working a problem together.
   students: () => <Photo src="/tiles/students.webp" position="center 40%" />,
-  // A researcher at a terminal, checking the work on screen.
-  faculty: () => <Photo src="/tiles/faculty.webp" position="35% center" />,
+  // A shelf of books, from language and poetry to typography and finance.
+  faculty: () => <Photo src="/tiles/faculty.webp" position="center 62%" />,
   // Bingham Canyon, Utah's copper mine, about 1942 (Andreas Feininger).
   partners: () => <Photo src="/tiles/partners.webp" />,
 };
