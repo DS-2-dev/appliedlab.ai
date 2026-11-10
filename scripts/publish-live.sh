@@ -18,6 +18,11 @@ LIVE="${LIVE_CLONE:-${TMPDIR:-/tmp}/appliedlab-live}"
 REMOTE="git@github.com:DS-2-dev/appliedlab.ai.git"
 MESSAGE="${1:?Give a commit message}"
 
+# macOS clears old files out of the temp folder, which can leave a clone
+# whose .git is an empty shell. Start over from a fresh clone then.
+if [ -e "$LIVE" ] && ! git -C "$LIVE" rev-parse --git-dir >/dev/null 2>&1; then
+  rm -rf "$LIVE"
+fi
 if [ -d "$LIVE/.git" ]; then
   git -C "$LIVE" fetch -q "$REMOTE" main
   git -C "$LIVE" reset -q --hard FETCH_HEAD
