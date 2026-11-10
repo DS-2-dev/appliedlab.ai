@@ -10,12 +10,14 @@
 // In your court, with Your Projects under them; partners My Postings, their
 // Organization and In your court; reps the Notice Board, Reviews, All
 // Projects and In your court; admins also Reviews and the Overview. The
-// badges come from the polled shell (shell-store.ts). At the bottom sits
-// the profile, which opens Settings in a dialog, where Log out also lives.
+// badges come from the polled shell (shell-store.ts). At the bottom sit a
+// link back to the main site and the profile, which opens Settings in a
+// dialog, where Log out also lives.
 
 import * as React from "react";
 import Link from "next/link";
 import {
+  ArrowLeft,
   Building2,
   ClipboardCheck,
   FolderKanban,
@@ -183,6 +185,12 @@ export function AppSidebar({
       {/* The profile is the way into Settings, a dialog over the view. */}
       <SidebarFooter>
         <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip={S.backToSite} render={<Link href="/" />}>
+              <ArrowLeft />
+              <span>{S.backToSite}</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
           <SidebarMenuItem>
             {/* Already tucked in: the avatar sits where the folded bar puts
                 it, so folding only narrows the bar and the avatar never

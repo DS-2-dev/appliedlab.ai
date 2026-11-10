@@ -653,6 +653,7 @@ export const copy = {
       accountTitle: "Account",
       accountDescription: "Log out of Projectum on this device.",
     },
+    backToSite: "Back to main site",
     logout: "Log out",
     toggle: "Toggle sidebar",
     // The bell at the top of the sidebar: what happened that concerns this
