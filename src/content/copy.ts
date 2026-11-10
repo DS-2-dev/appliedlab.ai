@@ -882,6 +882,7 @@ export const copy = {
       // After an accepted submission: a meeting, the internship, phase 2.
       phase: {
         requestMeeting: "Request meeting",
+        requestAnother: "Request another meeting",
         meetingTitle: "Request a meeting",
         meetingDescription: "The Lab introduces you to the team by email. Add anything they should know first.",
         meetingPlaceholder: "Optional. A time that works, or what you'd like to cover.",

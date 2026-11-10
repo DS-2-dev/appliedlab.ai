@@ -395,6 +395,11 @@ describe("phase 2", () => {
     expect((await call(env, rep.token, "POST", `/meetings/${meetingId}/arranged`)).status).toBe(200);
     expect(await env.DB.prepare("SELECT status FROM meetings WHERE id = ?").bind(meetingId).first()).toEqual({ status: "scheduled" });
     expect((await entry(dana.token)).meeting).toMatchObject({ id: meetingId, status: "scheduled" });
+    // Once it is arranged the partner can ask again, and the board shows the new one.
+    const again = await call(env, dana.token, "POST", `/projects/${id}/meeting`, { message: "Follow-up" });
+    expect(again.status).toBe(201);
+    const { id: secondId } = (await again.json()) as { id: string };
+    expect((await entry(dana.token)).meeting).toMatchObject({ id: secondId, status: "requested", message: "Follow-up" });
   });
 });
 

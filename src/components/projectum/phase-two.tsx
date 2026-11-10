@@ -16,6 +16,7 @@ import { LIMITS, type PhaseMilestone } from "@/lib/problems";
 import { ApiError } from "@/lib/account";
 import { type Meeting, type Selection, refresh, send } from "@/components/projectum/pipeline-store";
 import { formatDate } from "@/components/projectum/pipeline-ui";
+import { reloadProjects } from "@/components/projectum/project-store";
 import { errorText } from "@/components/projectum/transition-buttons";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -123,7 +124,8 @@ function MessageDialog({
 }
 
 // The partner's buttons on a team whose submission the Lab accepted, or
-// where each step stands once taken. Bringing the team on shows only while
+// where each step stands once taken. Once a meeting is arranged they can
+// ask for another; one request waits at a time. Bringing the team on shows only while
 // the Worker allows it (`canIntegrate`).
 export function PartnerActions({
   projectId,
@@ -143,15 +145,16 @@ export function PartnerActions({
   const [selecting, setSelecting] = React.useState(false);
   return (
     <div className="flex flex-wrap items-center gap-2" data-partner-actions="">
-      {meeting ? (
+      {meeting && (
         <Badge variant="outline">
           <CalendarCheck />
           {meeting.status !== "requested" ? F.meetingArranged : F.meetingRequested}
         </Badge>
-      ) : (
+      )}
+      {meeting?.status !== "requested" && (
         <Button variant="outline" size="sm" onClick={() => setAsking(true)}>
           <CalendarCheck />
-          {F.requestMeeting}
+          {meeting ? F.requestAnother : F.requestMeeting}
         </Button>
       )}
       {selection ? (
@@ -222,9 +225,12 @@ export function StaffMeeting({ meeting }: { meeting: Meeting }) {
           try {
             await send(`/meetings/${encodeURIComponent(meeting.id)}/arranged`, "POST");
           } catch (e) {
-            // Someone else marked it first: load the latest instead.
-            if (e instanceof ApiError && e.code === "state") refresh();
-            else setFailed(true);
+            // Someone else marked it first: load the latest instead. The
+            // meeting rides on the board, so the boards load again too.
+            if (e instanceof ApiError && e.code === "state") {
+              refresh();
+              reloadProjects();
+            } else setFailed(true);
           } finally {
             setBusy(false);
           }
@@ -399,7 +405,10 @@ export function PhasePanel({
             } catch (e) {
               const code = e instanceof ApiError ? e.code : "";
               setCompleteError(code === "forbidden" ? errorText("forbidden") : code === "state" ? errorText("state") : F.completeFailed);
-              if (code === "state") refresh();
+              if (code === "state") {
+                refresh();
+                reloadProjects();
+              }
             } finally {
               setCompleting(false);
             }
