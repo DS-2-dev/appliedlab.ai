@@ -426,7 +426,42 @@ html.theme-fade::view-transition-new(theme-switch) {
   animation: home-rise 800ms cubic-bezier(0.22, 1, 0.36, 1) both;
   animation-delay: calc(var(--i, 0) * 70ms);
 }
+/* Ask the Lab (components/AskTheLab.tsx): each message rises in as it
+   arrives, an answer's words fade in one after another as they stream, and
+   the mark turns slowly while the answer is on its way. */
+@keyframes ask-message {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+@keyframes ask-piece {
+  from {
+    opacity: 0;
+    filter: blur(2px);
+  }
+}
+@keyframes ask-thinking {
+  to {
+    transform: rotate(360deg);
+  }
+}
+.ask-message {
+  animation: ask-message 450ms cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.ask-piece {
+  animation: ask-piece 500ms ease-out both;
+}
+.ask-thinking {
+  animation: ask-thinking 2.4s linear infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
+  .ask-message,
+  .ask-piece,
+  .ask-thinking {
+    animation: none;
+  }
   .home-mark,
   .home-mark:hover,
   .home-lift,

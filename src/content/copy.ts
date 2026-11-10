@@ -115,9 +115,8 @@ export const copy = {
       students: {
         meta: ["Any major", "No experience needed"],
         body: [
-          "Every student starts as an Affiliate. An approved project earns funding, and implementing it with a partner can lead to an internship.",
+          "Every student starts as an Affiliate, and the Lab sets each member's level as their work grows, from an approved project to an internship with a partner.",
           "Members claim problems from the notice board with an action plan, and faculty approve it before the work begins.",
-          "Every level up is earned and recognized.",
         ],
         cta: { label: "Start as an Affiliate", href: "/signup" },
         panels: [
@@ -130,7 +129,7 @@ export const copy = {
             ],
           },
           {
-            label: "What you earn",
+            label: "What each level brings",
             items: [
               { title: "At Sponsored", body: "A Lab-funded Claude account" },
               { title: "At Builder", body: "An internship with a partner" },
@@ -335,10 +334,10 @@ export const copy = {
       {
         id: "roles",
         label: "Student Roles",
-        title: "Three levels, each one earned",
-        body: "Every student starts as an Affiliate. An approved project earns funding, and implementing it with a partner can lead to an internship.",
+        title: "Three levels, set by the Lab",
+        body: "Every student starts as an Affiliate, and the Lab sets each member's level as their work grows, from an approved project to an internship with a partner.",
         cta: { label: "Start as an Affiliate", href: "join" },
-        earnLabel: "What you earn",
+        earnLabel: "What each level brings",
         earn: [
           { when: "At Sponsored", what: "A Lab-funded Claude account" },
           { when: "At Builder", what: "An internship with a partner" },
@@ -360,7 +359,7 @@ export const copy = {
             points: ["Implements the work with a partner", "Hired as an intern", "Featured on the partner's profile"],
           },
         ],
-        footnote: "Every level up is earned and recognized.",
+        footnote: "Each member's level shows on their profile, and the Lab moves it up at every step.",
       },
       {
         id: "partners",
@@ -419,10 +418,12 @@ export const copy = {
     placeholder: "Ask about meetings, projects or partnering",
     send: "Send",
     thinking: "Thinking",
-    footnote: "Answers are written by AI and can be wrong. For anything that matters, email ailab@weber.edu.",
+    footnote: "Answers are drawn from the Lab's own material and written by AI. For anything that matters, email ailab@weber.edu.",
     offline: "The assistant isn't connected on this version of the site yet. Email ailab@weber.edu and we'll answer there.",
     error: "The assistant couldn't answer just now. Email ailab@weber.edu and we'll answer there.",
     reset: "New chat",
+    // The empty chat, before the first question.
+    empty: "Ask about meetings, projects, partnering or anything else about the Lab.",
   },
 
   // The landing's footer (2026-09-16). Microcopy.

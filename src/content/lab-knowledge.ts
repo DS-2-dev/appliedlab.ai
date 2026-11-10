@@ -49,20 +49,22 @@ Phase 2, the integrated pipeline.
 7. Project completion: shipped work, an industry relationship, and a line on the résumé.
 Why a pipeline: it creates low-stakes experience opportunities that grow into student-business relationships, with little friction.
 
-## Student roles (three levels, each earned)
+## Student roles (three levels, set by the Lab)
 - Level 1, Affiliate: registered with the Lab, attends events and meetings, no responsibilities. Every student starts here.
 - Level 2, Sponsored: working an approved project, attends two meetings a month, and gets a Claude account funded by the Lab.
 - Level 3, Builder: actively implementing with an organization, hired as an intern by a partner, and featured on the partner's profile.
-- The path: start as an Affiliate, earn funding, get hired.
+- The Lab's Admins set each member's level by hand. Members do not move up automatically. The Lab moves a member up as their work grows: Sponsored once they work an approved project, Builder once they implement it with a partner.
+- The path: start as an Affiliate, work an approved project, then implement it with a partner. The Lab sets the level at each step.
 
 ## The platform (live on this site as Projectum, at appliedlab.ai/projectum)
-- Signing up: at appliedlab.ai/signup, a person picks student, faculty or business and gets a 6-digit code by email (Google sign-in is being set up). Students use their @mail.weber.edu address and faculty their @weber.edu address. Businesses use their own email, and the Lab approves each new business before it can post.
+- Signing up: at appliedlab.ai/signup, a person picks student, faculty or business and gets a 6-digit code by email, then sets a password for later sign-ins (Google sign-in is being set up). Students use their @mail.weber.edu address and faculty their @weber.edu address. Businesses use their own email. The Lab approves each new faculty account and each new business before they can use Projectum.
 - Notice board: partners post as many problems as they like, tagged by field (finance, accounting, business, computer science, design, mathematics, marketing). Several teams can work one problem in parallel.
 - Claiming: a student, alone or with teammates, claims a problem with an action plan (an approach and milestones, each with how success is judged). The Lab reviews and approves it. Students can also propose a project of their own the same way.
 - The board: an approved plan opens the team's board, where it moves from Solidifying to Prototype with a build log the partner can follow, then to Submitted.
 - Submitting: the team uploads a final report (a PDF) and credits each person. The Lab reviews it first, then the partner reads it.
 - After acceptance: the partner can ask the Lab to introduce them to the team, and can select the team for an internship. That opens phase 2, a checklist of implementation milestones, until the partner marks the project complete.
-- Levels and profiles: a student's level (Affiliate, Sponsored, Builder) follows from their projects, and a student can turn on a public profile page showing their level and work. Sponsored students get a Lab-funded Claude account.
+- Levels and profiles: the Lab's Admins set each student's level (Affiliate, Sponsored, Builder), and a student can turn on a public profile page showing their level and work. Sponsored students get a Lab-funded Claude account.
+- Privacy: each project is visible only to its own team, the partner organization once the plan is approved, and the Lab's staff. Other students do not see it.
 
 ## For organizations (partners)
 - The Lab looks for the problems that surface at an organization's front line or in the heat of its operations, which usually a worker, a middle manager or an engineer knows best.
