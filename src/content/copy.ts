@@ -194,6 +194,12 @@ export const copy = {
     },
     footerSchool: "Weber State University",
     footerSchoolHref: "https://www.weber.edu",
+    // When the Lab meets, under the intro (components/home/Meetings.tsx).
+    // The times and rooms themselves are data (data/settings.json and
+    // data/events.json).
+    meetings: { label: "Meetings", next: "Next", unconfirmed: "(to be confirmed)" },
+    // The footer's credit, at the right.
+    credit: { lead: "Made by AI, designed by", name: "Dante Smith", href: "https://dantesmith.studio" },
     footerLinks: [
       { label: "E-mail", href: "mailto:ailab@weber.edu" },
       { label: "LinkedIn", href: "https://www.linkedin.com/company/applied-ai-lab-at-wsu/" },

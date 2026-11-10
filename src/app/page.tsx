@@ -11,6 +11,7 @@ import { copy } from "@/content/copy";
 import { TileArt } from "@/components/home/TileArt";
 import { INK, SiteFrame, at } from "@/components/home/SiteFrame";
 import { AskTheLab } from "@/components/AskTheLab";
+import { Meetings } from "@/components/home/Meetings";
 
 const H = copy.home;
 
@@ -19,9 +20,19 @@ export default function Home() {
     <SiteFrame>
       {/* 180px above the intro, less on a short screen so the footer still
           fits without scrolling. */}
-      <div className="home-rise pt-[clamp(80px,calc(100svh-690px),180px)] pb-5" style={at(1)}>
-        <h1 className={INK}>{copy.nav.wordmark}</h1>
-        <p className="mt-2 max-w-[300px] text-sm/[17px] font-medium text-[#737378]">{H.intro}</p>
+      {/* The intro, and when the Lab meets beside it, lined up with the
+          grid's columns below; stacked on a phone. */}
+      <div
+        className="home-rise grid grid-cols-2 items-end gap-x-3 gap-y-6 pt-[clamp(80px,calc(100svh-690px),180px)] pb-5 min-[810px]:grid-cols-4 min-[1200px]:grid-cols-5"
+        style={at(1)}
+      >
+        <div className="col-span-2">
+          <h1 className={INK}>{copy.nav.wordmark}</h1>
+          <p className="mt-2 max-w-[300px] text-sm/[17px] font-medium text-[#737378]">{H.intro}</p>
+        </div>
+        <div className="col-span-2 min-[810px]:col-span-1">
+          <Meetings />
+        </div>
       </div>
 
       <ul className="grid grid-cols-2 items-start gap-x-3 gap-y-8 min-[810px]:grid-cols-4 min-[1200px]:grid-cols-5">

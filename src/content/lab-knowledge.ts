@@ -25,7 +25,7 @@ export const LAB_KNOWLEDGE = `
 - A laptop helps but is not required. The first weeks start from zero.
 
 ## Weekly meetings
-- Meetings are weekly, in the Shepherd Union at Weber State.
+- Meetings are weekly, in the Shepherd Union at Weber State, room 320 (SU 320).
 - Meetings flex between three modes:
   - Collective: standard lecture style, briefly covering a general topic together.
   - Focused: solo work, with one-on-one time with Lab leadership, case by case.

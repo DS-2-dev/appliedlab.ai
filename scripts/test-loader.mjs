@@ -1,6 +1,7 @@
 // Lets `node --test` load the site's TypeScript the way the bundler does:
 // `@/` means src/, and an import may leave off its .ts extension. Node
-// strips the types itself. Used by `npm test` (package.json).
+// strips the types itself, and JSON imports get the attribute Node needs.
+// Used by `npm test` (package.json).
 
 import { existsSync, statSync } from "node:fs";
 import { registerHooks } from "node:module";
@@ -23,5 +24,11 @@ registerHooks({
         : null;
     const file = base && find(base);
     return next(file ? pathToFileURL(file).href : specifier, context);
+  },
+  // The bundler imports JSON (data/*.json) without an import attribute;
+  // Node wants one, so add it.
+  load(url, context, next) {
+    if (!url.endsWith(".json")) return next(url, context);
+    return next(url, { ...context, importAttributes: { ...context.importAttributes, type: "json" } });
   },
 });

@@ -1,6 +1,7 @@
 // The frame shared by the landing and its tile pages (app/page.tsx,
 // app/[slug]/page.tsx): the mark and two links across the top, the page,
-// and a three-part footer low on the screen. Inter at 14px throughout. The
+// and a three-part footer low on the screen: the Lab and its school, links,
+// and the site's credit. Inter at 14px throughout. The
 // motion lives in globals.css under .home-*. The account pages leave the
 // two links out (`links={false}`): someone signing in has one job.
 
@@ -55,7 +56,12 @@ export function SiteFrame({ children, links = true }: { children: ReactNode; lin
             </Link>
           ))}
         </nav>
-        <p className={`text-xs/[14px] min-[810px]:text-right ${MUTED}`}>{copy.footer.place}</p>
+        <p className={`text-xs/[14px] min-[810px]:text-right ${MUTED}`}>
+          {H.credit.lead}{" "}
+          <a href={H.credit.href} target="_blank" rel="noopener noreferrer" className="home-link">
+            {H.credit.name}
+          </a>
+        </p>
       </footer>
     </div>
   );
