@@ -3,7 +3,9 @@
 // Sign-in is a 6-digit code sent to the address, so the address is proven
 // and the role taken from its domain (src/lib/email-rules.ts) can be
 // trusted: @weber.edu is a rep, @mail.weber.edu a member, anything else a
-// partner. A first sign-in also asks for a name and makes the account.
+// partner. A first sign-in also asks for a name and a password and makes the
+// account; after that the password signs in on its own (src/passwords.ts),
+// and a code still works, which is also how a forgotten password is reset.
 // Partners start pending; the Lab's approver gets an email with a link that
 // approves them.
 //
@@ -20,6 +22,7 @@ import { activeDisciplineSlugs } from "./taxonomy";
 import { ensureOrgFor, notifyAdminsOfPartner, onPartnerSignUp } from "./orgs";
 import { isThumbnail } from "@/lib/projects";
 import { ROLES, type Level, type Role } from "@/lib/pipeline/domain";
+import { MAX_PASSWORD, checkPassword, hashPassword, passwordProblem } from "./passwords";
 
 export interface AccountEnv {
   DB: D1Database;
@@ -278,7 +281,13 @@ async function startLogin(req: Request, env: AccountEnv, ip: string, json: Json)
 }
 
 async function verifyLogin(req: Request, env: AccountEnv, ip: string, json: Json): Promise<Response> {
-  const body = (await req.json().catch(() => null)) as { email?: unknown; code?: unknown; name?: unknown } | null;
+  const body = (await req.json().catch(() => null)) as {
+    email?: unknown;
+    code?: unknown;
+    name?: unknown;
+    password?: unknown;
+    reset?: unknown;
+  } | null;
   const email = typeof body?.email === "string" ? normalizeEmail(body.email) : "";
   const code = typeof body?.code === "string" ? body.code.replace(/\D/g, "") : "";
   if (!email || code.length !== 6) return json({ error: "code" }, 400);
@@ -297,24 +306,68 @@ async function verifyLogin(req: Request, env: AccountEnv, ip: string, json: Json
   if (!row) return json({ error: "expired" }, 400);
   if (!same(row.code_hash, await sha256(`${env.AUTH_SECRET}:${email}:${code}`))) return json({ error: "code" }, 400);
 
-  let user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?`)
+  let user = await env.DB.prepare(`SELECT ${USER_COLS}, password_hash FROM users WHERE email = ?`)
     .bind(email)
-    .first<UserRow>();
+    .first<UserRow & { password_hash: string | null }>();
   if (user?.status === "removed") return json({ error: "removed" }, 403);
 
-  if (!user) {
-    // A new account needs a name. The code stays good, so the form can ask
-    // and send it again.
-    const name = cleanPersonName(body?.name);
-    if (!name) {
-      // A right code that only lacked a name doesn't count as a guess.
-      await env.DB.prepare("UPDATE login_codes SET attempts = attempts - 1 WHERE email = ?").bind(email).run();
-      return json({ needsName: true });
-    }
-    user = await createUser(env, req, email, name, null);
+  // A new account needs a name, and every account needs a password: a new
+  // one, one from before passwords, or one being reset. The code stays good,
+  // so the form can ask and send it again.
+  const name = cleanPersonName(body?.name);
+  const password = typeof body?.password === "string" ? body.password : "";
+  const needsName = !user && !name;
+  const needsPassword = (!user?.password_hash || body?.reset === true) && !password;
+  const weak = password ? passwordProblem(password) : null;
+  if (needsName || needsPassword || weak) {
+    // A right code that only lacked these doesn't count as a guess.
+    await env.DB.prepare("UPDATE login_codes SET attempts = attempts - 1 WHERE email = ?").bind(email).run();
+    if (weak) return json({ error: weak }, 400);
+    return json({ ...(needsName && { needsName: true }), ...(needsPassword && { needsPassword: true }) });
   }
 
-  await env.DB.prepare("DELETE FROM login_codes WHERE email = ?").bind(email).run();
+  const replacing = Boolean(user?.password_hash);
+  if (!user) user = { ...(await createUser(env, req, email, name, null)), password_hash: null };
+  const stmts: D1PreparedStatement[] = [env.DB.prepare("DELETE FROM login_codes WHERE email = ?").bind(email)];
+  if (password) {
+    stmts.push(env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?").bind(await hashPassword(password), user.id));
+    // A new password signs out everywhere else, in case the old one leaked.
+    if (replacing) stmts.push(env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id));
+  }
+  await env.DB.batch(stmts);
+  return json({ token: await issueSession(env, user.id), user: await accountOut(user, env) });
+}
+
+// Whether the address signs in with a password, so the form knows whether to
+// ask for one or send a code.
+async function checkLogin(req: Request, env: AccountEnv, ip: string, json: Json): Promise<Response> {
+  const body = (await req.json().catch(() => null)) as { email?: unknown } | null;
+  const email = typeof body?.email === "string" ? normalizeEmail(body.email) : "";
+  if (!email || email.length > MAX_EMAIL || !looksLikeEmail(email)) return json({ error: "email" }, 400);
+  const byIp = await env.LOGIN_IP_LIMITER.limit({ key: `check:${ip}` });
+  if (!byIp.success) return json({ error: "limited" }, 429);
+  const row = await env.DB.prepare("SELECT status, password_hash FROM users WHERE email = ?")
+    .bind(email)
+    .first<{ status: Status; password_hash: string | null }>();
+  if (row?.status === "removed") return json({ error: "removed" }, 403);
+  return json({ password: Boolean(row?.password_hash) });
+}
+
+async function passwordLogin(req: Request, env: AccountEnv, ip: string, json: Json): Promise<Response> {
+  const body = (await req.json().catch(() => null)) as { email?: unknown; password?: unknown } | null;
+  const email = typeof body?.email === "string" ? normalizeEmail(body.email) : "";
+  const password = typeof body?.password === "string" ? body.password : "";
+  if (!email || !password || password.length > MAX_PASSWORD) return json({ error: "password" }, 400);
+
+  const byIp = await env.LOGIN_IP_LIMITER.limit({ key: `password:${ip}` });
+  const byEmail = await env.LOGIN_LIMITER.limit({ key: `password:${email}` });
+  if (!byIp.success || !byEmail.success) return json({ error: "limited" }, 429);
+
+  const user = await env.DB.prepare(`SELECT ${USER_COLS}, password_hash FROM users WHERE email = ?`)
+    .bind(email)
+    .first<UserRow & { password_hash: string | null }>();
+  if (!user?.password_hash || !(await checkPassword(password, user.password_hash))) return json({ error: "password" }, 400);
+  if (user.status === "removed") return json({ error: "removed" }, 403);
   return json({ token: await issueSession(env, user.id), user: await accountOut(user, env) });
 }
 
@@ -538,6 +591,8 @@ export async function handleAccounts(
 
   if (pathname === "/auth/start" && req.method === "POST") return startLogin(req, env, ip, json);
   if (pathname === "/auth/verify" && req.method === "POST") return verifyLogin(req, env, ip, json);
+  if (pathname === "/auth/check" && req.method === "POST") return checkLogin(req, env, ip, json);
+  if (pathname === "/auth/password" && req.method === "POST") return passwordLogin(req, env, ip, json);
 
   const isAccountPath = pathname === "/me" || pathname === "/people" || pathname === "/auth/logout";
   if (!isAccountPath) return null;

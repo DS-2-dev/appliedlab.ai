@@ -108,7 +108,7 @@ and `src/events.ts` writes the event log and the bell.
 
 | Module | Routes |
 | --- | --- |
-| `accounts.ts` | `POST /auth/start`, `/auth/verify`, `/auth/logout`; `GET /auth/google/start`, `/auth/google/callback`; `GET`/`PATCH /me`; `GET /people` |
+| `accounts.ts` | `POST /auth/start`, `/auth/verify`, `/auth/check`, `/auth/password`, `/auth/logout`; `GET /auth/google/start`, `/auth/google/callback`; `GET`/`PATCH /me`; `GET /people` |
 | `taxonomy.ts` | `GET /taxonomy` |
 | `orgs.ts` | `GET`/`PATCH /orgs/mine`, `GET /orgs/:id` (staff), `POST /orgs/mine/transfer`, `/orgs/mine/remove`, `/orgs/requests`, `/orgs/requests/:id/approve`, `/orgs/requests/:id/decline` |
 | `postings.ts` | `GET`/`POST /postings`, `GET`/`PATCH /postings/:id`, `POST /postings/:id/transition` |

@@ -1,16 +1,27 @@
 "use client";
 
-// Log in and sign up, by Google or by a code sent to the email
-// (src/lib/account.ts). The code takes three steps: the email, then the
-// 6-digit code, then, for a new address only, a name. Sign up first asks who
-// is joining, a student, faculty or an organization, and holds the email to
-// the matching domain so people use the right one. The role itself comes
-// from the address on the Worker. Once signed in it goes on to `next`.
+// Log in and sign up, by Google, by password, or by a code sent to the email
+// (src/lib/account.ts). Log in takes the email first: an account with a
+// password is asked for it, and any other gets a 6-digit code. A right code
+// then asks for whatever the account still lacks: a name for a new address,
+// and a password for any account without one. Forgot password sends a code
+// and sets a new one. Sign up first asks who is joining, a student, faculty
+// or an organization, and holds the email to the matching domain so people
+// use the right one. The role itself comes from the address on the Worker.
+// Once signed in it goes on to `next`.
 
 import * as React from "react";
 import { useRouter } from "next/navigation";
 import { copy } from "@/content/copy";
-import { ApiError, startLogin, useAccountState, verifyLogin } from "@/lib/account";
+import {
+  ApiError,
+  type StillNeeds,
+  hasPassword,
+  passwordLogin,
+  startLogin,
+  useAccountState,
+  verifyLogin,
+} from "@/lib/account";
 import { type AccountRole, looksLikeEmail, normalizeEmail, roleForEmail } from "@/lib/email-rules";
 import { Field, describedBy, inputClass } from "@/components/ui/Field";
 import { AuthAlert, AuthDivider, authButton, authLink } from "./AuthShell";
@@ -22,7 +33,9 @@ const ROLES: AccountRole[] = ["member", "rep", "partner"];
 const C = copy.auth.code;
 const E = copy.auth.errors;
 
-type Step = "email" | "code" | "name";
+type Step = "email" | "password" | "code" | "details";
+// Which field an error belongs to. "newPassword" is the one being set.
+type FieldId = "email" | "password" | "code" | "name" | "newPassword";
 
 function errorText(e: unknown): string {
   const code = e instanceof ApiError ? e.code : "";
@@ -33,6 +46,12 @@ function errorText(e: unknown): string {
       return C.errors.code;
     case "expired":
       return C.errors.expired;
+    case "password":
+      return C.errors.password;
+    case "password-short":
+      return C.errors.passwordShort;
+    case "password-long":
+      return C.errors.passwordLong;
     case "limited":
       return E.rateLimited;
     case "removed":
@@ -65,8 +84,13 @@ export function CodeLoginForm({
   const [email, setEmail] = React.useState("");
   const [code, setCode] = React.useState("");
   const [name, setName] = React.useState("");
+  const [password, setPassword] = React.useState("");
+  const [newPassword, setNewPassword] = React.useState("");
+  // A code sent from Forgot password, which sets a new one.
+  const [reset, setReset] = React.useState(false);
+  const [needs, setNeeds] = React.useState<StillNeeds>({ name: false, password: false });
   const [devCode, setDevCode] = React.useState<string | null>(null);
-  const [error, setError] = React.useState<{ field?: Step; text: string } | null>(
+  const [error, setError] = React.useState<{ field?: FieldId; text: string } | null>(
     initialError ? { text: initialError } : null,
   );
   const [note, setNote] = React.useState<string | null>(null);
@@ -77,11 +101,40 @@ export function CodeLoginForm({
     if (account.status === "signed-in") router.replace(next);
   }, [account.status, next, router]);
 
-  const send = async () => {
+  const checkedEmail = () => {
     const value = normalizeEmail(email);
     if (!value) return setError({ field: "email", text: E.emailRequired });
     if (!looksLikeEmail(value)) return setError({ field: "email", text: E.emailInvalid });
     if (role && roleForEmail(value) !== role) return setError({ field: "email", text: C.wrongEmail[role] });
+    return value;
+  };
+
+  // The email step: a password if the account has one, else a code.
+  const start = async () => {
+    const value = checkedEmail();
+    if (!value) return;
+    setPending(true);
+    setError(null);
+    try {
+      if (await hasPassword(value)) {
+        setEmail(value);
+        setPassword("");
+        setStep("password");
+        return;
+      }
+    } catch (e) {
+      setError({ text: errorText(e) });
+      return;
+    } finally {
+      setPending(false);
+    }
+    await send(false);
+  };
+
+  const send = async (forReset: boolean) => {
+    const value = checkedEmail();
+    if (!value) return false;
+    setReset(forReset);
     setPending(true);
     setError(null);
     try {
@@ -99,18 +152,42 @@ export function CodeLoginForm({
     }
   };
 
-  const verify = async () => {
-    if (step === "name" && !name.trim()) return setError({ field: "name", text: C.errors.name });
+  const logIn = async () => {
+    if (!password) return setError({ field: "password", text: C.errors.password });
     setPending(true);
     setError(null);
     try {
-      const result = await verifyLogin(email, code, step === "name" ? name : undefined);
-      if (result === "needs-name") setStep("name");
+      await passwordLogin(email, password);
     } catch (e) {
-      const text = errorText(e);
-      setError({ field: e instanceof ApiError && e.code === "code" ? "code" : undefined, text });
+      setError({ field: e instanceof ApiError && e.code === "password" ? "password" : undefined, text: errorText(e) });
+    } finally {
+      setPending(false);
+    }
+  };
+
+  const verify = async () => {
+    if (step === "details") {
+      if (needs.name && !name.trim()) return setError({ field: "name", text: C.errors.name });
+      if (needs.password && newPassword.length < 8) return setError({ field: "newPassword", text: C.errors.passwordShort });
+    }
+    setPending(true);
+    setError(null);
+    try {
+      const result = await verifyLogin(email, code, {
+        reset,
+        ...(step === "details" && needs.name && { name }),
+        ...(step === "details" && needs.password && { password: newPassword }),
+      });
+      if (result !== "signed-in") {
+        setNeeds(result);
+        setStep("details");
+      }
+    } catch (e) {
+      const c = e instanceof ApiError ? e.code : "";
+      const field: FieldId | undefined = c === "code" ? "code" : c.startsWith("password-") ? "newPassword" : undefined;
+      setError({ field, text: errorText(e) });
       // A dead code sends them back for a new one.
-      if (e instanceof ApiError && e.code === "expired") setStep("code");
+      if (c === "expired" || c === "code") setStep("code");
     } finally {
       setPending(false);
     }
@@ -119,11 +196,20 @@ export function CodeLoginForm({
   const onSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     setNote(null);
-    if (step === "email") void send();
+    if (step === "email") void start();
+    else if (step === "password") void logIn();
     else void verify();
   };
 
-  const fieldError = (field: Step) => (error?.field === field ? error.text : undefined);
+  const backToEmail = () => {
+    setStep("email");
+    setError(null);
+    setNote(null);
+    setDevCode(null);
+    setReset(false);
+  };
+
+  const fieldError = (field: FieldId) => (error?.field === field ? error.text : undefined);
   const formError = error && !error.field ? error.text : undefined;
 
   if (signup && !role) {
@@ -179,7 +265,7 @@ export function CodeLoginForm({
         </>
       )}
 
-      {step === "email" ? (
+      {step === "email" && (
         <Field id="email" label={copy.auth.fields.email.label} error={fieldError("email")}>
           <input
             id="email"
@@ -197,7 +283,32 @@ export function CodeLoginForm({
             aria-describedby={describedBy("email", undefined, fieldError("email"))}
           />
         </Field>
-      ) : (
+      )}
+
+      {step === "password" && (
+        <>
+          <p className="px-5 text-center text-sm leading-snug text-black/60">{email}</p>
+          {/* The address rides along hidden so password managers pair the two. */}
+          <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
+          <Field id="password" label={C.passwordLabel} error={fieldError("password")}>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autoComplete="current-password"
+              autoFocus
+              maxLength={200}
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className={inputClass}
+              aria-invalid={fieldError("password") ? true : undefined}
+              aria-describedby={describedBy("password", undefined, fieldError("password"))}
+            />
+          </Field>
+        </>
+      )}
+
+      {(step === "code" || step === "details") && (
         <>
           <p role="status" className="px-5 text-center text-sm leading-snug text-black/60">
             {C.codeSent.replace("{email}", email)}
@@ -215,7 +326,7 @@ export function CodeLoginForm({
               pattern="[0-9]*"
               maxLength={6}
               autoFocus={step === "code"}
-              readOnly={step === "name"}
+              readOnly={step === "details"}
               value={code}
               onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
               className={`${inputClass} tracking-[0.4em] tabular-nums`}
@@ -223,7 +334,7 @@ export function CodeLoginForm({
               aria-describedby={describedBy("code", undefined, fieldError("code"))}
             />
           </Field>
-          {step === "name" && (
+          {step === "details" && needs.name && (
             <>
               <p className="px-5 text-sm leading-snug text-black/60">{C.nameIntro}</p>
               <Field id="name" label={C.nameLabel} help={C.nameHelp} error={fieldError("name")}>
@@ -242,37 +353,75 @@ export function CodeLoginForm({
               </Field>
             </>
           )}
+          {step === "details" && needs.password && (
+            <>
+              {!needs.name && (
+                <p className="px-5 text-sm leading-snug text-black/60">{reset ? C.resetIntro : C.newPasswordIntro}</p>
+              )}
+              <input type="email" name="email" autoComplete="username" value={email} readOnly hidden />
+              <Field id="newPassword" label={C.newPasswordLabel} help={C.passwordHelp} error={fieldError("newPassword")}>
+                <input
+                  id="newPassword"
+                  name="new-password"
+                  type="password"
+                  autoComplete="new-password"
+                  autoFocus={!needs.name}
+                  maxLength={200}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  className={inputClass}
+                  aria-invalid={fieldError("newPassword") ? true : undefined}
+                  aria-describedby={describedBy("newPassword", C.passwordHelp, fieldError("newPassword"))}
+                />
+              </Field>
+            </>
+          )}
         </>
       )}
 
       <SubmitButton
         pending={pending}
-        label={step === "email" ? C.emailSubmit : step === "code" ? C.codeSubmit : C.nameSubmit}
+        label={
+          step === "email"
+            ? C.emailSubmit
+            : step === "password"
+              ? C.passwordSubmit
+              : step === "code"
+                ? C.codeSubmit
+                : needs.name
+                  ? C.nameSubmit
+                  : C.passwordSave
+        }
         pendingLabel={step === "email" ? C.emailPending : C.codePending}
       />
 
-      {step !== "email" && (
+      {step === "password" && (
+        <p className="flex flex-wrap justify-center gap-x-5 gap-y-2 text-sm">
+          <button type="button" className={authLink} onClick={() => void send(true)}>
+            {C.forgot}
+          </button>
+          <button type="button" className={authLink} onClick={() => void send(false)}>
+            {C.useCode}
+          </button>
+          <button type="button" className={authLink} onClick={backToEmail}>
+            {C.otherEmail}
+          </button>
+        </p>
+      )}
+
+      {(step === "code" || step === "details") && (
         <p className="flex justify-center gap-5 text-sm">
           <button
             type="button"
             className={authLink}
             onClick={async () => {
               setNote(null);
-              if (await send()) setNote(C.resent);
+              if (await send(reset)) setNote(C.resent);
             }}
           >
             {C.resend}
           </button>
-          <button
-            type="button"
-            className={authLink}
-            onClick={() => {
-              setStep("email");
-              setError(null);
-              setNote(null);
-              setDevCode(null);
-            }}
-          >
+          <button type="button" className={authLink} onClick={backToEmail}>
             {C.otherEmail}
           </button>
         </p>

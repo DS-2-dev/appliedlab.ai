@@ -182,18 +182,45 @@ export async function startLogin(email: string): Promise<{ devCode?: string }> {
   return api("/auth/start", { method: "POST", body: JSON.stringify({ email }) });
 }
 
-// Resolves to "needs-name" for a new address, which is asked for a name and
-// sent again with it.
-export async function verifyLogin(email: string, code: string, name?: string): Promise<"signed-in" | "needs-name"> {
-  const res = await api<{ needsName?: boolean; token?: string; user?: Account }>("/auth/verify", {
+// What a right code still lacks: a name for a new address, and a password
+// for any account without one, or one being reset (`reset`). The form asks
+// and sends the code again with them.
+export interface StillNeeds {
+  name: boolean;
+  password: boolean;
+}
+
+export async function verifyLogin(
+  email: string,
+  code: string,
+  more: { name?: string; password?: string; reset?: boolean } = {},
+): Promise<"signed-in" | StillNeeds> {
+  const res = await api<{ needsName?: boolean; needsPassword?: boolean; token?: string; user?: Account }>("/auth/verify", {
     method: "POST",
-    body: JSON.stringify({ email, code, name }),
+    body: JSON.stringify({ email, code, ...more }),
   });
-  if (res.needsName || !res.token || !res.user) return "needs-name";
-  memoryToken = res.token;
-  writeToken(res.token);
-  set({ status: "signed-in", account: res.user });
+  if (!res.token || !res.user) return { name: Boolean(res.needsName), password: Boolean(res.needsPassword) };
+  adopt(res.token, res.user);
   return "signed-in";
+}
+
+// Whether the address signs in with a password.
+export async function hasPassword(email: string): Promise<boolean> {
+  return (await api<{ password: boolean }>("/auth/check", { method: "POST", body: JSON.stringify({ email }) })).password;
+}
+
+export async function passwordLogin(email: string, password: string): Promise<void> {
+  const res = await api<{ token: string; user: Account }>("/auth/password", {
+    method: "POST",
+    body: JSON.stringify({ email, password }),
+  });
+  adopt(res.token, res.user);
+}
+
+function adopt(token: string, account: Account) {
+  memoryToken = token;
+  writeToken(token);
+  set({ status: "signed-in", account });
 }
 
 // Whether a session handed back by Google sign-in is one this tab asked for.

@@ -70,14 +70,23 @@ export async function call(
   return res;
 }
 
+export const TEST_PASSWORD = "correct horse battery";
+
 // Signs in through the real endpoints using the dev code.
 export async function signIn(env: Env, email: string, name?: string): Promise<{ token: string; user: UserRow }> {
   const start = await call(env, null, "POST", "/auth/start", { email });
   if (start.status !== 200) throw new Error(`/auth/start ${start.status}: ${await start.text()}`);
   const { devCode } = (await start.json()) as { devCode: string };
-  const verify = await call(env, null, "POST", "/auth/verify", { email, code: devCode, name });
+  let verify = await call(env, null, "POST", "/auth/verify", { email, code: devCode, name });
   if (verify.status !== 200) throw new Error(`/auth/verify ${verify.status}: ${await verify.text()}`);
-  return (await verify.json()) as { token: string; user: UserRow };
+  let out = (await verify.json()) as { token: string; user: UserRow; needsPassword?: boolean };
+  // A first sign-in also sets a password.
+  if (out.needsPassword) {
+    verify = await call(env, null, "POST", "/auth/verify", { email, code: devCode, name, password: TEST_PASSWORD });
+    if (verify.status !== 200) throw new Error(`/auth/verify ${verify.status}: ${await verify.text()}`);
+    out = (await verify.json()) as typeof out;
+  }
+  return out;
 }
 
 // Migrations 0001 to 0009 only: the schema the Worker's SQL still expects
