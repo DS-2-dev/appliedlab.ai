@@ -33,8 +33,8 @@ const ART: Record<string, () => ReactNode> = {
   students: () => <Photo src="/tiles/students.webp" position="center 40%" />,
   // A shelf of books, from language and poetry to typography and finance.
   faculty: () => <Photo src="/tiles/faculty.webp" position="center 62%" />,
-  // Bingham Canyon, Utah's copper mine, about 1942 (Andreas Feininger).
-  partners: () => <Photo src="/tiles/partners.webp" />,
+  // A working office: a leather-topped desk among shelves of books.
+  partners: () => <Photo src="/tiles/partners.webp" position="45% center" />,
 };
 
 // `ratio` overrides the tile's own shape, for the wide picture at the top
