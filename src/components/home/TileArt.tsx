@@ -27,7 +27,7 @@ function Photo({ src, position = "center" }: { src: string; position?: string })
 const ART: Record<string, () => ReactNode> = {
   // The Utah monolith, found in the desert in 2020: something new in Utah.
   about: () => <Photo src="/tiles/about.webp" position="center 45%" />,
-  // A team at work in a 1969 computer room ("The Birthplace of the Internet").
+  // A chip's floor, with an arm carrying work along a path: the pipeline.
   how: () => <Photo src="/tiles/how.webp" />,
   // Students at a computer, working a problem together.
   students: () => <Photo src="/tiles/students.webp" position="center 40%" />,
