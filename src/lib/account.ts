@@ -219,7 +219,7 @@ export async function enterArch(next = "/arch/w"): Promise<void> {
 export async function verifyLogin(
   email: string,
   code: string,
-  more: { name?: string; password?: string; reset?: boolean } = {},
+  more: { name?: string; organization?: string; password?: string; reset?: boolean } = {},
 ): Promise<"signed-in" | StillNeeds> {
   const res = await api<{ needsName?: boolean; needsPassword?: boolean; token?: string; user?: Account; ticket?: string; handoff?: string }>("/auth/verify", {
     method: "POST",

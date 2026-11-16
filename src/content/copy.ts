@@ -500,7 +500,10 @@ export const copy = {
       codePending: "Checking",
       nameIntro: "Welcome to the Lab. Add your name to finish your account.",
       nameLabel: "Your name",
-      nameHelp: "Partner organizations can use the organization's name.",
+      nameHelp: "The name people at the Lab will see.",
+      // Businesses only: the organization they post problems for.
+      orgLabel: "Organization",
+      orgHelp: "The company or organization you're posting problems for.",
       nameSubmit: "Create account",
       // Sign up asks who is joining first, so people use the right email.
       // The role still comes from the email itself.
@@ -528,6 +531,7 @@ export const copy = {
         code: "That code doesn't match. Check the email and try again.",
         expired: "That code has expired. Send a new one.",
         name: "Enter your name.",
+        org: "Enter your organization's name.",
         password: "That password doesn't match. Try again, or choose Forgot password.",
         passwordShort: "Use at least 8 characters.",
         passwordLong: "Use 200 characters or fewer.",

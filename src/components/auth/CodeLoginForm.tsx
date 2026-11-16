@@ -35,7 +35,7 @@ const E = copy.auth.errors;
 
 type Step = "email" | "password" | "code" | "details";
 // Which field an error belongs to. "newPassword" is the one being set.
-type FieldId = "email" | "password" | "code" | "name" | "newPassword";
+type FieldId = "email" | "password" | "code" | "name" | "org" | "newPassword";
 
 function errorText(e: unknown): string {
   const code = e instanceof ApiError ? e.code : "";
@@ -84,6 +84,9 @@ export function CodeLoginForm({
   const [email, setEmail] = React.useState("");
   const [code, setCode] = React.useState("");
   const [name, setName] = React.useState("");
+  const [org, setOrg] = React.useState("");
+  // A business (any email outside Weber State) also names its organization.
+  const isBusiness = roleForEmail(email) === "partner";
   const [password, setPassword] = React.useState("");
   const [newPassword, setNewPassword] = React.useState("");
   // A code sent from Forgot password, which sets a new one.
@@ -171,6 +174,7 @@ export function CodeLoginForm({
   const verify = async () => {
     if (step === "details") {
       if (needs.name && !name.trim()) return setError({ field: "name", text: C.errors.name });
+      if (needs.name && isBusiness && !org.trim()) return setError({ field: "org", text: C.errors.org });
       if (needs.password && newPassword.length < 8) return setError({ field: "newPassword", text: C.errors.passwordShort });
     }
     setPending(true);
@@ -178,7 +182,7 @@ export function CodeLoginForm({
     try {
       const result = await verifyLogin(email, code, {
         reset,
-        ...(step === "details" && needs.name && { name }),
+        ...(step === "details" && needs.name && { name, ...(isBusiness && { organization: org.trim() }) }),
         ...(step === "details" && needs.password && { password: newPassword }),
       });
       if (result !== "signed-in") {
@@ -349,6 +353,21 @@ export function CodeLoginForm({
                   aria-describedby={describedBy("name", C.nameHelp, fieldError("name"))}
                 />
               </Field>
+              {isBusiness && (
+                <Field id="org" label={C.orgLabel} help={C.orgHelp} error={fieldError("org")}>
+                  <input
+                    id="org"
+                    name="organization"
+                    autoComplete="organization"
+                    maxLength={120}
+                    value={org}
+                    onChange={(e) => setOrg(e.target.value)}
+                    className={inputClass}
+                    aria-invalid={fieldError("org") ? true : undefined}
+                    aria-describedby={describedBy("org", C.orgHelp, fieldError("org"))}
+                  />
+                </Field>
+              )}
             </>
           )}
           {step === "details" && needs.password && (
