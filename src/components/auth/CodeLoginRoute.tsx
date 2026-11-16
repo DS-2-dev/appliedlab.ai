@@ -20,9 +20,9 @@ const AUTH_PAGES = ["/login", "/signup"];
 const ROLES: AccountRole[] = ["member", "rep", "partner"];
 
 function safeNext(next: string | null): string {
-  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return "/projectum";
+  if (!next || !next.startsWith("/") || next.startsWith("//") || next.includes("\\")) return "/arch/w";
   const url = new URL(next, "http://same.site");
-  if (url.origin !== "http://same.site" || AUTH_PAGES.includes(url.pathname.replace(/\/$/, ""))) return "/projectum";
+  if (url.origin !== "http://same.site" || AUTH_PAGES.includes(url.pathname.replace(/\/$/, ""))) return "/arch/w";
   return `${url.pathname}${url.search}`;
 }
 
@@ -40,6 +40,7 @@ const subscribeNever = () => () => {};
 
 function errorFrom(hash: URLSearchParams): { text?: string; role: AccountRole | null } {
   const error = hash.get("error");
+  if (error === "expired") return { text: C.errors.expired, role: null };
   const role = ROLES.find((r) => r === hash.get("role")) ?? null;
   if (!error) return { role: null };
   if (error === "wrong-email" && role) return { text: C.wrongEmail[role], role };

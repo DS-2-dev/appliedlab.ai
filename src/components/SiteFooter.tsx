@@ -77,7 +77,7 @@ export function SiteFooter() {
               </Link>
             </li>
             <li>
-              <Link href="/projectum" className={LINK}>
+              <Link href="/login" className={LINK}>
                 {F.projectum}
               </Link>
             </li>

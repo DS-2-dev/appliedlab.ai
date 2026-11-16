@@ -86,7 +86,7 @@ export const copy = {
           "Partners and members work side by side until a review gate, where a partner who moves to implement can hire the member as an intern.",
           "The pipeline turns low-stakes experience into student-business relationships, with little friction.",
         ],
-        cta: { label: "Open Projectum", href: "/projectum" },
+        cta: { label: "Open Arch", href: "/login" },
         panels: [
           {
             label: "Phase 1, the parallel pipeline",
@@ -154,7 +154,7 @@ export const copy = {
             ],
           },
           {
-            label: "In Projectum",
+            label: "In Arch",
             items: [
               { title: "Approvals", body: "Claim and submission approvals in one queue." },
               { title: "An overview", body: "Every team and partner at a glance." },
@@ -203,7 +203,7 @@ export const copy = {
     footerLinks: [
       { label: "E-mail", href: "mailto:ailab@weber.edu" },
       { label: "LinkedIn", href: "https://www.linkedin.com/company/applied-ai-lab-at-wsu/" },
-      { label: "Projectum", href: "/projectum" },
+      { label: "Arch", href: "/login" },
     ],
   },
 
@@ -303,9 +303,9 @@ export const copy = {
         title: "A notice board and a project tracker",
         status: "Open now",
         body: "Partners post problems to the notice board, members claim them with an action plan, and every milestone is tracked where partners and reps can follow it.",
-        cta: { label: "Open Projectum", href: "/projectum" },
+        cta: { label: "Open Arch", href: "/login" },
         // A picture of the notice board, drawn with the sample problems from
-        // the advisory board deck. The real one is in Projectum.
+        // the advisory board deck. The real one is in Arch.
         board: {
           label: "Notice board",
           status: "Sample",
@@ -374,7 +374,7 @@ export const copy = {
         body: "Organizations post as many problems as they like, and members from any discipline build the solutions.",
         cta: { label: "Post a problem", href: "join" },
         // A picture of the partner portal, drawn with the sample projects
-        // from the advisory board deck. The real one is in Projectum.
+        // from the advisory board deck. The real one is in Arch.
         portal: {
           label: "Partner portal",
           status: "Sample",
@@ -438,7 +438,7 @@ export const copy = {
     labLabel: "The Lab",
     contactLabel: "Contact",
     tryLabel: "Try",
-    projectum: "Projectum",
+    projectum: "Arch",
     askLink: "Ask the Lab",
     email: "ailab@weber.edu",
     copyEmail: "Copy the email address ailab@weber.edu",

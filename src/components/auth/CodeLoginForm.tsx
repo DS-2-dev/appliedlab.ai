@@ -16,6 +16,7 @@ import { copy } from "@/content/copy";
 import {
   ApiError,
   type StillNeeds,
+  enterArch,
   hasPassword,
   passwordLogin,
   startLogin,
@@ -24,8 +25,7 @@ import {
 } from "@/lib/account";
 import { type AccountRole, looksLikeEmail, normalizeEmail, roleForEmail } from "@/lib/email-rules";
 import { Field, describedBy, inputClass } from "@/components/ui/Field";
-import { AuthAlert, AuthDivider, authButton, authLink, authSecondary } from "./AuthShell";
-import { GoogleButton } from "./GoogleButton";
+import { AuthAlert, authButton, authLink, authSecondary } from "./AuthShell";
 import { SubmitButton } from "./SubmitButton";
 
 const ROLES: AccountRole[] = ["member", "rep", "partner"];
@@ -98,7 +98,10 @@ export function CodeLoginForm({
 
   // Already signed in, or just signed in: on to the page asked for.
   React.useEffect(() => {
-    if (account.status === "signed-in") router.replace(next);
+    if (account.status !== "signed-in") return;
+    // Arch is its own app: going there is a handoff and a full page load, not a move inside this site.
+    if (next.startsWith("/arch")) void enterArch(next).catch(() => setError({ text: C.errors.network }));
+    else router.replace(next);
   }, [account.status, next, router]);
 
   const checkedEmail = () => {
@@ -258,12 +261,7 @@ export function CodeLoginForm({
       )}
       <AuthAlert message={formError} />
 
-      {step === "email" && (
-        <>
-          <GoogleButton next={next} role={role} />
-          <AuthDivider />
-        </>
-      )}
+      {/* Google sign-in returns once Arch has a Google client set up. */}
 
       {step === "email" && (
         <Field id="email" label={copy.auth.fields.email.label} error={fieldError("email")}>

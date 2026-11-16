@@ -48,11 +48,13 @@ export type AccountState =
   | { status: "signed-out" }
   | { status: "signed-in"; account: Account };
 
-const TOKEN_KEY = "projectum:session";
+const TOKEN_KEY = "arch:session";
 const LOADING: AccountState = { status: "loading" };
 const SIGNED_OUT: AccountState = { status: "signed-out" };
 
 let state: AccountState = LOADING;
+// Read when this module loads, before the login page clears the address's fragment.
+const signedOutOnArrival = typeof window !== "undefined" && window.location.hash === "#signed-out";
 let started = false;
 const listeners = new Set<() => void>();
 
@@ -121,9 +123,12 @@ export async function api<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 async function refresh() {
-  if (!token()) return set(SIGNED_OUT);
+  const t = token();
+  if (!t) return set(SIGNED_OUT);
   try {
     const { user } = await api<{ user: Account }>("/me");
+    // Signed out while this was on its way: leave it signed out.
+    if (token() !== t) return;
     set({ status: "signed-in", account: user });
   } catch {
     // Refused, offline, or the Worker is down. Only a refused session drops
@@ -136,7 +141,9 @@ function subscribe(onChange: () => void) {
   listeners.add(onChange);
   if (!started) {
     started = true;
-    void refresh();
+    // Arch signed out and sent the browser here (#signed-out): this site's session ends too, before anything uses it.
+    if (signedOutOnArrival) void logout();
+    else void refresh();
   }
   const onStorage = (e: StorageEvent) => {
     if (e.key === TOKEN_KEY) {
@@ -192,16 +199,36 @@ export interface StillNeeds {
   password: boolean;
 }
 
+// Arch hands back a ticket once a new address's code checks out, sent again with the name; and with each sign-in, a
+// one-minute handoff that opens the Workspace (enterArch).
+let verifiedTicket: string | null = null;
+let lastHandoff: string | null = null;
+
+// Opens Arch's Workspace (or the Arch page `next` names) signed in as this account: a fresh handoff, turned into
+// Arch's own session there.
+export async function enterArch(next = "/arch/w"): Promise<void> {
+  let t = lastHandoff;
+  lastHandoff = null;
+  if (!t) t = (await api<{ handoff: string }>("/auth/handoff", { method: "POST" })).handoff;
+  const params = new URLSearchParams({ t, next });
+  // Arch is another site (its own Worker), so this is a full page load. eslint-disable-next-line: not a page here.
+  // eslint-disable-next-line @next/next/no-location-assign-relative-destination
+  window.location.assign(`${ACCOUNT_URL}/adopt?${params}`);
+}
+
 export async function verifyLogin(
   email: string,
   code: string,
   more: { name?: string; password?: string; reset?: boolean } = {},
 ): Promise<"signed-in" | StillNeeds> {
-  const res = await api<{ needsName?: boolean; needsPassword?: boolean; token?: string; user?: Account }>("/auth/verify", {
+  const res = await api<{ needsName?: boolean; needsPassword?: boolean; token?: string; user?: Account; ticket?: string; handoff?: string }>("/auth/verify", {
     method: "POST",
-    body: JSON.stringify({ email, code, ...more }),
+    body: JSON.stringify({ email, code, ...more, ...(verifiedTicket && { ticket: verifiedTicket }) }),
   });
+  if (res.ticket) verifiedTicket = res.ticket;
   if (!res.token || !res.user) return { name: Boolean(res.needsName), password: Boolean(res.needsPassword) };
+  verifiedTicket = null;
+  lastHandoff = res.handoff ?? null;
   adopt(res.token, res.user);
   return "signed-in";
 }
