@@ -56,8 +56,8 @@ Why a pipeline: it creates low-stakes experience opportunities that grow into st
 - The Lab's Admins set each member's level by hand. Members do not move up automatically. The Lab moves a member up as their work grows: Sponsored once they work an approved project, Builder once they implement it with a partner.
 - The path: start as an Affiliate, work an approved project, then implement it with a partner. The Lab sets the level at each step.
 
-## The platform (Arch, at appliedlab.ai/arch)
-- Signing up: at appliedlab.ai/arch/join, a person picks student, faculty or business and signs in with a 6-digit code sent by email each time (no password). Students use their @mail.weber.edu address and faculty their @weber.edu address. Businesses use their own email. The Lab approves each new faculty account and each new business before they can use Arch.
+## The platform (Arch: log in at appliedlab.ai/login)
+- Signing up: at appliedlab.ai/signup, a person picks student, faculty or business and signs in with a 6-digit code sent by email each time (no password). Students use their @mail.weber.edu address and faculty their @weber.edu address. Businesses use their own email. The Lab approves each new faculty account and each new business before they can use Arch.
 - Notice board: partners post as many problems as they like, tagged by field (finance, accounting, business, computer science, design, mathematics, marketing). Several teams can work one problem in parallel.
 - Claiming: a student, alone or with teammates, claims a problem with an action plan (an approach and milestones, each with how success is judged). The Lab reviews and approves it. Students can also propose a project of their own the same way.
 - The board: an approved plan opens the team's board, where it moves from Solidifying to Prototype with a build log the partner can follow, then to Submitted.
@@ -71,13 +71,13 @@ Why a pipeline: it creates low-stakes experience opportunities that grow into st
 - How organizations can help: find those people, find their problems, and connect them with the Lab. Every connection becomes a project for a member.
 - Example problems and the disciplines they call for: a snow removal annual pricing model (finance), a business model (business management), an accounting structure (accounting), internal document style enforcement (graphic design), the fastest maintenance routine (mathematics), and automatic schedule creation and assignment (computer science).
 - Partners review each submission and meet the students behind it, and can hire a member as an intern to implement the work.
-- To bring a problem, sign up as a business at appliedlab.ai/arch/join and post it on the notice board once the Lab approves the account, or email ailab@weber.edu.
+- To bring a problem, sign up as a business at appliedlab.ai/signup and post it on the notice board once the Lab approves the account, or email ailab@weber.edu.
 
 ## Progress (Fall 2026)
 - Complete: initial planning and attendance.
 - Funding: largely secured, with the last pieces still being finalized.
 - Halfway: marketing and awareness.
-- Platform: launched, as Arch at appliedlab.ai/arch.
+- Platform: launched, as Arch. People log in at appliedlab.ai/login.
 - Up next: partner projects, then scaling and iterating.
 
 ## Beliefs
