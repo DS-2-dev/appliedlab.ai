@@ -478,9 +478,9 @@ export const copy = {
     // Projectum sign-in by emailed code (src/lib/account.ts). One form for
     // logging in and signing up: a new address is asked for a name once.
     code: {
-      heading: "Log in to the Lab",
+      heading: "Log into Arch platform",
       signupHeading: "Join the Lab",
-      body: "Continue with Google or with your email. A new account confirms its email with a 6-digit code and then sets a password. Students, faculty and partner organizations all sign in here.",
+      body: "Enter your email and we will send you a 6-digit code. Students, faculty and partner organizations all sign in here.",
       emailSubmit: "Continue",
       emailPending: "Checking",
       passwordLabel: "Password",
