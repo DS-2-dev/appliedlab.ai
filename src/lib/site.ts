@@ -21,5 +21,5 @@ export const ASK_URL = WORKER_URL;
 // Arch, the platform (its own Cloudflare Worker). This site stays the front door: its Log in and Sign up forms call
 // Arch's /arch/api/site from the browser, the way they called the Projectum Worker, then hand people into Arch's
 // Workspace. NEXT_PUBLIC_ARCH_URL points a build at another copy.
-export const ARCH_URL = (process.env.NEXT_PUBLIC_ARCH_URL || "https://arch.appliedlab.workers.dev").replace(/\/$/, "");
+export const ARCH_URL = (process.env.NEXT_PUBLIC_ARCH_URL || "https://arch.ds2dev.workers.dev").replace(/\/$/, "");
 export const ACCOUNT_URL = `${ARCH_URL}/arch/api/site`;
