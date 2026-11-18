@@ -80,7 +80,7 @@ while assets - done:
 for extra in ["/favicon.ico", "/robots.txt", "/icon.svg", "/icon.png", "/apple-icon.png", "/sitemap.xml"]:
     try:
         b, _ = get(extra)
-        save(extra, b)
+        save(extra, b.replace(ORIGIN.encode(), b"https://appliedlab.ai"))
         print("extra", extra)
     except Exception:
         pass
