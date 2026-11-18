@@ -1,0 +1,10 @@
+User-Agent: *
+Allow: /
+Disallow: /w
+Disallow: /p
+Disallow: /api
+Disallow: /signin
+Disallow: /demo
+Disallow: /dev
+
+Sitemap: https://appliedlab.ai/sitemap.xml

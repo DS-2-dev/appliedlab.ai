@@ -1,6 +1,7 @@
-# Builds the static site (npm run build:pages) and publishes out/ to GitHub
-# Pages on every push to main. The custom domain is set once in the repo's
-# Settings > Pages and survives each deploy.
+# Publishes the-lab/ to GitHub Pages on every push to main: The Lab's public
+# site, saved from its Worker by scripts/snapshot-the-lab.py. The old site's
+# build (npm run build:pages, out/) is no longer served. The custom domain is
+# set once in the repo's Settings > Pages and survives each deploy.
 
 name: Deploy to GitHub Pages
 
@@ -23,19 +24,9 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
-        with:
-          node-version: 24
-          cache: npm
-      - run: npm ci
-      - run: npm run build:pages
-        env:
-          # The Worker (worker/README.md). Empty uses the address in
-          # src/lib/site.ts; the repo variable ASK_URL overrides it.
-          NEXT_PUBLIC_ASK_URL: ${{ vars.ASK_URL }}
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: out
+          path: the-lab
 
   deploy:
     needs: build
