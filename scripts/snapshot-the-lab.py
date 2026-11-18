@@ -97,6 +97,12 @@ for path, to in STUBS.items():
 <body><a href="{dest}">Continue to The Lab</a></body></html>
 """.encode())
 
+# Any other address (a project, a Workspace page, a profile, a link from an email) belongs to the platform.
+save("/404.html", f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>The Lab</title>
+<script>location.replace("{ORIGIN}" + location.pathname + location.search + location.hash);</script></head>
+<body><a href="{ORIGIN}">Continue to The Lab</a></body></html>
+""".encode())
+
 print("pages", len(seen), sorted(seen))
 print("assets", len(done))
 print("app links", sorted(skipped))

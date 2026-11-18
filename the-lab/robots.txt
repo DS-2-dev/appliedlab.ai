@@ -7,4 +7,4 @@ Disallow: /signin
 Disallow: /demo
 Disallow: /dev
 
-Sitemap: https://appliedlab.ai/sitemap.xml
+Sitemap: https://arch.ds2dev.workers.dev/sitemap.xml
