@@ -22,4 +22,4 @@ export const ASK_URL = WORKER_URL;
 // Arch's /arch/api/site from the browser, the way they called the Projectum Worker, then hand people into Arch's
 // Workspace. NEXT_PUBLIC_ARCH_URL points a build at another copy.
 export const ARCH_URL = (process.env.NEXT_PUBLIC_ARCH_URL || "https://arch.ds2dev.workers.dev").replace(/\/$/, "");
-export const ACCOUNT_URL = `${ARCH_URL}/arch/api/site`;
+export const ACCOUNT_URL = `${ARCH_URL}/api/site`;

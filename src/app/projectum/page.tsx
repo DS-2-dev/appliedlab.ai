@@ -3,7 +3,7 @@
 import type { Metadata } from "next";
 import { ForwardTo } from "@/components/forward/ForwardTo";
 
-export const metadata: Metadata = { title: "Arch", robots: { index: false } };
+export const metadata: Metadata = { title: "The Lab", robots: { index: false } };
 
 export default function Page() {
   return <ForwardTo href="/login" />;

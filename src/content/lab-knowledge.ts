@@ -56,8 +56,8 @@ Why a pipeline: it creates low-stakes experience opportunities that grow into st
 - The Lab's Admins set each member's level by hand. Members do not move up automatically. The Lab moves a member up as their work grows: Sponsored once they work an approved project, Builder once they implement it with a partner.
 - The path: start as an Affiliate, work an approved project, then implement it with a partner. The Lab sets the level at each step.
 
-## The platform (Arch: log in at appliedlab.ai/login)
-- Signing up: at appliedlab.ai/signup, a person picks student, faculty or business and signs in with a 6-digit code sent by email each time (no password). Students use their @mail.weber.edu address and faculty their @weber.edu address. Businesses use their own email. The Lab approves each new faculty account and each new business before they can use Arch.
+## The platform (The Lab: log in at appliedlab.ai/login)
+- Signing up: at appliedlab.ai/signup, a person picks student, faculty or business and signs in with a 6-digit code sent by email each time (no password). Students use their @mail.weber.edu address and faculty their @weber.edu address. Businesses use their own email. The Lab approves each new faculty account and each new business before they can use The Lab.
 - Notice board: partners post as many problems as they like, tagged by field (finance, accounting, business, computer science, design, mathematics, marketing). Several teams can work one problem in parallel.
 - Claiming: a student, alone or with teammates, claims a problem with an action plan (an approach and milestones, each with how success is judged). The Lab reviews and approves it. Students can also propose a project of their own the same way.
 - The board: an approved plan opens the team's board, where it moves from Solidifying to Prototype with a build log the partner can follow, then to Submitted.
@@ -77,7 +77,7 @@ Why a pipeline: it creates low-stakes experience opportunities that grow into st
 - Complete: initial planning and attendance.
 - Funding: largely secured, with the last pieces still being finalized.
 - Halfway: marketing and awareness.
-- Platform: launched, as Arch. People log in at appliedlab.ai/login.
+- Platform: launched, as The Lab. People log in at appliedlab.ai/login.
 - Up next: partner projects, then scaling and iterating.
 
 ## Beliefs
