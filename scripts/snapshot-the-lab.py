@@ -30,7 +30,9 @@ def save(path, data):
 
 
 ASSET_PREFIX = ("/_next/", "/api/public-image", "/api/brand", "/fonts/")
-pages = ["/", "/how-it-works", "/students", "/partners", "/faculty", "/principles", "/showcase", "/meet"]
+# The old addresses stay in the list: the platform sends each on to its new page, so old links keep working.
+pages = ["/", "/features", "/get-involved", "/about", "/stories", "/meet",
+         "/how-it-works", "/students", "/partners", "/faculty", "/principles", "/showcase"]
 seen, assets, skipped = set(), set(), set()
 while pages:
     p = pages.pop(0)
@@ -52,6 +54,8 @@ while pages:
         if " " in m:
             continue
         u = m.split("?")[0] if m.startswith("/_next") else m
+        if re.match(r"/icon\.\w+\?", u):
+            continue  # the tab icon with a cache tag; saved without it below
         if u.startswith(ASSET_PREFIX) or re.search(r"\.(png|jpg|jpeg|svg|webp|ico|woff2?|txt|xml|webmanifest)$", u):
             assets.add(u)
         elif is_app(u.split("?")[0]) or u.startswith("/api/"):
@@ -77,7 +81,8 @@ while assets - done:
         for m in refs:
             assets.add(m if m.startswith("/") else "/_next/" + m)
 
-for extra in ["/favicon.ico", "/robots.txt", "/icon.svg", "/icon.png", "/apple-icon.png", "/sitemap.xml"]:
+for extra in ["/favicon.ico", "/robots.txt", "/icon.svg", "/icon.png", "/apple-icon.png", "/sitemap.xml",
+              "/stories/rss.xml"]:
     try:
         b, _ = get(extra)
         save(extra, b.replace(ORIGIN.encode(), b"https://appliedlab.ai"))
