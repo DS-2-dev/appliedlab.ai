@@ -5,6 +5,9 @@
 #   scripts/publish-live.sh "Refresh The Lab's site"
 #
 # Clear the-lab/ first so files the site no longer uses don't linger.
+#
+# The Pages workflow also runs it on a schedule, so what Admins publish reaches appliedlab.ai without anyone here.
+# It exits 1 when a main page or a site file can't be saved, and the last good site then stays up.
 import re, sys, os, urllib.request
 
 ORIGIN = "https://arch.ds2dev.workers.dev"
@@ -24,16 +27,41 @@ def get(p):
 
 def save(path, data):
     f = os.path.join(OUT, path.lstrip("/"))
+    # Paths come from links in pages, which people write.
+    if not os.path.realpath(f).startswith(os.path.realpath(OUT) + os.sep):
+        print("SKIP outside the site", path)
+        return
     os.makedirs(os.path.dirname(f), exist_ok=True)
     with open(f, "wb") as fh:
         fh.write(data)
+
+
+# A static host can't serve the calendar or take the reminder form's post, so both go to the platform. The form
+# becomes a link. The link waits until React has taken over the form (adding it sooner is a hydration error), or three
+# seconds if React never does, and is put back if React redraws the page.
+REMINDER_FIX = f"""<style>form[data-testid="reminder-form"]{{display:none}}</style>
+<script>(function(){{var late=false;function fix(){{var f=document.querySelector('form[data-testid="reminder-form"]');
+if(!f||document.getElementById("reminder-link"))return;
+if(!late&&!Object.keys(f).some(function(k){{return k.indexOf("__reactFiber")===0}}))return;
+var a=document.createElement("a");a.id="reminder-link";a.href="{ORIGIN}/meet#reminders";a.textContent="Sign up for reminders";
+a.className="press ease-colors inline-flex h-12 items-center justify-center rounded-[var(--radius)] bg-brand px-6 text-[16px] font-medium text-on-brand hover:opacity-90";
+f.after(a)}}
+addEventListener("load",function(){{var t=setInterval(fix,200);setTimeout(function(){{clearInterval(t);late=true;fix()}},3000);new MutationObserver(fix).observe(document.body,{{childList:true,subtree:true}})}})}})()</script>"""
+
+
+def for_static_host(html):
+    html = re.sub(r'((?:href=|\\":)\\?")/api/meetings', lambda m: m.group(1) + ORIGIN + "/api/meetings", html)
+    if 'data-testid="reminder-form"' in html:
+        html = html.replace("</body>", REMINDER_FIX + "</body>")
+    return html
 
 
 ASSET_PREFIX = ("/_next/", "/api/public-image", "/api/brand", "/fonts/")
 # The old addresses stay in the list: the platform sends each on to its new page, so old links keep working.
 pages = ["/", "/features", "/get-involved", "/about", "/stories", "/meet",
          "/how-it-works", "/students", "/partners", "/faculty", "/principles", "/showcase"]
-seen, assets, skipped = set(), set(), set()
+main_pages = set(pages)
+seen, assets, skipped, broken = set(), set(), set(), []
 while pages:
     p = pages.pop(0)
     if p in seen:
@@ -43,9 +71,11 @@ while pages:
         body, ct = get(p)
     except Exception as e:
         print("FAIL page", p, e)
+        if p in main_pages:
+            broken.append(p)
         continue
     html = body.decode()
-    save(p.rstrip("/") + "/index.html", body)
+    save(p.rstrip("/") + "/index.html", for_static_host(html).encode())
     print("page", p, len(body))
     found = re.findall(r'(?:href|src)="(/[^"#]*)', html)
     found += re.findall(r'\\"(/(?:_next|api/public-image|api/brand|fonts)/[^"\\]+)', html)
@@ -71,6 +101,8 @@ while assets - done:
         body, ct = get(a)
     except Exception as e:
         print("FAIL asset", a, e)
+        if a.startswith("/_next/static/") and a.endswith((".css", ".js")):
+            broken.append(a)
         continue
     save(a, body)
     if a.endswith((".css", ".js")):
@@ -92,7 +124,7 @@ for extra in ["/favicon.ico", "/robots.txt", "/icon.svg", "/icon.png", "/apple-i
 
 # The platform's own pages (sign in, join, the Workspace) stay on the Worker. These stand-ins send people there,
 # keeping ?as=partner and the like. The old site's /login and /signup land in the same places.
-STUBS = {"signin": "/signin", "join": "/join", "login": "/signin", "signup": "/join", "w": "/w", "demo": "/demo",
+STUBS = {"signin": "/signin", "join": "/join", "login": "/signin", "signup": "/join", "w": "/w", "thelab": "/w", "demo": "/demo",
          "arch": "/w", "projectum": "/w", **{f"join/{k}": f"/join/{k}" for k in ("student", "faculty", "partner", "donor", "rep")}}
 for path, to in STUBS.items():
     dest = ORIGIN + to
@@ -111,3 +143,5 @@ save("/404.html", f"""<!doctype html><html lang="en"><head><meta charset="utf-8"
 print("pages", len(seen), sorted(seen))
 print("assets", len(done))
 print("app links", sorted(skipped))
+if broken:
+    sys.exit("Not safe to publish, these couldn't be saved: " + ", ".join(broken))

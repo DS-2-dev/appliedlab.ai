@@ -1,19 +1,25 @@
-# Publishes the-lab/ to GitHub Pages on every push to main: The Lab's public
-# site, saved from its Worker by scripts/snapshot-the-lab.py. The old site's
-# build (npm run build:pages, out/) is no longer served. The custom domain is
-# set once in the repo's Settings > Pages and survives each deploy.
+# Publishes The Lab's public site to GitHub Pages. On every push to main and
+# about every 15 minutes, it saves the public pages fresh from the Worker with
+# scripts/snapshot-the-lab.py, so what Admins publish (site copy, meetings,
+# stories) reaches appliedlab.ai by itself. If the pages can't be saved, the run
+# fails and the last good site stays up. It only reads public pages.
+#
+# the-lab/ is the last copy saved by hand and is no longer what gets deployed.
+# A stopgap: turn this workflow off once appliedlab.ai's DNS points at the
+# Worker. The custom domain is set once in the repo's Settings > Pages and
+# survives each deploy.
 
 name: Deploy to GitHub Pages
 
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages
@@ -22,15 +28,25 @@ concurrency:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+      - name: Save the public pages from the platform
+        run: python3 -I scripts/snapshot-the-lab.py "$RUNNER_TEMP/the-lab"
       - uses: actions/upload-pages-artifact@v4
         with:
-          path: the-lab
+          path: ${{ runner.temp }}/the-lab
+          retention-days: 1
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
