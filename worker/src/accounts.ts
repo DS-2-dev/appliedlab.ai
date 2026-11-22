@@ -16,234 +16,37 @@
 // Postings, projects, boards and submissions are in postings.ts, projects.ts, boards.ts and submissions.ts.
 
 import { looksLikeEmail, normalizeEmail, roleForEmail, type AccountRole } from "@/lib/email-rules";
-import { type AlertEnv, alert } from "./alerts";
-import { emit } from "./events";
+import { askApproval } from "./account-approval";
+export { approvalLink, approvedTitle, approvedEmail, approvePartner, page } from "./account-approval";
 import { activeDisciplineSlugs } from "./taxonomy";
-import { ensureOrgFor, notifyAdminsOfPending, onPartnerSignUp } from "./orgs";
+import { notifyAdminsOfPending, onPartnerSignUp } from "./orgs";
 import { isThumbnail } from "@/lib/projects";
-import { ROLES, type Level, type Role } from "@/lib/pipeline/domain";
 import { MAX_PASSWORD, checkPassword, hashPassword, passwordProblem } from "./passwords";
 
-export interface AccountEnv {
-  DB: D1Database;
-  // Submitted final reports (submissions.ts).
-  REPORTS: KVNamespace;
-  LOGIN_LIMITER: RateLimit;
-  LOGIN_IP_LIMITER: RateLimit;
-  // Hashes codes and signs approval links. A wrangler secret.
-  AUTH_SECRET: string;
-  // Resend (resend.com) sends the emails. Without a key, codes cannot be
-  // sent, except locally, where DEV_CODES=1 returns them in the response.
-  RESEND_API_KEY?: string;
-  MAIL_FROM?: string;
-  DEV_CODES?: string;
-  // Who approves new partners, and gets the emails about what's waiting.
-  APPROVER_EMAIL: string;
-  // More approvers, comma separated, who don't get those emails.
-  APPROVERS?: string;
-  // The site, for links in emails.
-  SITE_URL: string;
-}
+import {
+  type AccountEnv,
+  type Status,
+  USER_COLS,
+  type UserRow,
+  isAdmin,
+  accountOut,
+  handleFor,
+  sha256,
+  same,
+  randomCode,
+  randomToken,
+  cleanPersonName,
+  sendEmail,
+  type Json,
+} from "./account-helpers";
+
+export { USER_COLS, rolesOf, isAdmin, hasRole, isStaff, handleFor, escapeHtml, sendEmail } from "./account-helpers";
+export type { AccountEnv, UserRow, Json, Level } from "./account-helpers";
 
 const CODE_TTL_MS = 10 * 60 * 1000;
 const MAX_ATTEMPTS = 5;
 const SESSION_TTL_MS = 60 * 24 * 60 * 60 * 1000;
 const MAX_EMAIL = 254;
-const MAX_PERSON_NAME = 80;
-
-type Status = "active" | "pending" | "removed";
-
-export const USER_COLS =
-  "id, email, name, role, status, avatar, profile_public, handle, claude_access, hide_name, roles, org_id, level, level_locked, interests, digest, digest_sent_at";
-
-export type { Level };
-
-export interface UserRow {
-  id: string;
-  email: string;
-  name: string;
-  role: AccountRole;
-  status: Status;
-  avatar: string | null;
-  profile_public?: number;
-  handle?: string | null;
-  claude_access?: number;
-  hide_name?: number;
-  // A JSON array of roles, always holding `role`. Sign-up never stores
-  // "admin" here; it comes from isAdmin.
-  roles: string;
-  org_id: string | null;
-  level: Level;
-  level_locked: number;
-  // A JSON array of tags.
-  interests: string;
-  // Whether they get the daily digest email (notify.ts), and when the last one went.
-  digest?: number;
-  digest_sent_at?: string | null;
-}
-
-function parseList(text: string | undefined): unknown[] {
-  try {
-    const v: unknown = JSON.parse(text || "[]");
-    return Array.isArray(v) ? v : [];
-  } catch {
-    return [];
-  }
-}
-
-// The roles the account holds: the stored list, de-duplicated, always with
-// its own `role`, and never "admin" (that is isAdmin's call).
-export function rolesOf(u: Pick<UserRow, "role" | "roles">): Role[] {
-  const known = (ROLES as readonly string[]).filter((r) => r !== "admin");
-  const stored = parseList(u.roles).filter((r): r is Role => typeof r === "string" && known.includes(r));
-  return [...new Set<Role>([u.role, ...stored])];
-}
-
-// Admins: active accounts whose roles list says admin, the Lab's approver
-// (APPROVER_EMAIL), and anyone listed in APPROVERS, whatever their role.
-export function isAdmin(env: AccountEnv, u: { email: string; status: string; roles?: string }): boolean {
-  if (u.status !== "active") return false;
-  if (parseList(u.roles).includes("admin")) return true;
-  const listed = [env.APPROVER_EMAIL, ...(env.APPROVERS ?? "").split(",")].map((e) => normalizeEmail(e)).filter(Boolean);
-  return listed.includes(normalizeEmail(u.email));
-}
-
-export function hasRole(env: AccountEnv, u: RoleSubject, r: Role): boolean {
-  return r === "admin" ? isAdmin(env, u) : rolesOf(u).includes(r);
-}
-
-type RoleSubject = { email: string; role: AccountRole; status: string; roles: string };
-
-// Reps and admins: the Lab's staff.
-export function isStaff(env: AccountEnv, u: RoleSubject): boolean {
-  return u.status === "active" && (hasRole(env, u, "rep") || isAdmin(env, u));
-}
-
-// The organization an account belongs to, for the browser.
-async function orgSummary(env: AccountEnv, u: UserRow) {
-  if (!u.org_id) return null;
-  const o = await env.DB.prepare("SELECT id, slug, name, primary_user_id FROM orgs WHERE id = ?")
-    .bind(u.org_id)
-    .first<{ id: string; slug: string; name: string; primary_user_id: string | null }>();
-  return o ? { id: o.id, slug: o.slug, name: o.name, primary: o.primary_user_id === u.id } : null;
-}
-
-// The organization a pending partner is waiting on, by name, so the waiting
-// page can say whose answer it is.
-async function pendingOrgName(env: AccountEnv, u: UserRow): Promise<string | null> {
-  if (u.org_id) return null;
-  const r = await env.DB.prepare(
-    "SELECT o.name FROM org_requests r JOIN orgs o ON o.id = r.org_id WHERE r.user_id = ? AND r.status = 'pending' ORDER BY r.created_at DESC LIMIT 1",
-  )
-    .bind(u.id)
-    .first<{ name: string }>();
-  return r?.name ?? null;
-}
-
-// What the browser gets about the signed-in person. A member's level is the
-// stored one; everyone else has none.
-async function accountOut(u: UserRow, env: AccountEnv) {
-  const admin = isAdmin(env, u);
-  const roles = rolesOf(u);
-  return {
-    id: u.id,
-    email: u.email,
-    name: u.name,
-    role: u.role,
-    roles: admin ? [...roles, "admin" as Role] : roles,
-    admin,
-    status: u.status,
-    avatar: u.avatar,
-    level: u.role === "member" ? u.level : null,
-    levelLocked: Boolean(u.level_locked),
-    orgId: u.org_id,
-    org: await orgSummary(env, u),
-    pendingOrgName: await pendingOrgName(env, u),
-    profilePublic: Boolean(u.profile_public),
-    handle: u.handle ?? null,
-    claudeAccess: Boolean(u.claude_access),
-    hideName: Boolean(u.hide_name),
-    interests: parseList(u.interests).filter((t): t is string => typeof t === "string"),
-    digest: Boolean(u.digest),
-  };
-}
-
-// A profile's address: the name as a slug, plus a few letters so two Sam
-// Lees don't collide.
-export function handleFor(name: string): string {
-  const slug = name
-    .normalize("NFKD")
-    .replace(/[^\w\s-]/g, "")
-    .trim()
-    .toLowerCase()
-    .replace(/[\s_]+/g, "-")
-    .slice(0, 40);
-  const tail = [...crypto.getRandomValues(new Uint8Array(4))].map((b) => "abcdefghjkmnpqrstuvwxyz23456789"[b % 31]).join("");
-  return `${slug || "member"}-${tail}`;
-}
-
-const enc = new TextEncoder();
-
-async function sha256(text: string): Promise<string> {
-  const digest = await crypto.subtle.digest("SHA-256", enc.encode(text));
-  return [...new Uint8Array(digest)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-async function hmac(secret: string, text: string): Promise<string> {
-  const key = await crypto.subtle.importKey("raw", enc.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, [
-    "sign",
-  ]);
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(text));
-  return [...new Uint8Array(sig)].map((b) => b.toString(16).padStart(2, "0")).join("");
-}
-
-// Equal-time comparison of two hex strings.
-function same(a: string, b: string): boolean {
-  if (a.length !== b.length) return false;
-  let diff = 0;
-  for (let i = 0; i < a.length; i++) diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
-  return diff === 0;
-}
-
-function randomCode(): string {
-  const n = crypto.getRandomValues(new Uint32Array(1))[0] % 1_000_000;
-  return String(n).padStart(6, "0");
-}
-
-function randomToken(): string {
-  const bytes = crypto.getRandomValues(new Uint8Array(32));
-  return btoa(String.fromCharCode(...bytes)).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-}
-
-function cleanPersonName(value: unknown): string {
-  return typeof value === "string" ? value.replace(/\s+/g, " ").trim().slice(0, MAX_PERSON_NAME) : "";
-}
-
-export function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
-}
-
-export async function sendEmail(env: AccountEnv, to: string, subject: string, text: string): Promise<boolean> {
-  if (!env.RESEND_API_KEY) return false;
-  const res = await fetch("https://api.resend.com/emails", {
-    method: "POST",
-    headers: { authorization: `Bearer ${env.RESEND_API_KEY}`, "content-type": "application/json" },
-    body: JSON.stringify({
-      from: env.MAIL_FROM || "Applied AI Lab <login@appliedlab.ai>",
-      to: [to],
-      subject,
-      text,
-    }),
-  });
-  if (!res.ok) {
-    // Sign-in codes go out this way, so a refused email locks people out.
-    const reason = await res.text().catch(() => "");
-    await alert(env as AlertEnv, "Email failed", `Resend refused an email (${res.status})`, `Subject: ${subject}\n\n${reason.slice(0, 1000)}`);
-  }
-  return res.ok;
-}
-
-export type Json = (body: unknown, status?: number) => Response;
 
 // --- Sign in --------------------------------------------------------------
 
@@ -260,6 +63,8 @@ async function startLogin(req: Request, env: AccountEnv, ip: string, json: Json)
   if (existing?.status === "removed") return json({ error: "removed" }, 403);
 
   const code = randomCode();
+  const codeHash = await sha256(`${env.AUTH_SECRET}:${email}:${code}`);
+  const expiresAt = Date.now() + CODE_TTL_MS;
   await env.DB.prepare(
     "INSERT INTO login_codes (email, code_hash, expires_at, attempts) VALUES (?, ?, ?, 0) " +
       "ON CONFLICT(email) DO UPDATE SET code_hash = excluded.code_hash, expires_at = excluded.expires_at, " +
@@ -267,20 +72,23 @@ async function startLogin(req: Request, env: AccountEnv, ip: string, json: Json)
       // have expired, so asking again doesn't buy more guesses.
       "attempts = CASE WHEN login_codes.expires_at > ? THEN login_codes.attempts ELSE 0 END",
   )
-    .bind(email, await sha256(`${env.AUTH_SECRET}:${email}:${code}`), Date.now() + CODE_TTL_MS, Date.now())
+    .bind(email, codeHash, expiresAt, Date.now())
     .run();
 
   if (env.DEV_CODES === "1" && !env.RESEND_API_KEY) {
-    console.log(`Sign-in code for ${email}: ${code}`);
     return json({ sent: true, devCode: code });
   }
   const sent = await sendEmail(
     env,
     email,
-    `${code} is your Applied AI Lab code`,
+    "Your Applied AI Lab sign-in code",
     `Your sign-in code is ${code}\n\nIt works for 10 minutes. If you didn't ask for it, ignore this email.\n\nApplied AI Lab, Weber State University`,
-  );
-  if (!sent) return json({ error: "email-unavailable" }, 503);
+  ).catch(() => false);
+  if (!sent) {
+    await env.DB.prepare("DELETE FROM login_codes WHERE email = ? AND code_hash = ? AND expires_at = ?")
+      .bind(email, codeHash, expiresAt).run();
+    return json({ error: "email-unavailable" }, 503);
+  }
   return json({ sent: true, existing: Boolean(existing) });
 }
 
@@ -303,10 +111,10 @@ async function verifyLogin(req: Request, env: AccountEnv, ip: string, json: Json
   // Each guess is counted before it's checked, in one step, so guesses sent
   // at once can't share an attempt.
   const row = await env.DB.prepare(
-    "UPDATE login_codes SET attempts = attempts + 1 WHERE email = ? AND expires_at > ? AND attempts < ? RETURNING code_hash, attempts",
+    "UPDATE login_codes SET attempts = attempts + 1 WHERE email = ? AND expires_at > ? AND attempts < ? RETURNING code_hash, expires_at",
   )
     .bind(email, Date.now(), MAX_ATTEMPTS)
-    .first<{ code_hash: string; attempts: number }>();
+    .first<{ code_hash: string; expires_at: number }>();
   if (!row) return json({ error: "expired" }, 400);
   if (!same(row.code_hash, await sha256(`${env.AUTH_SECRET}:${email}:${code}`))) return json({ error: "code" }, 400);
 
@@ -325,20 +133,26 @@ async function verifyLogin(req: Request, env: AccountEnv, ip: string, json: Json
   const weak = password ? passwordProblem(password) : null;
   if (needsName || needsPassword || weak) {
     // A right code that only lacked these doesn't count as a guess.
-    await env.DB.prepare("UPDATE login_codes SET attempts = attempts - 1 WHERE email = ?").bind(email).run();
+    await env.DB.prepare("UPDATE login_codes SET attempts = attempts - 1 WHERE email = ? AND code_hash = ? AND expires_at = ?")
+      .bind(email, row.code_hash, row.expires_at).run();
     if (weak) return json({ error: weak }, 400);
     return json({ ...(needsName && { needsName: true }), ...(needsPassword && { needsPassword: true }) });
   }
 
+  const consumed = await env.DB.prepare(
+    "DELETE FROM login_codes WHERE email = ? AND code_hash = ? AND expires_at = ? AND expires_at > ?",
+  ).bind(email, row.code_hash, row.expires_at, Date.now()).run();
+  if (!consumed.meta.changes) return json({ error: "expired" }, 400);
+
   const replacing = Boolean(user?.password_hash);
   if (!user) user = { ...(await createUser(env, req, email, name, null)), password_hash: null };
-  const stmts: D1PreparedStatement[] = [env.DB.prepare("DELETE FROM login_codes WHERE email = ?").bind(email)];
+  const stmts: D1PreparedStatement[] = [];
   if (password) {
     stmts.push(env.DB.prepare("UPDATE users SET password_hash = ? WHERE id = ?").bind(await hashPassword(password), user.id));
     // A new password signs out everywhere else, in case the old one leaked.
     if (replacing) stmts.push(env.DB.prepare("DELETE FROM sessions WHERE user_id = ?").bind(user.id));
   }
-  await env.DB.batch(stmts);
+  if (stmts.length) await env.DB.batch(stmts);
   return json({ token: await issueSession(env, user.id), user: await accountOut(user, env) });
 }
 
@@ -378,12 +192,13 @@ async function passwordLogin(req: Request, env: AccountEnv, ip: string, json: Js
 // A new account, with the role its address gives it. Partners and faculty
 // start pending and the approver is asked, unless the address is itself an
 // approver's.
-async function createUser(
+export async function createUser(
   env: AccountEnv,
   req: Request,
   email: string,
   name: string,
   avatar: string | null,
+  googleSubject: string | null = null,
 ): Promise<UserRow> {
   const role = roleForEmail(email);
   const user: UserRow = {
@@ -401,8 +216,8 @@ async function createUser(
   };
   // isAdmin needs status "active", so the row starts active before this check.
   if ((role === "partner" || role === "rep") && !isAdmin(env, user)) user.status = "pending";
-  await env.DB.prepare("INSERT INTO users (id, email, name, role, roles, status, avatar, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)")
-    .bind(user.id, email, name, role, user.roles, user.status, avatar, new Date().toISOString())
+  await env.DB.prepare("INSERT INTO users (id, email, name, role, roles, status, avatar, created_at, google_subject) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)")
+    .bind(user.id, email, name, role, user.roles, user.status, avatar, new Date().toISOString(), googleSubject)
     .run();
   if (user.status === "pending") {
     const stmts: D1PreparedStatement[] = [];
@@ -421,7 +236,7 @@ async function createUser(
 }
 
 // A session for the account; the token goes to the browser, its hash here.
-async function issueSession(env: AccountEnv, userId: string): Promise<string> {
+export async function issueSession(env: AccountEnv, userId: string): Promise<string> {
   const token = randomToken();
   await env.DB.batch([
     env.DB.prepare("DELETE FROM sessions WHERE expires_at < ?").bind(Date.now()),
@@ -432,100 +247,6 @@ async function issueSession(env: AccountEnv, userId: string): Promise<string> {
     ),
   ]);
   return token;
-}
-
-// --- Partner approval ------------------------------------------------------
-
-const APPROVAL_TTL_MS = 30 * 24 * 60 * 60 * 1000;
-
-// The emailed link to approve a partner, signed and good for 30 days.
-export async function approvalLink(env: AccountEnv, req: Request, userId: string): Promise<string> {
-  const exp = String(Date.now() + APPROVAL_TTL_MS);
-  const url = new URL("/approve", req.url);
-  url.searchParams.set("u", userId);
-  url.searchParams.set("e", exp);
-  url.searchParams.set("t", await hmac(env.AUTH_SECRET, `approve:${userId}:${exp}`));
-  return url.toString();
-}
-
-// What an approved account is told, by role.
-export function approvedTitle(role: string): string {
-  return role === "rep" ? "The Lab approved your account." : "The Lab approved your account. Post your first problem.";
-}
-
-export function approvedEmail(user: { name: string; role: string }, siteUrl: string): string {
-  const what = user.role === "rep" ? "Log in to review student work" : "Log in to post problems for our students";
-  return `Hi ${user.name},\n\nThe Applied AI Lab approved your account. ${what}:\n${siteUrl}/login\n\nApplied AI Lab, Weber State University`;
-}
-
-async function askApproval(env: AccountEnv, req: Request, user: UserRow): Promise<void> {
-  const link = await approvalLink(env, req, user.id);
-  if (!env.RESEND_API_KEY) {
-    console.log(`Approve ${user.role === "rep" ? "faculty" : "partner"} ${user.email}: ${link}`);
-    return;
-  }
-  const faculty = user.role === "rep";
-  await sendEmail(
-    env,
-    env.APPROVER_EMAIL,
-    `New ${faculty ? "faculty" : "partner"} on Projectum: ${user.name}`,
-    `${user.name} (${user.email}) signed up as ${faculty ? "faculty" : "a partner organization"}.\n\nApprove them, so they can ${faculty ? "review student work" : "post problems"}:\n${link}\n\nIf you don't recognize them, ignore this email and they stay pending.`,
-  );
-}
-
-export function page(title: string, body: string, status = 200): Response {
-  return new Response(
-    `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${escapeHtml(title)}</title>` +
-      `<body style="font:16px/1.5 system-ui,sans-serif;max-width:32rem;margin:15vh auto;padding:0 1rem;color:#111">` +
-      `<h1 style="font-size:1.4rem">${escapeHtml(title)}</h1><p>${body}</p></body>`,
-    { status, headers: { "content-type": "text/html; charset=utf-8" } },
-  );
-}
-
-// Opening the emailed link shows who is asking and an Approve button; only
-// the button, a POST, approves. Mail scanners open links on their own, and
-// opening alone must change nothing.
-export async function approvePartner(req: Request, env: AccountEnv): Promise<Response> {
-  const url = new URL(req.url);
-  const id = url.searchParams.get("u") ?? "";
-  const exp = url.searchParams.get("e") ?? "";
-  const token = url.searchParams.get("t") ?? "";
-  if (!id || !/^\d+$/.test(exp) || !same(token, await hmac(env.AUTH_SECRET, `approve:${id}:${exp}`))) {
-    return page("That link doesn't work", "It may have been copied incompletely.", 400);
-  }
-  if (Number(exp) < Date.now()) return page("That link has expired", "Approve them in Approvals on Projectum instead.", 400);
-  const user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE id = ?`)
-    .bind(id)
-    .first<UserRow>();
-  if (!user) return page("No such account", "It may have been deleted.", 404);
-  if (req.method !== "POST") {
-    const faculty = user.role === "rep";
-    if (user.status !== "pending") return page("Already approved", `${escapeHtml(user.name)} is approved.`);
-    return page(
-      `Approve ${user.name}?`,
-      `${escapeHtml(user.name)} (${escapeHtml(user.email)}) signed up as ${faculty ? "faculty. Once approved, they can review student work" : "a partner organization. Once approved, they can post problems for students"}.` +
-        `</p><form method="post"><button style="font:inherit;padding:.6rem 1.2rem;border-radius:999px;border:0;background:#111;color:#fff;cursor:pointer">Approve</button></form><p>`,
-    );
-  }
-  if (user.status === "pending") {
-    await env.DB.prepare("UPDATE users SET status = 'active' WHERE id = ?").bind(id).run();
-    if (user.role === "partner") await ensureOrgFor(env, user);
-    const stmts: D1PreparedStatement[] = [];
-    emit(env, stmts, {
-      type: "account.approved",
-      actor: null,
-      subject: { kind: "user", id },
-      notify: [{ userIds: [id], title: approvedTitle(user.role), href: "/projectum" }],
-    });
-    await env.DB.batch(stmts);
-    await sendEmail(
-      env,
-      user.email,
-      "You're approved on Projectum",
-      approvedEmail(user, env.SITE_URL),
-    );
-  }
-  return page("Approved", `${escapeHtml(user.name)} (${escapeHtml(user.email)}) is approved.`);
 }
 
 // --- Signed-in requests ----------------------------------------------------
@@ -632,178 +353,4 @@ export async function handleAccounts(
   if (pathname === "/me" && req.method === "PATCH") return updateMe(req, env, user, json);
   if (pathname === "/people" && req.method === "GET") return listPeople(env, user, json);
   return json({ error: "not-found" }, 404);
-}
-
-// --- Google ---------------------------------------------------------------
-//
-// "Continue with Google" is a plain link to /auth/google/start, which sends
-// the browser to Google and back to /auth/google/callback here. Google has
-// proven the address, so the role comes from it just as with a code, and a
-// first sign-in takes the name (and picture) from the Google account. The
-// session token goes back to the site in the URL fragment, which never
-// reaches a server, and the login page keeps it.
-//
-// The state Google carries is signed and tied to a cookie on this Worker,
-// so a callback can only finish a sign-in this browser started.
-
-export interface GoogleEnv extends AccountEnv {
-  GOOGLE_CLIENT_ID?: string;
-  GOOGLE_CLIENT_SECRET?: string;
-  ALLOWED_ORIGINS: string;
-}
-
-const NONCE_COOKIE = "g_nonce";
-const STATE_TTL_MS = 10 * 60 * 1000;
-
-const b64url = (text: string) => btoa(text).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
-const unb64url = (text: string) => atob(text.replace(/-/g, "+").replace(/_/g, "/"));
-
-function back(origin: string, fragment: Record<string, string>, clearCookie = false): Response {
-  const headers = new Headers({ location: `${origin}/login/#${new URLSearchParams(fragment)}` });
-  if (clearCookie) headers.append("set-cookie", `${NONCE_COOKIE}=; Path=/auth/google; Max-Age=0; HttpOnly; Secure; SameSite=Lax`);
-  return new Response(null, { status: 302, headers });
-}
-
-// Only the Lab's own sites, and only a same-site path to go on to.
-function allowedOrigin(env: GoogleEnv, origin: string | null): string | null {
-  const list = env.ALLOWED_ORIGINS.split(",").map((o) => o.trim());
-  return origin && list.includes(origin) ? origin : null;
-}
-
-function cleanNext(next: string | null): string {
-  return next && next.startsWith("/") && !next.startsWith("//") && !next.includes("\\") ? next.slice(0, 300) : "/projectum";
-}
-
-function readCookie(req: Request, name: string): string | null {
-  const found = (req.headers.get("cookie") ?? "").split(/;\s*/).find((c) => c.startsWith(`${name}=`));
-  return found ? found.slice(name.length + 1) : null;
-}
-
-// The Google picture, downsized by Google and kept inline like an upload.
-// Best effort: no picture is fine.
-async function googlePicture(url: unknown): Promise<string | null> {
-  if (typeof url !== "string" || !url.startsWith("https://")) return null;
-  try {
-    const res = await fetch(url.replace(/=s\d+(-c)?$/, "=s256-c"));
-    const type = res.headers.get("content-type") ?? "";
-    if (!res.ok || !/^image\/(png|jpeg|webp|gif)$/.test(type)) return null;
-    const bytes = new Uint8Array(await res.arrayBuffer());
-    if (bytes.length > 280_000) return null;
-    let binary = "";
-    for (let i = 0; i < bytes.length; i += 0x8000) binary += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
-    const data = `data:${type};base64,${btoa(binary)}`;
-    return isThumbnail(data) ? data : null;
-  } catch {
-    return null;
-  }
-}
-
-async function googleStart(req: Request, env: GoogleEnv): Promise<Response> {
-  const url = new URL(req.url);
-  const origin = allowedOrigin(env, url.searchParams.get("origin"));
-  if (!origin) return page("That link doesn't work", "Start from the Lab's login page.", 400);
-  if (!env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return back(origin, { error: "google-unavailable" });
-
-  // From Sign up, the role the person picked. A new account whose Google
-  // address gives a different role is turned back with a note on which
-  // address to use. The role itself still comes from the address.
-  const picked = url.searchParams.get("role");
-  const role = picked === "rep" || picked === "member" || picked === "partner" ? picked : null;
-  const nonce = randomToken();
-  // The page's own nonce, handed back with the session so the login page
-  // only takes a session it asked for: a link carrying someone else's
-  // session can't sign a visitor in as them.
-  const pageNonce = url.searchParams.get("nonce") ?? "";
-  if (!/^[\w-]{16,64}$/.test(pageNonce)) return back(origin, { error: "google-failed" });
-  const payload = b64url(
-    JSON.stringify({ o: origin, n: cleanNext(url.searchParams.get("next")), r: role, c: pageNonce, nonce, exp: Date.now() + STATE_TTL_MS }),
-  );
-  const state = `${payload}.${await hmac(env.AUTH_SECRET, `google:${payload}`)}`;
-  const google = new URL("https://accounts.google.com/o/oauth2/v2/auth");
-  google.searchParams.set("client_id", env.GOOGLE_CLIENT_ID);
-  google.searchParams.set("redirect_uri", new URL("/auth/google/callback", req.url).toString());
-  google.searchParams.set("response_type", "code");
-  google.searchParams.set("scope", "openid email profile");
-  google.searchParams.set("state", state);
-  google.searchParams.set("prompt", "select_account");
-  return new Response(null, {
-    status: 302,
-    headers: {
-      location: google.toString(),
-      "set-cookie": `${NONCE_COOKIE}=${nonce}; Path=/auth/google; Max-Age=600; HttpOnly; Secure; SameSite=Lax`,
-    },
-  });
-}
-
-async function googleCallback(req: Request, env: GoogleEnv): Promise<Response> {
-  const url = new URL(req.url);
-  const [payload, sig] = (url.searchParams.get("state") ?? "").split(".");
-  if (!payload || !sig || !same(sig, await hmac(env.AUTH_SECRET, `google:${payload}`))) {
-    return page("That sign-in didn't finish", "Start again from the Lab's login page.", 400);
-  }
-  let state: { o: string; n: string; r: AccountRole | null; c: string; nonce: string; exp: number };
-  try {
-    state = JSON.parse(unb64url(payload));
-  } catch {
-    return page("That sign-in didn't finish", "Start again from the Lab's login page.", 400);
-  }
-  const origin = allowedOrigin(env, state.o);
-  if (!origin) return page("That sign-in didn't finish", "Start again from the Lab's login page.", 400);
-  const fail = (error: string) => back(origin, { error }, true);
-
-  const cookie = readCookie(req, NONCE_COOKIE);
-  if (state.exp < Date.now() || !cookie || !same(cookie, state.nonce)) return fail("google-failed");
-  const code = url.searchParams.get("code");
-  if (!code || !env.GOOGLE_CLIENT_ID || !env.GOOGLE_CLIENT_SECRET) return fail("google-failed");
-
-  // The ID token comes straight from Google over TLS, so its claims can be
-  // read without checking its signature (OpenID Connect Core 3.1.3.7).
-  const res = await fetch("https://oauth2.googleapis.com/token", {
-    method: "POST",
-    headers: { "content-type": "application/x-www-form-urlencoded" },
-    body: new URLSearchParams({
-      code,
-      client_id: env.GOOGLE_CLIENT_ID,
-      client_secret: env.GOOGLE_CLIENT_SECRET,
-      redirect_uri: new URL("/auth/google/callback", req.url).toString(),
-      grant_type: "authorization_code",
-    }),
-  });
-  const tokens = (await res.json().catch(() => ({}))) as { id_token?: string };
-  if (!res.ok || !tokens.id_token) return fail("google-failed");
-  let claims: Record<string, unknown>;
-  try {
-    claims = JSON.parse(unb64url(tokens.id_token.split(".")[1]));
-  } catch {
-    return fail("google-failed");
-  }
-  const issuerOk = claims.iss === "https://accounts.google.com" || claims.iss === "accounts.google.com";
-  if (!issuerOk || claims.aud !== env.GOOGLE_CLIENT_ID || claims.email_verified !== true || typeof claims.email !== "string") {
-    return fail("google-failed");
-  }
-
-  const email = normalizeEmail(claims.email);
-  let user = await env.DB.prepare(`SELECT ${USER_COLS} FROM users WHERE email = ?`)
-    .bind(email)
-    .first<UserRow>();
-  if (user?.status === "removed") return fail("removed");
-  if (!user && state.r && roleForEmail(email) !== state.r) return back(origin, { error: "wrong-email", role: state.r }, true);
-  if (!user) {
-    const name = cleanPersonName(claims.name) || email.split("@")[0];
-    user = await createUser(env, req, email, name, await googlePicture(claims.picture));
-  } else if (!user.avatar) {
-    const avatar = await googlePicture(claims.picture);
-    if (avatar) await env.DB.prepare("UPDATE users SET avatar = ? WHERE id = ?").bind(avatar, user.id).run();
-  }
-  return back(origin, { token: await issueSession(env, user.id), next: state.n, nonce: state.c }, true);
-}
-
-// The two Google routes, opened by the browser itself rather than called by
-// the site, so they come before the origin check. Null for any other path.
-export async function handleGoogle(req: Request, env: GoogleEnv): Promise<Response | null> {
-  if (req.method !== "GET") return null;
-  const { pathname } = new URL(req.url);
-  if (pathname === "/auth/google/start") return googleStart(req, env);
-  if (pathname === "/auth/google/callback") return googleCallback(req, env);
-  return null;
 }

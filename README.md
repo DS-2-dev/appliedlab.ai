@@ -1,63 +1,30 @@
 # Applied AI Lab website
 
-The Lab's site: the landing (a star hero, How it works, and the Ask the Lab
-chat), Projectum (the signed-in app) and the sign-in screens.
+GitHub Pages serves appliedlab.ai from a snapshot of The Lab's public platform.
+The Pages workflow fetches pages and assets from the platform on pushes to
+main and about every 15 minutes. If a required page or asset fails to download,
+the previous deployment stays live.
 
-## Running it
+## Preview the public site
 
-```bash
-npm install
-npm run dev                                   # the site on :3000
-cd worker && npm install && npm run dev       # the Worker on :8787
-NEXT_PUBLIC_ASK_URL=http://localhost:8787 npm run dev   # site using it
+From this directory, fetch a fresh snapshot and serve it locally with Python 3.
+
+```sh
+preview_dir="$(mktemp -d)"
+python3 -I scripts/snapshot-the-lab.py "$preview_dir"
+python3 -m http.server --bind 127.0.0.1 --directory "$preview_dir" 8000
 ```
 
-The site is static. Everything server-side, Ask the Lab and Projectum
-accounts, lives in the Cloudflare Worker (`worker/`, setup and deploy steps
-in `worker/README.md`). Its address is in `src/lib/site.ts`, and
-`NEXT_PUBLIC_ASK_URL` (the repo variable `ASK_URL` in the Pages build)
-overrides it.
+Open http://localhost:8000. Sign-in and workspace links open the platform.
 
-## GitHub Pages
+## Publish workflow or snapshot changes
 
-The public site is served by GitHub Pages at appliedlab.ai:
+After committing changes, run `scripts/publish-live.sh "What changed"` to
+copy this directory's tracked files to the DS-2-dev/appliedlab.ai repository.
+That repository deploys through GitHub Actions.
 
-```bash
-npm run build:pages   # writes out/
-```
+## Legacy Worker
 
-`.github/workflows/pages.yml` runs it and deploys on every push to main of
-the live repo, DS-2-dev/appliedlab.ai, which holds only this folder. Publish
-to it with:
-
-```bash
-scripts/publish-live.sh "What changed"
-```
-
-It refuses to push unless the live copy matches this folder exactly.
-
-The live repo's Settings > Pages > Source must stay on "GitHub Actions". On
-"Deploy from a branch", GitHub also builds the repo's README as a page on
-every push, and whichever deploy finishes last is what appliedlab.ai shows.
-
-## Copy
-
-Every public string lives in `src/content/copy.ts` and is PROVISIONAL until
-Kylar's markup pass. The chat's facts live in `src/content/lab-knowledge.ts`.
-Check voice compliance with:
-
-```bash
-node scripts/copy-lint.mjs
-```
-
-## Layout of things
-
-- `src/content/copy.ts`: all public copy, one file.
-- `src/lib/site.ts`: links and the Worker's address.
-- `src/lib/account.ts`: the signed-in account, in the browser.
-- `src/lib/projects.ts`: Projectum's project rules, pure and tested.
-- `src/lib/ask.ts`: the Ask the Lab request, used by the Worker.
-- `worker/`: accounts, projects and the chat, on Cloudflare.
-- `design/`: the style rules (`STYLE.md`) and reference tokens.
-- `src/app/globals.css`: tokens, the `kicker` and `short` helpers, and
-  Projectum's surface.
+The separate Worker, its database migrations, and its setup instructions are in
+`worker/`. Its shared TypeScript modules and tests live in `src/` and
+`scripts/`. Run `npm ci` and `npm test` here for the shared modules.

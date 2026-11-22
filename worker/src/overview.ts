@@ -233,7 +233,7 @@ async function setLevel(req: Request, env: Env, actor: UserRow, id: string, json
     actor,
     subject: { kind: "user", id },
     payload: { level },
-    notify: [{ userIds: [id], title: LEVEL_TITLES[level], href: "/projectum" }],
+    notify: [{ userIds: [id], title: LEVEL_TITLES[level], href: "/w" }],
   });
   await env.DB.batch(stmts);
   return json({ ok: true, level });
@@ -254,7 +254,7 @@ async function approveAccountInApp(env: Env, actor: UserRow, id: string, json: J
       actor,
       subject: { kind: "user", id },
       orgId: org?.id,
-      notify: [{ userIds: [id], title: approvedTitle(p.role), href: "/projectum" }],
+      notify: [{ userIds: [id], title: approvedTitle(p.role), href: "/w" }],
     });
     await env.DB.batch(stmts);
     await sendEmail(

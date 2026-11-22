@@ -221,7 +221,7 @@ async function createProject(
     notify:
       self || !posting.org_id
         ? []
-        : [{ userIds: await orgUserIds(env, posting.org_id), title: `${actor.name} claimed “${posting.title}”`, href: `/projectum?view=posting&id=${posting.id}` }],
+        : [{ userIds: await orgUserIds(env, posting.org_id), title: `${actor.name} claimed “${posting.title}”`, href: `/w?view=posting&id=${posting.id}` }],
   });
   try {
     await env.DB.batch(stmts);
@@ -349,7 +349,7 @@ function hooksFor(env: Env, actor: UserRow): Record<string, Hooks> {
         const plan = planOf(p);
         const review = openReview(env, "action_plan", p.id, plan, at);
         const title = `${await nameOf(env, p.lead_id)} submitted an action plan for “${ctx.posting.title}”`;
-        const link = `/projectum?view=review&id=${review.id}`;
+        const link = `/w?view=review&id=${review.id}`;
         return {
           stmts: [
             env.DB.prepare("UPDATE projects SET plan_submitted_at = ? WHERE id = ?").bind(at, p.id),
@@ -382,7 +382,7 @@ function hooksFor(env: Env, actor: UserRow): Record<string, Hooks> {
         ];
         const subject = `Your plan for “${ctx.posting.title}” was approved`;
         const title = `${subject}. Your board is open.`;
-        const href = board ? `/projectum?project=${board.id}` : "/projectum?view=myprojects";
+        const href = board ? `/w?project=${board.id}` : "/w?view=myprojects";
         const lead = await nameOf(env, p.lead_id);
         return {
           stmts,
@@ -390,7 +390,7 @@ function hooksFor(env: Env, actor: UserRow): Record<string, Hooks> {
             { userIds: ctx.memberIds, court: true, title, href },
             ...(ctx.self || !ctx.orgId
               ? []
-              : [{ userIds: await orgUserIds(env, ctx.orgId), title: `${lead}'s team is now working on “${ctx.posting.title}”`, href: `/projectum?view=project&id=${p.id}` }]),
+              : [{ userIds: await orgUserIds(env, ctx.orgId), title: `${lead}'s team is now working on “${ctx.posting.title}”`, href: `/w?view=project&id=${p.id}` }]),
           ],
           payload: feedback ? { feedback } : undefined,
           after: async () => {
@@ -412,7 +412,7 @@ function hooksFor(env: Env, actor: UserRow): Record<string, Hooks> {
         const p = ctx.project!;
         const feedback = input.feedback ?? "";
         const title = `Your plan for “${ctx.posting.title}” came back with notes`;
-        const href = "/projectum?view=myprojects";
+        const href = "/w?view=myprojects";
         return {
           stmts: [closeOpenReview(env, "action_plan", p.id, { status: "returned", by: actor.id, at, feedback })],
           notify: [{ userIds: ctx.memberIds, court: true, title, href }],
@@ -451,7 +451,7 @@ function hooksFor(env: Env, actor: UserRow): Record<string, Hooks> {
           notify:
             ctx.self || !ctx.orgId
               ? []
-              : [{ userIds: await orgUserIds(env, ctx.orgId), title: `${lead}'s team released its claim on “${ctx.posting.title}”`, href: `/projectum?view=posting&id=${ctx.posting.id}` }],
+              : [{ userIds: await orgUserIds(env, ctx.orgId), title: `${lead}'s team released its claim on “${ctx.posting.title}”`, href: `/w?view=posting&id=${ctx.posting.id}` }],
           payload: { feedback: (input.feedback ?? "").trim() },
         };
       },
@@ -475,7 +475,7 @@ function hooksFor(env: Env, actor: UserRow): Record<string, Hooks> {
         const p = ctx.project!;
         return {
           stmts: [env.DB.prepare("UPDATE projects SET withdrawn_from = NULL, withdrawn_reason = NULL WHERE id = ?").bind(p.id)],
-          notify: [{ userIds: ctx.memberIds, title: `Your project on “${ctx.posting.title}” was reopened`, href: "/projectum?view=myprojects" }],
+          notify: [{ userIds: ctx.memberIds, title: `Your project on “${ctx.posting.title}” was reopened`, href: "/w?view=myprojects" }],
           payload: { from: p.withdrawn_from },
         };
       },

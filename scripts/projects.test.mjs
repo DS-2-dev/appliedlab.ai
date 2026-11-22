@@ -13,6 +13,8 @@ import {
   liveProject,
   normalizeUrl,
   startBuild,
+  stepText,
+  splitStep,
   techStackItems,
   urlLabel,
   cleanDescription,
@@ -403,4 +405,15 @@ test("names and descriptions are tidied and capped", () => {
   assert.equal(cleanName("x".repeat(100)).length, 60);
   assert.equal(cleanDescription("  one\r\n\n\n\ntwo   three  "), "one\n\ntwo three");
   assert.equal(cleanDescription("x".repeat(2000)).length, 1000);
+});
+
+test("a milestone is a step's text as title then criterion, and splits back", () => {
+  assert.equal(stepText("Clean the data", "Every row has a date"), "Clean the data. Every row has a date");
+  assert.equal(stepText("  Clean   the data ", ""), "Clean the data");
+  assert.deepEqual(splitStep("Clean the data. Every row has a date"), { title: "Clean the data", criterion: "Every row has a date" });
+  assert.deepEqual(splitStep("Clean the data"), { title: "Clean the data", criterion: "" });
+  // Only the first ". " splits, so a criterion may hold sentences of its own.
+  assert.deepEqual(splitStep("Ship it. Live. Used daily"), { title: "Ship it", criterion: "Live. Used daily" });
+  const m = { title: "Pilot", criterion: "Two stores use it" };
+  assert.deepEqual(splitStep(stepText(m.title, m.criterion)), m);
 });

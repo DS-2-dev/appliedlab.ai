@@ -47,8 +47,8 @@ describe("emit", () => {
       projectId: "p1",
       payload: { round: 1 },
       notify: [
-        { userIds: [id.rep, id.admin, id.rep], title: "Plan ready", href: "/projectum/reviews", court: true },
-        { userIds: [id.maya, id.eli], title: "Plan sent", href: "/projectum/p1" },
+        { userIds: [id.rep, id.admin, id.rep], title: "Plan ready", href: "/w/reviews", court: true },
+        { userIds: [id.maya, id.eli], title: "Plan sent", href: "/w/p1" },
       ],
     });
     await env.DB.batch(stmts);
@@ -98,7 +98,7 @@ describe("emit and notification prefs", () => {
       type: "posting.closed",
       actor: null,
       subject: { kind: "posting", id: "p1" },
-      notify: [{ userIds: [userId], title: "Closed", href: "/projectum?view=myprojects", court }],
+      notify: [{ userIds: [userId], title: "Closed", href: "/w?view=myprojects", court }],
     });
     return env.DB.batch(stmts);
   };

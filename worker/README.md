@@ -63,15 +63,14 @@ shows the code on the login form in place of an email, and
 `ALLOWED_ORIGINS=https://appliedlab.ai,http://localhost:3000,http://localhost:3100`
 (the live Worker allows only appliedlab.ai). Run
 `npx wrangler d1 migrations apply appliedlab-projectum --local` once, then
-`npm run dev`, and run the site with
-`NEXT_PUBLIC_ASK_URL=http://localhost:8787`.
+`npm run dev` to serve the API on port 8787.
 
 ### Google sign-in
 
-"Continue with Google" goes through `/auth/google/start` and
-`/auth/google/callback` here. Google proves the address, so the role comes
-from it as with a code. Sign up's role pick travels along, and a new
-account whose address doesn't match it is sent back with a note. Setup, in
+On first Google sign-in, the Worker emails a confirmation code. Enter it in
+the browser that started sign-in to link the mailbox to the Google account.
+Subsequent sign-ins use Google's stable subject identifier. Apply migration
+0017 and configure email delivery before enabling Google sign-in. In
 the Google Cloud console:
 
 1. Make a project, then open Google Auth Platform and set it up as an
@@ -158,10 +157,7 @@ npm run deploy                              # prints the Worker's URL
 npx wrangler secret put ANTHROPIC_API_KEY   # optional: switch to Claude
 ```
 
-The Worker is deployed at `https://appliedlab-ask.now-playing.workers.dev`,
-and `src/lib/site.ts` points the static site at that address. If it ever
-moves, update it there, or set the repo variable `ASK_URL` (Settings > Secrets and variables >
-Actions > Variables) to the new address and re-run the workflow.
+The legacy Worker address is `https://appliedlab-ask.now-playing.workers.dev`.
 
 `npm run deploy` applies any new database migrations first and deploys only
 if they succeed, so the Worker never runs ahead of its tables.
@@ -172,8 +168,7 @@ if they succeed, so the Worker never runs ahead of its tables.
   `src/lib/ask.ts` or the schedule in `data/` changes. The schedule is
   bundled at deploy time.
 - `npm run dev` runs it locally on port 8787. Put the key in
-  `worker/.dev.vars` as `ANTHROPIC_API_KEY=...` (never committed), and run
-  the site with `NEXT_PUBLIC_ASK_URL=http://localhost:8787`.
+  `worker/.dev.vars` as `ANTHROPIC_API_KEY=...` (never committed).
 - `npm run check` type-checks and bundles without deploying.
 - Allowed sites are `ALLOWED_ORIGINS` in `wrangler.jsonc`; the rate limit
   is `ratelimits` there too.
@@ -200,9 +195,7 @@ Each is sent once, recorded in `reminders_sent`.
 - Resend refuses an email, which means sign-in codes aren't going out,
 - the daily health check (14:00 UTC, the cron in `wrangler.jsonc`) finds the
   database, report storage or Resend not answering,
-- someone's browser hits an error in Projectum (`POST /client-errors`, sent
-  by `src/lib/report-error.ts` and the crash screen in
-  `src/app/projectum/error.tsx`).
+- a client reports a browser error through `POST /client-errors`.
 
 Each distinct alert goes out at most once an hour, and 20 an hour at most.
 

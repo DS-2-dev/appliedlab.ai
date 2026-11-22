@@ -11,6 +11,7 @@
   "devDependencies": {
     "@cloudflare/vitest-plugin": "^1.4.6",
     "@cloudflare/workers-types": "^5.20260917.1",
+    "@types/node": "^20.19.43",
     "typescript": "^5",
     "vitest": "^4.1.12",
     "wrangler": "^4.133.0"

@@ -178,7 +178,7 @@ export async function seedLegacy(db: D1Database): Promise<void> {
     `INSERT INTO meetings (id, claim_id, requested_by, message, status, created_at, arranged_at) VALUES
       ('M1', 'C1', 'u_dana', 'Coffee?', 'arranged', '2026-09-30T00:00:00.000Z', '2026-09-30T12:00:00.000Z')`,
     `INSERT INTO notifications (id, user_id, kind, title, href, created_at) VALUES
-      ('N1', 'u_maya', 'claim-approved', 'Your claim was approved', '/projectum/', '2026-09-15T00:00:00.000Z')`,
+      ('N1', 'u_maya', 'claim-approved', 'Your claim was approved', '/w/', '2026-09-15T00:00:00.000Z')`,
   ];
   await db.batch(sql.map((q) => db.prepare(q)));
 }

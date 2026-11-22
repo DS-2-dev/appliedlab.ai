@@ -237,7 +237,7 @@ describe("projects", () => {
     expect(base.results.map((r) => [r.reason, JSON.parse(r.snapshot)])).toEqual([["plan_submitted", PLAN.milestones]]);
     const review = await env.DB.prepare("SELECT id FROM reviews WHERE subject_id = ? AND status = 'open'").bind(id).first<{ id: string }>();
     expect(await notes(env, rep.user.id, "project.plan_submitted")).toEqual([
-      { court: 1, title: "Maya Lin submitted an action plan for “Snow removal pricing”", href: `/projectum?view=review&id=${review!.id}` },
+      { court: 1, title: "Maya Lin submitted an action plan for “Snow removal pricing”", href: `/w?view=review&id=${review!.id}` },
     ]);
     expect(sent.map((m) => m.to[0])).toEqual([env.APPROVER_EMAIL]);
     // A rep on the team is not asked to review it.
@@ -265,7 +265,7 @@ describe("projects", () => {
     expect((await boards(env, maya.token))[0].editable).toBe(true);
     expect((await call(env, maya.token, "PUT", `/boards/${b.project.id}`, { project: b.project })).status).toBe(200);
     expect(await notes(env, maya.user.id, "project.plan_returned")).toEqual([
-      { court: 1, title: "Your plan for “Snow removal pricing” came back with notes", href: "/projectum?view=myprojects" },
+      { court: 1, title: "Your plan for “Snow removal pricing” came back with notes", href: "/w?view=myprojects" },
     ]);
     expect(sent.at(-1)!.text).toContain("Say how you will test the model.");
 
@@ -285,7 +285,7 @@ describe("projects", () => {
     expect(levels.results.map((r) => r.level)).toEqual(["affiliate", "affiliate"]);
     expect(await notes(env, maya.user.id, "member.level_changed")).toEqual([]);
     expect(await notes(env, maya.user.id, "project.plan_approved")).toEqual([
-      { court: 1, title: "Your plan for “Snow removal pricing” was approved. Your board is open.", href: `/projectum?project=${live.boardId}` },
+      { court: 1, title: "Your plan for “Snow removal pricing” was approved. Your board is open.", href: `/w?project=${live.boardId}` },
     ]);
     expect(await notes(env, "u_dana", "project.plan_approved")).toEqual([expect.objectContaining({ court: 0 })]);
     expect(sent.filter((m) => m.to[0] === "maya@mail.weber.edu").at(-1)!.subject).toContain("approved");

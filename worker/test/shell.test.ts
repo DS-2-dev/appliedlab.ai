@@ -39,7 +39,7 @@ describe("shell", () => {
     const { env, maya } = await seedCourt();
     const rows = Array.from({ length: 15 }, (_, i) =>
       env.DB.prepare(
-        "INSERT INTO notifications (id, user_id, kind, title, href, court, read_at, created_at) VALUES (?, ?, 'x', ?, '/projectum', 0, ?, ?)",
+        "INSERT INTO notifications (id, user_id, kind, title, href, court, read_at, created_at) VALUES (?, ?, 'x', ?, '/w', 0, ?, ?)",
       ).bind(`n${i}`, maya.user.id, `Note ${i}`, i < 3 ? "2026-10-01T00:00:00.000Z" : null, `2026-09-${String(10 + i).padStart(2, "0")}T00:00:00.000Z`),
     );
     await env.DB.batch(rows);

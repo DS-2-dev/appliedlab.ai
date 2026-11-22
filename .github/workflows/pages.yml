@@ -4,7 +4,6 @@
 # stories) reaches appliedlab.ai by itself. If the pages can't be saved, the run
 # fails and the last good site stays up. It only reads public pages.
 #
-# the-lab/ is the last copy saved by hand and is no longer what gets deployed.
 # A stopgap: turn this workflow off once appliedlab.ai's DNS points at the
 # Worker. The custom domain is set once in the repo's Settings > Pages and
 # survives each deploy.
@@ -33,6 +32,10 @@ jobs:
       - uses: actions/checkout@v5
         with:
           persist-credentials: false
+      - name: Check the 600-line file limit
+        run: python3 -I scripts/check-file-lengths.py
+      - name: Test snapshot redirect policy
+        run: python3 -I scripts/test_snapshot_redirects.py
       - name: Save the public pages from the platform
         run: python3 -I scripts/snapshot-the-lab.py "$RUNNER_TEMP/the-lab"
       - uses: actions/upload-pages-artifact@v4

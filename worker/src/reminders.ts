@@ -119,14 +119,14 @@ async function remindLab(env: AccountEnv, today: string): Promise<number> {
     env,
     env.APPROVER_EMAIL,
     `${n} ${n === 1 ? "thing has" : "things have"} waited more than ${WAITING_DAYS} days`,
-    `These are waiting on the Lab:\n\n${lines.map((l) => `- ${l}`).join("\n")}\n\n${env.SITE_URL}/projectum?view=reviews\n\nApplied AI Lab`,
+    `These are waiting on the Lab:\n\n${lines.map((l) => `- ${l}`).join("\n")}\n\n${env.SITE_URL}/w?view=reviews\n\nApplied AI Lab`,
   );
   await remind(
     env,
     { kind: "lab", id: today },
     await staffIds(env),
     `${n} ${n === 1 ? "item has" : "items have"} waited on the Lab more than ${WAITING_DAYS} days`,
-    "/projectum?view=reviews",
+    "/w?view=reviews",
   );
   return 1;
 }
@@ -166,7 +166,7 @@ async function remindDeadline(env: AccountEnv, project: ActiveProject, today: st
   if (daysLeft < 0 || daysLeft > DEADLINE_DAYS) return 0;
   if (!(await firstTime(env, `deadline:${project.id}:${due}`))) return 0;
   const when = daysLeft === 0 ? "today" : daysLeft === 1 ? "tomorrow" : `in ${daysLeft} days, on ${niceDate(due)}`;
-  const href = project.board_id ? `/projectum?project=${project.board_id}` : "/projectum?view=myprojects";
+  const href = project.board_id ? `/w?project=${project.board_id}` : "/w?view=myprojects";
   for (const t of await teamEmails(env, project.id)) {
     await sendEmail(
       env,
@@ -184,7 +184,7 @@ async function remindQuiet(env: AccountEnv, project: ActiveProject): Promise<num
   if (!last || Date.now() - Date.parse(last) < QUIET_DAYS * DAY) return 0;
   // Keyed by when the board last changed, so a fresh edit resets it.
   if (!(await firstTime(env, `quiet:${project.id}:${last}`))) return 0;
-  const href = project.board_id ? `/projectum?project=${project.board_id}` : "/projectum?view=myprojects";
+  const href = project.board_id ? `/w?project=${project.board_id}` : "/w?view=myprojects";
   for (const t of await teamEmails(env, project.id)) {
     await sendEmail(
       env,

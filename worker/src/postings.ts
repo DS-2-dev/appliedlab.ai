@@ -162,7 +162,7 @@ export async function postingById(env: Env, id: string): Promise<PostingRow | nu
 
 // ---------------------------------------------------------------- the gate
 
-const href = (id: string) => `/projectum?view=posting&id=${id}`;
+const href = (id: string) => `/w?view=posting&id=${id}`;
 
 
 // Who the posting is from, for titles: its organization, else its author.
@@ -208,7 +208,7 @@ function hooksFor(env: Env, actor: UserRow): Record<string, Hooks> {
         const p = ctx.posting;
         const review = openReview(env, "posting", p.id, draftOf(p), at);
         const title = `${await fromName(env, p)} sent “${p.title}” for review`;
-        const link = `/projectum?view=review&id=${review.id}`;
+        const link = `/w?view=review&id=${review.id}`;
         return {
           stmts: [env.DB.prepare("UPDATE postings SET submitted_at = ? WHERE id = ?").bind(at, p.id), review.stmt],
           notify: [{ userIds: await repIds(env), court: true, title, href: link }],
@@ -293,7 +293,7 @@ function hooksFor(env: Env, actor: UserRow): Record<string, Hooks> {
             {
               userIds: results.map((r) => r.user_id),
               title: `“${p.title}” is closed to new claims. Your project continues.`,
-              href: "/projectum?view=myprojects",
+              href: "/w?view=myprojects",
             },
           ],
         };

@@ -1,17 +1,12 @@
-# Saves The Lab's public site (Kylar's platform, on its Cloudflare Worker) as static files in the-lab/, which
-# GitHub Pages serves at appliedlab.ai (.github/workflows/pages.yml). Run it again after the public pages change:
-#
-#   SSL_CERT_FILE=/etc/ssl/cert.pem python3 -I scripts/snapshot-the-lab.py the-lab
-#   scripts/publish-live.sh "Refresh The Lab's site"
-#
-# Clear the-lab/ first so files the site no longer uses don't linger.
-#
-# The Pages workflow also runs it on a schedule, so what Admins publish reaches appliedlab.ai without anyone here.
-# It exits 1 when a main page or a site file can't be saved, and the last good site then stays up.
+# Fetch the platform's public pages and assets for GitHub Pages. Pass a fresh
+# output directory so obsolete files cannot carry over between snapshots.
+# The Pages workflow runs this on a schedule and keeps the last successful
+# deployment if a required page or asset cannot be fetched.
 import re, sys, os, urllib.request
+from urllib.error import URLError
+from urllib.parse import urlsplit
 
 ORIGIN = "https://arch.ds2dev.workers.dev"
-OUT = sys.argv[1]
 APP = ("/signin", "/join", "/w", "/p", "/demo", "/dev", "/f", "/u")
 
 
@@ -19,16 +14,29 @@ def is_app(p):
     return any(p == a or p.startswith(a + "/") or p.startswith(a + "?") for a in APP)
 
 
+class PlatformRedirects(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        target = urlsplit(newurl)
+        if (target.scheme, target.netloc) != ("https", urlsplit(ORIGIN).netloc):
+            raise URLError("Redirect outside the platform origin")
+        return super().redirect_request(req, fp, code, msg, headers, newurl)
+
+
+opener = urllib.request.build_opener(PlatformRedirects())
+
+
 def get(p):
+    if not p.startswith("/"):
+        raise URLError("Expected a platform path")
     req = urllib.request.Request(ORIGIN + p, headers={"User-Agent": "Mozilla/5.0 snapshot"})
-    with urllib.request.urlopen(req, timeout=60) as r:
+    with opener.open(req, timeout=60) as r:
         return r.read(), r.headers.get("content-type", "")
 
 
-def save(path, data):
-    f = os.path.join(OUT, path.lstrip("/"))
+def save(out, path, data):
+    f = os.path.join(out, path.lstrip("/"))
     # Paths come from links in pages, which people write.
-    if not os.path.realpath(f).startswith(os.path.realpath(OUT) + os.sep):
+    if not os.path.realpath(f).startswith(os.path.realpath(out) + os.sep):
         print("SKIP outside the site", path)
         return
     os.makedirs(os.path.dirname(f), exist_ok=True)
@@ -57,91 +65,98 @@ def for_static_host(html):
 
 
 ASSET_PREFIX = ("/_next/", "/api/public-image", "/api/brand", "/fonts/")
-# The old addresses stay in the list: the platform sends each on to its new page, so old links keep working.
-pages = ["/", "/features", "/get-involved", "/about", "/stories", "/meet",
-         "/how-it-works", "/students", "/partners", "/faculty", "/principles", "/showcase"]
-main_pages = set(pages)
-seen, assets, skipped, broken = set(), set(), set(), []
-while pages:
-    p = pages.pop(0)
-    if p in seen:
-        continue
-    seen.add(p)
-    try:
-        body, ct = get(p)
-    except Exception as e:
-        print("FAIL page", p, e)
-        if p in main_pages:
-            broken.append(p)
-        continue
-    html = body.decode()
-    save(p.rstrip("/") + "/index.html", for_static_host(html).encode())
-    print("page", p, len(body))
-    found = re.findall(r'(?:href|src)="(/[^"#]*)', html)
-    found += re.findall(r'\\"(/(?:_next|api/public-image|api/brand|fonts)/[^"\\]+)', html)
-    found += re.findall(r'srcSet="([^"]+)"', html)
-    for m in found:
-        if " " in m:
+def snapshot(out):
+    # The old addresses stay in the list: the platform sends each on to its new page, so old links keep working.
+    pages = ["/", "/features", "/get-involved", "/about", "/stories", "/meet",
+             "/how-it-works", "/students", "/partners", "/faculty", "/principles", "/showcase"]
+    main_pages = set(pages)
+    seen, assets, skipped, broken = set(), set(), set(), []
+    while pages:
+        p = pages.pop(0)
+        if p in seen:
             continue
-        u = m.split("?")[0] if m.startswith("/_next") else m
-        if re.match(r"/icon\.\w+\?", u):
-            continue  # the tab icon with a cache tag; saved without it below
-        if u.startswith(ASSET_PREFIX) or re.search(r"\.(png|jpg|jpeg|svg|webp|ico|woff2?|txt|xml|webmanifest)$", u):
-            assets.add(u)
-        elif is_app(u.split("?")[0]) or u.startswith("/api/"):
-            skipped.add(u.split("?")[0])
-        else:
-            pages.append(u.split("?")[0])
+        seen.add(p)
+        try:
+            body, ct = get(p)
+        except Exception as e:
+            print("FAIL page", p, e)
+            if p in main_pages:
+                broken.append(p)
+            continue
+        html = body.decode()
+        save(out, p.rstrip("/") + "/index.html", for_static_host(html).encode())
+        print("page", p, len(body))
+        found = re.findall(r'(?:href|src)="(/[^"#]*)', html)
+        found += re.findall(r'\\"(/(?:_next|api/public-image|api/brand|fonts)/[^"\\]+)', html)
+        found += re.findall(r'srcSet="([^"]+)"', html)
+        for m in found:
+            if " " in m:
+                continue
+            u = m.split("?")[0] if m.startswith("/_next") else m
+            if u.split("?")[0].rstrip("/") == "/projectum":
+                continue
+            if re.match(r"/icon\.\w+\?", u):
+                continue  # the tab icon with a cache tag; saved without it below
+            if u.startswith(ASSET_PREFIX) or re.search(r"\.(png|jpg|jpeg|svg|webp|ico|woff2?|txt|xml|webmanifest)$", u):
+                assets.add(u)
+            elif is_app(u.split("?")[0]) or u.startswith("/api/"):
+                skipped.add(u.split("?")[0])
+            else:
+                pages.append(u.split("?")[0])
 
-done = set()
-while assets - done:
-    a = sorted(assets - done)[0]
-    done.add(a)
-    try:
-        body, ct = get(a)
-    except Exception as e:
-        print("FAIL asset", a, e)
-        if a.startswith("/_next/static/") and a.endswith((".css", ".js")):
-            broken.append(a)
-        continue
-    save(a, body)
-    if a.endswith((".css", ".js")):
-        t = body.decode("utf-8", "ignore")
-        refs = re.findall(r"url\((/[^)'\"]+)\)", t)
-        refs += re.findall(r'"(/_next/static/[^"]+)"', t)
-        refs += re.findall(r'"(static/(?:chunks|media)/[^"]+)"', t)
-        for m in refs:
-            assets.add(m if m.startswith("/") else "/_next/" + m)
+    done = set()
+    while assets - done:
+        a = sorted(assets - done)[0]
+        done.add(a)
+        try:
+            body, ct = get(a)
+        except Exception as e:
+            print("FAIL asset", a, e)
+            if a.startswith("/_next/static/") and a.endswith((".css", ".js")):
+                broken.append(a)
+            continue
+        save(out, a, body)
+        if a.endswith((".css", ".js")):
+            t = body.decode("utf-8", "ignore")
+            refs = re.findall(r"url\((/[^)'\"]+)\)", t)
+            refs += re.findall(r'"(/_next/static/[^"]+)"', t)
+            refs += re.findall(r'"(static/(?:chunks|media)/[^"]+)"', t)
+            for m in refs:
+                assets.add(m if m.startswith("/") else "/_next/" + m)
 
-for extra in ["/favicon.ico", "/robots.txt", "/icon.svg", "/icon.png", "/apple-icon.png", "/sitemap.xml",
-              "/stories/rss.xml"]:
-    try:
-        b, _ = get(extra)
-        save(extra, b.replace(ORIGIN.encode(), b"https://appliedlab.ai"))
-        print("extra", extra)
-    except Exception:
-        pass
+    for extra in ["/favicon.ico", "/robots.txt", "/icon.svg", "/icon.png", "/apple-icon.png", "/sitemap.xml",
+                  "/stories/rss.xml"]:
+        try:
+            b, _ = get(extra)
+            save(out, extra, b.replace(ORIGIN.encode(), b"https://appliedlab.ai"))
+            print("extra", extra)
+        except Exception:
+            pass
 
-# The platform's own pages (sign in, join, the Workspace) stay on the Worker. These stand-ins send people there,
-# keeping ?as=partner and the like. The old site's /login and /signup land in the same places.
-STUBS = {"signin": "/signin", "join": "/join", "login": "/signin", "signup": "/join", "w": "/w", "thelab": "/w", "demo": "/demo",
-         "arch": "/w", "projectum": "/w", **{f"join/{k}": f"/join/{k}" for k in ("student", "faculty", "partner", "donor", "rep")}}
-for path, to in STUBS.items():
-    dest = ORIGIN + to
-    save(f"/{path}/index.html", f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>The Lab</title>
-<script>location.replace("{dest}" + location.search + location.hash);</script>
-<meta http-equiv="refresh" content="0;url={dest}"></head>
-<body><a href="{dest}">Continue to The Lab</a></body></html>
-""".encode())
+    # The platform's own pages (sign in, join, the Workspace) stay on the Worker. These stand-ins send people there,
+    # keeping ?as=partner and the like. The old site's /login and /signup land in the same places.
+    STUBS = {"signin": "/signin", "join": "/join", "login": "/signin", "signup": "/join", "w": "/w", "thelab": "/w", "demo": "/demo",
+             "arch": "/w", **{f"join/{k}": f"/join/{k}" for k in ("student", "faculty", "partner", "donor", "rep")}}
+    for path, to in STUBS.items():
+        dest = ORIGIN + to
+        save(out, f"/{path}/index.html", f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>The Lab</title>
+    <script>location.replace("{dest}" + location.search + location.hash);</script>
+    <meta http-equiv="refresh" content="0;url={dest}"></head>
+    <body><a href="{dest}">Continue to The Lab</a></body></html>
+    """.encode())
 
-# Any other address (a project, a Workspace page, a profile, a link from an email) belongs to the platform.
-save("/404.html", f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>The Lab</title>
-<script>location.replace("{ORIGIN}" + location.pathname + location.search + location.hash);</script></head>
-<body><a href="{ORIGIN}">Continue to The Lab</a></body></html>
-""".encode())
+    # Any other address (a project, a Workspace page, a profile, a link from an email) belongs to the platform.
+    save(out, "/404.html", f"""<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="robots" content="noindex"><title>The Lab</title>
+    <script>location.replace("{ORIGIN}" + location.pathname + location.search + location.hash);</script></head>
+    <body><a href="{ORIGIN}">Continue to The Lab</a></body></html>
+    """.encode())
 
-print("pages", len(seen), sorted(seen))
-print("assets", len(done))
-print("app links", sorted(skipped))
-if broken:
-    sys.exit("Not safe to publish, these couldn't be saved: " + ", ".join(broken))
+    print("pages", len(seen), sorted(seen))
+    print("assets", len(done))
+    print("app links", sorted(skipped))
+    if broken:
+        sys.exit("Not safe to publish, these couldn't be saved: " + ", ".join(broken))
+
+
+if __name__ == "__main__":
+    snapshot(sys.argv[1])

@@ -139,7 +139,7 @@ async function queueJoinRequest(
     subject: { kind: "org", id: org.id },
     orgId: org.id,
     payload: { requestId: id, userId: user.id },
-    notify: [{ userIds: who, court: true, title: `${user.name} asked to join ${org.name}`, href: "/projectum?view=org" }],
+    notify: [{ userIds: who, court: true, title: `${user.name} asked to join ${org.name}`, href: "/w?view=org" }],
   });
   return {
     after: async () => {
@@ -150,7 +150,7 @@ async function queueJoinRequest(
           env,
           r.email,
           `${user.name} asked to join ${org.name} on Projectum`,
-          `${user.name} (${user.email}) asked to join ${org.name}.${message ? `\n\nThey wrote: ${message}` : ""}\n\nApprove or decline in Projectum:\n${env.SITE_URL}/projectum?view=org\n\nApplied AI Lab, Weber State University`,
+          `${user.name} (${user.email}) asked to join ${org.name}.${message ? `\n\nThey wrote: ${message}` : ""}\n\nApprove or decline in Projectum:\n${env.SITE_URL}/w?view=org\n\nApplied AI Lab, Weber State University`,
         );
       }
     },
@@ -179,7 +179,7 @@ export async function notifyAdminsOfPending(env: AccountEnv, stmts: D1PreparedSt
     subject: { kind: "user", id: user.id },
     payload: {},
     notify: [
-      { userIds: await adminIds(env), court: true, title: `${user.name} signed up as ${user.role === "rep" ? "faculty" : "a business"} and is waiting for approval`, href: "/projectum?view=overview" },
+      { userIds: await adminIds(env), court: true, title: `${user.name} signed up as ${user.role === "rep" ? "faculty" : "a business"} and is waiting for approval`, href: "/w?view=overview" },
     ],
   });
 }
@@ -318,7 +318,7 @@ async function decide(req: Request, env: AccountEnv, user: UserRow, requestId: s
       subject: { kind: "org", id: org.id },
       orgId: org.id,
       payload: { requestId: r.id, userId: r.user_id },
-      notify: [{ userIds: [r.user_id], title: `${org.name} approved your request to join`, href: "/projectum" }],
+      notify: [{ userIds: [r.user_id], title: `${org.name} approved your request to join`, href: "/w" }],
     });
     if (person?.status === "pending") {
       emit(env, stmts, {
@@ -337,7 +337,7 @@ async function decide(req: Request, env: AccountEnv, user: UserRow, requestId: s
       subject: { kind: "org", id: org.id },
       orgId: org.id,
       payload: { requestId: r.id, userId: r.user_id },
-      notify: [{ userIds: [r.user_id], title: `${org.name} declined your request to join${note ? `: ${note}` : ""}`, href: "/projectum" }],
+      notify: [{ userIds: [r.user_id], title: `${org.name} declined your request to join${note ? `: ${note}` : ""}`, href: "/w" }],
     });
   }
   try {
@@ -397,7 +397,7 @@ async function transfer(req: Request, env: AccountEnv, user: UserRow, json: Json
     subject: { kind: "org", id: org.id },
     orgId: org.id,
     payload: { to: userId },
-    notify: [{ userIds: await orgUserIds(env, org.id), title: `${org.name} has a new primary contact`, href: "/projectum?view=org" }],
+    notify: [{ userIds: await orgUserIds(env, org.id), title: `${org.name} has a new primary contact`, href: "/w?view=org" }],
   });
   await env.DB.batch(stmts);
   return json({ ok: true });
@@ -421,8 +421,8 @@ async function removeMember(req: Request, env: AccountEnv, user: UserRow, json: 
     orgId: org.id,
     payload: { userId },
     notify: [
-      { userIds: [userId], title: `You were removed from ${org.name}`, href: "/projectum" },
-      { userIds: others, title: `Someone was removed from ${org.name}`, href: "/projectum?view=org" },
+      { userIds: [userId], title: `You were removed from ${org.name}`, href: "/w" },
+      { userIds: others, title: `Someone was removed from ${org.name}`, href: "/w?view=org" },
     ],
   });
   await env.DB.batch(stmts);

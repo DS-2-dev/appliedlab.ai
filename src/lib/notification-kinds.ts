@@ -12,14 +12,54 @@
 // Every role starts with the app on and email off: sign-in codes, account
 // approvals, meeting requests and the like already send their own emails.
 
-import { copy } from "@/content/copy";
-import { ROLES, type Role } from "@/lib/pipeline/domain";
+import { ROLES, type Role } from "./pipeline/domain";
 
-export type NotificationGroup = keyof typeof copy.projectum.settingsPage.notificationGroups;
+const notificationLabels = {
+  notificationGroups: {
+    postings: "Postings",
+    projects: "Projects",
+    reviews: "Reviews",
+    accounts: "Accounts",
+    organizations: "Organizations",
+  },
+  notificationKinds: {
+    "posting.submitted": "A posting is sent for review",
+    "posting.published": "A posting goes on the board",
+    "posting.returned": "A posting comes back with notes",
+    "posting.closed": "A posting closes to new claims",
+    "project.claimed": "Someone claims a posting",
+    "project.plan_approved": "An action plan is approved",
+    "project.plan_returned": "An action plan comes back with notes",
+    "project.work_approved": "Work is approved and delivered",
+    "project.work_returned": "Work comes back with notes",
+    "project.integrated": "A team is brought on to implement",
+    "project.completion_requested": "A team asks for sign-off",
+    "project.completion_returned": "Sign-off is held back",
+    "project.completed": "A project is complete",
+    "project.withdrawn": "A team releases its claim",
+    "project.reopened": "A project is reopened",
+    "meeting.requested": "A partner asks to meet a team",
+    "meeting.scheduled": "A meeting is being arranged",
+    reminder: "Reminders about due dates and quiet boards",
+    "project.plan_submitted": "An action plan is ready for review",
+    "project.work_submitted": "Work is ready for review",
+    "review.assigned": "A review is assigned to you",
+    "account.pending": "A new account waits for approval",
+    "account.approved": "Your account is approved",
+    "member.level_changed": "Your level changes",
+    "org.join_requested": "Someone asks to join your organization",
+    "org.join_approved": "Your request to join is approved",
+    "org.join_declined": "Your request to join is declined",
+    "org.primary_transferred": "Your organization has a new primary contact",
+    "org.member_removed": "Someone is removed from your organization",
+  },
+} as const;
+
+export type NotificationGroup = keyof typeof notificationLabels.notificationGroups;
 export type Channels = { inApp: boolean; email: boolean };
 
 export type NotificationKind = {
-  kind: keyof typeof copy.projectum.settingsPage.notificationKinds;
+  kind: keyof typeof notificationLabels.notificationKinds;
   label: string;
   group: NotificationGroup;
   court: boolean;
@@ -63,7 +103,7 @@ const KINDS: [NotificationKind["kind"], NotificationGroup, boolean][] = [
 
 export const notificationKinds: NotificationKind[] = KINDS.map(([kind, group, court]) => ({
   kind,
-  label: copy.projectum.settingsPage.notificationKinds[kind],
+  label: notificationLabels.notificationKinds[kind],
   group,
   court,
   defaults: DEFAULTS,

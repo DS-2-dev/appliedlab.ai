@@ -4,7 +4,7 @@ import test from "node:test";
 // The pipeline's rules, shared by the forms and the Worker.
 const {
   cleanProblem, problemIssues, cleanClaim, claimIssues, cleanDate, cleanPhaseMilestones, cleanPosting, postingIssues, cleanPlan, planIssues, cleanTeammates,
-  EFFORTS, LIMITS,
+  EFFORTS, LIMITS, isHttpsUrl,
 } = await import(
   "../src/lib/problems.ts"
 );
@@ -118,4 +118,20 @@ test("teammates are up to six distinct account ids", () => {
   assert.deepEqual(cleanTeammates(["a1", "a1", "bad id!", 7, "b-2"]), ["a1", "b-2"]);
   assert.deepEqual(cleanTeammates("a1"), []);
   assert.equal(cleanTeammates(Array.from({ length: 10 }, (_, i) => `u${i}`)).length, 6);
+});
+
+test("a posting's Drive link must be empty or https", () => {
+  const issues = (driveUrl) => postingIssues(cleanPosting({ title: "Snow", driveUrl }, []), { forSubmit: false });
+  assert.deepEqual(issues(""), []);
+  assert.deepEqual(issues("https://drive.google.com/drive/folders/abc"), []);
+  for (const bad of ["javascript:alert(1)", "http://example.com", "data:text/html,hi", "example.com", "https://"]) {
+    assert.deepEqual(issues(bad), ["driveUrl"], bad);
+  }
+  assert.equal(isHttpsUrl("https://a b.com"), false);
+});
+
+test("cleanPosting keeps the detail fields and defaults them to empty", () => {
+  assert.equal(cleanPosting({}, []).why, "");
+  assert.equal(cleanPosting({ keyMilestones: " one\r\ntwo " }, []).keyMilestones, "one\ntwo");
+  assert.equal(cleanPosting({ goal: "x".repeat(2500) }, []).goal.length, 2000);
 });

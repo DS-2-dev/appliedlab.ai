@@ -121,7 +121,7 @@ describe("reviews", () => {
       who: "Maya Lin",
       posting: { id: "P1", title: "Snow removal pricing" },
       project: { id: projectId, status: "plan_review", lead: { name: "Maya Lin" }, team: [{ name: "Maya Lin" }] },
-      href: `/projectum?view=review&id=${plan.id}`,
+      href: `/w?view=review&id=${plan.id}`,
     });
     expect(posting).toMatchObject({ subjectId: postingId, title: "Plow routing", who: "Kestrel", project: null, posting: { id: postingId, title: "Plow routing" } });
     expect(posting.waitingSince >= plan.waitingSince).toBe(true);
@@ -133,7 +133,7 @@ describe("reviews", () => {
       assignedTo: null,
       who: "Maya Lin",
       project: { id: projectId },
-      href: "/projectum?view=review&id=sub:S1",
+      href: "/w?view=review&id=sub:S1",
     });
   });
 
@@ -171,7 +171,7 @@ describe("reviews", () => {
     const [after] = await queue(env, rep.token);
     expect(after.assignedTo?.id).toBe(rep2.user.id);
     const notes = (await env.DB.prepare("SELECT court, href FROM notifications WHERE user_id = ? AND kind = 'review.assigned'").bind(rep2.user.id).all()).results;
-    expect(notes).toEqual([{ court: 1, href: `/projectum?view=review&id=${plan.id}` }]);
+    expect(notes).toEqual([{ court: 1, href: `/w?view=review&id=${plan.id}` }]);
   });
 
   it("detail returns the frozen snapshot after the plan changes, the board and the history", async () => {

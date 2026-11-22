@@ -185,7 +185,7 @@ describe("postings", () => {
     expect((await get(env, dana.token, id)).transitions).toEqual(["withdraw"]);
 
     expect(await notes(env, rep.user.id, "posting.submitted")).toEqual([
-      { court: 1, title: `Kestrel sent “${READY.title}” for review`, href: `/projectum?view=review&id=${reviews[0].id}` },
+      { court: 1, title: `Kestrel sent “${READY.title}” for review`, href: `/w?view=review&id=${reviews[0].id}` },
     ]);
   });
 
@@ -212,7 +212,7 @@ describe("postings", () => {
     });
     const id = await inReview(env, dana.token);
     expect(sent.map((m) => m.to[0])).toEqual([env.APPROVER_EMAIL]);
-    expect(sent[0].text).toContain(`${env.SITE_URL}/projectum?view=review&id=`);
+    expect(sent[0].text).toContain(`${env.SITE_URL}/w?view=review&id=`);
 
     const bare = await move(env, rep.token, id, "return");
     expect(bare.status).toBe(400);

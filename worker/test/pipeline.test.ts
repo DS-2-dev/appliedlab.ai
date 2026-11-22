@@ -124,7 +124,7 @@ describe("submissions", () => {
     const note = await env.DB.prepare("SELECT court, href FROM notifications WHERE user_id = ? AND kind = 'project.work_submitted'")
       .bind(rep.user.id)
       .first<{ court: number; href: string }>();
-    expect(note).toEqual({ court: 1, href: `/projectum?view=review&id=${review!.id}` });
+    expect(note).toEqual({ court: 1, href: `/w?view=review&id=${review!.id}` });
     // The queue lists the real review once, with no synthetic twin.
     const queue = (await (await call(env, rep.token, "GET", "/reviews")).json()) as { reviews: Array<{ id: string; gate: string }> };
     expect(queue.reviews.filter((r) => r.gate === "submission").map((r) => r.id)).toEqual([review!.id]);

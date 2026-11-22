@@ -29,7 +29,7 @@ describe("court", () => {
       status: "plan_returned",
       urgency: "action",
       since: "2026-09-10T00:00:00.000Z",
-      href: "/projectum?project=B_ret",
+      href: "/w?project=B_ret",
     });
     expect(items[0].subtitle).toContain("Maya Lin");
   });
@@ -46,7 +46,7 @@ describe("court", () => {
     const { env, eli } = await seedCourt();
     const items = await court(env, eli.token);
     expect(items).toEqual([
-      expect.objectContaining({ kind: "project", id: "PR_act", urgency: "work", status: "active", since: "2026-09-11T00:00:00.000Z", href: "/projectum?view=myprojects" }),
+      expect.objectContaining({ kind: "project", id: "PR_act", urgency: "work", status: "active", since: "2026-09-11T00:00:00.000Z", href: "/w?view=myprojects" }),
     ]);
   });
 
@@ -68,13 +68,13 @@ describe("court", () => {
     const { env, dana } = await seedCourt();
     const items = await court(env, dana.token);
     expect(find(items, "org_request", "Q_fresh")).toMatchObject({
-      role: "partner", urgency: "action", title: "Joe Joiner", subtitle: "Kestrel", href: "/projectum?view=org",
+      role: "partner", urgency: "action", title: "Joe Joiner", subtitle: "Kestrel", href: "/w?view=org",
     });
     expect(find(items, "org_request", "Q_orphan")).toBeUndefined();
     expect(find(items, "org_request", "Q_old")).toBeDefined();
     expect(find(items, "project", "PR_del")).toMatchObject({ role: "partner", urgency: "action", status: "delivered", title: "Posting P_3" });
     expect(find(items, "project", "PR_sel")).toBeUndefined();
-    expect(find(items, "posting", "P_draft")).toMatchObject({ urgency: "work", status: "draft", href: "/projectum?view=posting&id=P_draft", since: "2026-09-05T00:00:00.000Z" });
+    expect(find(items, "posting", "P_draft")).toMatchObject({ urgency: "work", status: "draft", href: "/w?view=posting&id=P_draft", since: "2026-09-05T00:00:00.000Z" });
     expect(find(items, "posting", "P_ret")).toMatchObject({ urgency: "action", status: "returned", since: "2026-09-07T00:00:00.000Z" });
     expect(find(items, "posting", "P_live")).toBeUndefined();
     const first = items.findIndex((i) => i.urgency === "work");
@@ -97,9 +97,9 @@ describe("court", () => {
     const { env, rep } = await seedCourt();
     const items = await court(env, rep.token);
     expect(find(items, "review", "R_open")).toMatchObject({
-      role: "rep", urgency: "action", since: "2026-09-14T00:00:00.000Z", href: "/projectum?view=review&id=R_open", title: "Action plan: Posting P_5",
+      role: "rep", urgency: "action", since: "2026-09-14T00:00:00.000Z", href: "/w?view=review&id=R_open", title: "Action plan: Posting P_5",
     });
-    expect(find(items, "meeting", "M1")).toMatchObject({ role: "rep", urgency: "action", title: "Posting P_4", subtitle: "Dana Reyes", href: "/projectum?view=project&id=PR_sel" });
+    expect(find(items, "meeting", "M1")).toMatchObject({ role: "rep", urgency: "action", title: "Posting P_4", subtitle: "Dana Reyes", href: "/w?view=project&id=PR_sel" });
     expect(items.some((i) => i.kind === "partner" || i.kind === "org_request")).toBe(false);
   });
 
@@ -122,7 +122,7 @@ describe("court", () => {
     const { env, admin } = await seedCourt();
     const items = await court(env, admin.token);
     expect(find(items, "partner", "u_newp")).toMatchObject({
-      role: "admin", urgency: "action", title: "Pending Partner", subtitle: "newp@pending.example", href: "/projectum?view=overview",
+      role: "admin", urgency: "action", title: "Pending Partner", subtitle: "newp@pending.example", href: "/w?view=overview",
     });
     expect(find(items, "org_request", "Q_old")).toMatchObject({ role: "admin", urgency: "action" });
     // An organization with no primary is stale at once; a fresh request to one with a primary is not.

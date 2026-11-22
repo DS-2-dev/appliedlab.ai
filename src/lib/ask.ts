@@ -5,9 +5,9 @@
 // free Cloudflare Workers AI model otherwise.
 
 import type Anthropic from "@anthropic-ai/sdk";
-import { LAB_KNOWLEDGE } from "@/content/lab-knowledge";
-import { MAX_CHARS, MAX_TURNS, type Turn } from "@/lib/ask-limits";
-import type { LabEvent, Settings } from "@/lib/types";
+import { LAB_KNOWLEDGE } from "../content/lab-knowledge";
+import { MAX_CHARS, MAX_TURNS, type Turn } from "./ask-limits";
+import type { LabEvent, Settings } from "./types";
 
 export type { Turn };
 

@@ -31,7 +31,7 @@ const GATE_LABEL: Record<string, string> = {
   completion: "Completion",
 };
 
-const projectHref = (boardId: string | null) => (boardId ? `/projectum?project=${boardId}` : "/projectum?view=myprojects");
+const projectHref = (boardId: string | null) => (boardId ? `/w?project=${boardId}` : "/w?view=myprojects");
 const statusLabel = (kind: "project" | "posting", status: string) => stateOf(kind, status).label;
 
 type ProjectRow = {
@@ -115,7 +115,7 @@ async function partnerItems(env: AccountEnv, user: UserRow, orgId: string): Prom
       status: po.status,
       urgency: po.status === "returned" ? "action" : "work",
       since: po.status === "returned" ? (po.returned_at ?? po.updated_at) : po.updated_at,
-      href: `/projectum?view=posting&id=${po.id}`,
+      href: `/w?view=posting&id=${po.id}`,
     });
   }
   const projects = await env.DB.prepare(
@@ -144,7 +144,7 @@ const requestItem = (r: { id: string; created_at: string; user_name: string; org
   status: "pending",
   urgency: "action",
   since: r.created_at,
-  href: "/projectum?view=org",
+  href: "/w?view=org",
 });
 
 async function staffItems(env: AccountEnv, user: UserRow, role: Role): Promise<CourtItem[]> {
@@ -173,7 +173,7 @@ async function staffItems(env: AccountEnv, user: UserRow, role: Role): Promise<C
       status: "open",
       urgency: "action",
       since: r.opened_at,
-      href: `/projectum?view=review&id=${r.id}`,
+      href: `/w?view=review&id=${r.id}`,
     });
   }
   const meetings = await env.DB.prepare(
@@ -191,7 +191,7 @@ async function staffItems(env: AccountEnv, user: UserRow, role: Role): Promise<C
       urgency: "action",
       since: m.created_at,
       // The project's board, where staff mark it arranged.
-      href: `/projectum?view=project&id=${m.project_id}`,
+      href: `/w?view=project&id=${m.project_id}`,
     });
   }
   return items;
@@ -212,7 +212,7 @@ async function adminItems(env: AccountEnv): Promise<CourtItem[]> {
       status: "pending",
       urgency: "action",
       since: u.created_at,
-      href: "/projectum?view=overview",
+      href: "/w?view=overview",
     });
   }
   const cutoff = new Date(Date.now() - STALE_REQUEST_MS).toISOString();

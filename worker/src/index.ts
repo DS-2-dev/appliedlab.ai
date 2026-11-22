@@ -45,7 +45,8 @@ import {
   textStream,
   type Turn,
 } from "@/lib/ask";
-import { type GoogleEnv, type Json, type UserRow, approvePartner, handleAccounts, handleGoogle, sessionUser } from "./accounts";
+import { type GoogleEnv, handleGoogle } from "./google-auth";
+import { type Json, type UserRow, approvePartner, handleAccounts, sessionUser } from "./accounts";
 import { type AlertEnv, alert, clientError, errorText, healthCheck } from "./alerts";
 import { clearOldNotifications, handleNotifications, sendDigests, sendPendingEmails } from "./notify";
 import { handleCourt } from "./court";

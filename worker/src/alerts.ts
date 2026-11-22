@@ -56,7 +56,7 @@ export async function alert(env: AlertEnv, kind: string, summary: string, detail
           `or "npx wrangler tail" in worker/.\n\nApplied AI Lab`,
       }),
     });
-    if (!res.ok) console.error("[alert] couldn't send", res.status, await res.text().catch(() => ""));
+    if (!res.ok) console.error("[alert] couldn't send", res.status);
   } catch (e) {
     console.error("[alert] failed", e);
   }

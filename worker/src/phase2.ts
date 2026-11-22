@@ -20,7 +20,7 @@ import { TRANSITION_STATUS, transition, type Hooks, type TransitionResult } from
 type Env = AccountEnv;
 
 const SIGN_OFF = "\n\nApplied AI Lab";
-const href = (projectId: string) => `/projectum?view=project&id=${projectId}`;
+const href = (projectId: string) => `/w?view=project&id=${projectId}`;
 
 export function phase2Hooks(env: Env, actor: UserRow): Record<string, Hooks> {
   return {

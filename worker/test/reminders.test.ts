@@ -55,8 +55,8 @@ describe("reminders", () => {
       (
         await env.DB.prepare("SELECT title, href FROM notifications WHERE user_id = ? AND kind = 'reminder'").bind(userId).all<{ title: string; href: string }>()
       ).results;
-    expect(await notes("u_maya")).toEqual([expect.objectContaining({ href: "/projectum?project=BA" })]);
-    expect(await notes("u_ben")).toEqual([expect.objectContaining({ href: "/projectum?project=BR" })]);
+    expect(await notes("u_maya")).toEqual([expect.objectContaining({ href: "/w?project=BA" })]);
+    expect(await notes("u_ben")).toEqual([expect.objectContaining({ href: "/w?project=BR" })]);
     const keys = (await env.DB.prepare("SELECT key FROM reminders_sent ORDER BY key").all<{ key: string }>()).results.map((r) => r.key);
     expect(keys).toEqual(expect.arrayContaining([`deadline:A:${soon}`, `quiet:R:${OLD}`]));
 

@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { env as poolEnv } from "cloudflare:test";
 import { PERSONAL_DOMAINS } from "@/lib/email-rules";
-import { makeEnv, applyMigration, seedLegacy, signIn, call } from "./helpers";
+import { makeEnv, applyMigration, applyMigrations, seedLegacy, signIn, call } from "./helpers";
 
 describe("migration 0010", () => {
   it("carries every row forward with the mapped status", async () => {
@@ -99,7 +99,9 @@ describe("migration 0010", () => {
   });
 
   it("approving a pending partner the migration filed under their domain makes them its primary", async () => {
-    const env = makeEnv(); await seedLegacy(env.DB); await applyMigration(env.DB, "0010_gates_and_orgs.sql"); await applyMigration(env.DB, "0011_passwords.sql"); await applyMigration(env.DB, "0014_notification_prefs.sql"); await applyMigration(env.DB, "0015_digest.sql");
+    const env = makeEnv();
+    await seedLegacy(env.DB);
+    await applyMigrations(env.DB);
     const admin = await signIn(env, "dantesmith@mail.weber.edu", "Dante");
     expect((await call(env, admin.token, "POST", "/partners/u_theo/approve")).status).toBe(200);
     const one = async (sql: string) => (await env.DB.prepare(sql).all()).results[0];

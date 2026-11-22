@@ -39,7 +39,7 @@ export type SubmitInput = { id: string; boardId: string; board: Project; reportN
 
 const boardHref = async (env: Env, projectId: string) => {
   const b = await env.DB.prepare("SELECT id FROM boards WHERE project_id = ?").bind(projectId).first<{ id: string }>();
-  return b ? `/projectum?project=${b.id}` : "/projectum?view=myprojects";
+  return b ? `/w?project=${b.id}` : "/w?view=myprojects";
 };
 
 // The submission gate's hooks. submitWork needs the submission itself, so
@@ -57,7 +57,7 @@ export function submissionHooks(env: Env, actor: UserRow, submit?: SubmitInput):
         const launch = s.board.launch;
         const review = openReview(env, "submission", p.id, { reportName: s.reportName, reportSize: s.bytes.length, launch }, at);
         const title = `${await nameOf(env, p.lead_id)}'s team submitted “${ctx.posting.title}”`;
-        const link = `/projectum?view=review&id=${review.id}`;
+        const link = `/w?view=review&id=${review.id}`;
         return {
           stmts: [
             env.DB.prepare("UPDATE boards SET data = ?, updated_at = ? WHERE id = ?").bind(JSON.stringify(s.board), at, s.boardId),
@@ -117,7 +117,7 @@ export function submissionHooks(env: Env, actor: UserRow, submit?: SubmitInput):
             ...(ctx.self ? [] : [{ userIds: ctx.memberIds, title: `The Lab approved your submission on “${title}”`, href }]),
             ...(ctx.self || !ctx.orgId
               ? []
-              : [{ userIds: await orgUserIds(env, ctx.orgId), court: true, title: `${lead}'s team delivered “${title}”. Read their report.`, href: `/projectum?view=project&id=${p.id}` }]),
+              : [{ userIds: await orgUserIds(env, ctx.orgId), court: true, title: `${lead}'s team delivered “${title}”. Read their report.`, href: `/w?view=project&id=${p.id}` }]),
           ],
           payload: feedback || input.score != null ? { feedback, score: input.score ?? null } : undefined,
           after: async () => {
@@ -134,7 +134,7 @@ export function submissionHooks(env: Env, actor: UserRow, submit?: SubmitInput):
                 env,
                 m.email,
                 `A team delivered “${title}”`,
-                `Hi ${m.name},\n\nA student team delivered its work on “${title}”, and the Lab reviewed it. Read their report and links:\n${env.SITE_URL}/projectum?view=project&id=${p.id}\n\nApplied AI Lab, Weber State University`,
+                `Hi ${m.name},\n\nA student team delivered its work on “${title}”, and the Lab reviewed it. Read their report and links:\n${env.SITE_URL}/w?view=project&id=${p.id}\n\nApplied AI Lab, Weber State University`,
               );
             }
           },
@@ -160,7 +160,7 @@ export function submissionHooks(env: Env, actor: UserRow, submit?: SubmitInput):
           const [back] = cleanProjects([{ ...current, stage: "prototype", launch: null, history }]);
           if (back) stmts.push(env.DB.prepare("UPDATE boards SET data = ?, updated_at = ? WHERE id = ?").bind(JSON.stringify(back), at, row.id));
         }
-        const href = row ? `/projectum?project=${row.id}` : "/projectum?view=myprojects";
+        const href = row ? `/w?project=${row.id}` : "/w?view=myprojects";
         const title = `Your submission on “${ctx.posting.title}” came back with notes`;
         return {
           stmts,

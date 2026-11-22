@@ -21,9 +21,8 @@ describe("accounts", () => {
     const log = vi.spyOn(console, "log").mockImplementation(() => {});
     const admin = await signIn(env, "dantesmith@mail.weber.edu", "Dante");
     const prof = await signIn(env, "new-prof@weber.edu", "New Prof", true);
-    const asked = log.mock.calls.map((c) => String(c[0])).find((l) => l.startsWith("Approve faculty new-prof@weber.edu"));
+    expect(log.mock.calls.flat().join(" ")).not.toContain("/approve?");
     log.mockRestore();
-    expect(asked).toContain("/approve?u=" + prof.user.id);
     expect(await me(env, prof.token)).toMatchObject({ status: "pending", pendingOrgName: null });
     const bell = await env.DB.prepare("SELECT title FROM notifications WHERE kind = 'account.pending' AND title LIKE '%New Prof%'").all<{ title: string }>();
     expect(bell.results).toEqual([{ title: "New Prof signed up as faculty and is waiting for approval" }]);
@@ -98,7 +97,7 @@ describe("accounts", () => {
     const notes = await env.DB.prepare("SELECT title, href FROM notifications WHERE user_id = ? AND kind = 'member.level_changed'")
       .bind(sam.user.id)
       .all();
-    expect(notes.results).toEqual([{ title: "You are now a Builder", href: "/projectum" }]);
+    expect(notes.results).toEqual([{ title: "You are now a Builder", href: "/w" }]);
     // Setting the level they already hold changes nothing and tells nobody.
     const again = await post(admin.token, sam.user.id, "builder");
     expect(again.status).toBe(200);

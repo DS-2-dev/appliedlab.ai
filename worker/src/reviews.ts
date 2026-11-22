@@ -140,7 +140,7 @@ type Context = {
 export type QueueEntry = ReviewOut & Context & { waitingSince: string; href: string };
 
 const SUB = "sub:";
-const href = (id: string) => `/projectum?view=review&id=${id}`;
+const href = (id: string) => `/w?view=review&id=${id}`;
 
 type ProjectCtx = { id: string; status: string; posting_id: string; posting_title: string; lead: Person; team: Person[] };
 

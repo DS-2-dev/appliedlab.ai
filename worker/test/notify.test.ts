@@ -75,8 +75,8 @@ describe("sendPendingEmails", () => {
   it("emails the marked notification with its link and clears the flag", async () => {
     const { env, token, userId } = await setup("prefs-mail@mail.weber.edu");
     await call(env, token, "PUT", "/me/notification-prefs", { prefs: [{ kind: "posting.closed", inApp: true, email: true }] });
-    await notifyOne(env, userId, "posting.closed", "“Hydrant map” is closed to new claims", "/projectum?view=myprojects");
-    await notifyOne(env, userId, "project.reopened", "Reopened", "/projectum");
+    await notifyOne(env, userId, "posting.closed", "“Hydrant map” is closed to new claims", "/w?view=myprojects");
+    await notifyOne(env, userId, "project.reopened", "Reopened", "/w");
 
     const outbox: { to: string; subject: string; text: string }[] = [];
     const sent = await sendPendingEmails(env, async (_env, to, subject, text) => {
@@ -87,7 +87,7 @@ describe("sendPendingEmails", () => {
     expect(outbox).toHaveLength(1);
     expect(outbox[0].to).toBe("prefs-mail@mail.weber.edu");
     expect(outbox[0].subject).toBe("“Hydrant map” is closed to new claims");
-    expect(outbox[0].text).toContain(`${env.SITE_URL}/projectum?view=myprojects`);
+    expect(outbox[0].text).toContain(`${env.SITE_URL}/w?view=myprojects`);
     expect(outbox[0].text).toContain("Applied AI Lab");
     const pending = await env.DB.prepare("SELECT COUNT(*) AS n FROM notifications WHERE user_id = ? AND email_pending = 1").bind(userId).first<{ n: number }>();
     expect(pending!.n).toBe(0);
@@ -97,7 +97,7 @@ describe("sendPendingEmails", () => {
   it("keeps the flag when the send fails, and skips accounts no longer active", async () => {
     const { env, token, userId } = await setup("prefs-fail@mail.weber.edu");
     await call(env, token, "PUT", "/me/notification-prefs", { prefs: [{ kind: "posting.closed", inApp: true, email: true }] });
-    await notifyOne(env, userId, "posting.closed", "Closed", "/projectum");
+    await notifyOne(env, userId, "posting.closed", "Closed", "/w");
     expect(await sendPendingEmails(env, async () => false)).toBe(0);
     const flag = () => env.DB.prepare("SELECT email_pending AS p FROM notifications WHERE user_id = ?").bind(userId).first<{ p: number }>();
     expect((await flag())!.p).toBe(1);
@@ -112,8 +112,8 @@ describe("sendPendingEmails", () => {
     const { env, token, userId } = await setup("prefs-retry@mail.weber.edu");
     await call(env, token, "PUT", "/me/notification-prefs", { prefs: [{ kind: "posting.closed", inApp: true, email: true }] });
     await env.DB.prepare("UPDATE notifications SET email_pending = 0").run();
-    await notifyOne(env, userId, "posting.closed", "Comes through", "/projectum");
-    await notifyOne(env, userId, "posting.closed", "Never lands", "/projectum");
+    await notifyOne(env, userId, "posting.closed", "Comes through", "/w");
+    await notifyOne(env, userId, "posting.closed", "Never lands", "/w");
     const tries: string[] = [];
     // "Comes through" fails once (a blip) and then works. "Never lands" always fails.
     const send = async (_e: unknown, _to: string, subject: string) => {
@@ -134,8 +134,8 @@ describe("sendPendingEmails", () => {
     const { env, token, userId } = await setup("prefs-stuck@mail.weber.edu");
     await call(env, token, "PUT", "/me/notification-prefs", { prefs: [{ kind: "reminder", inApp: true, email: true }] });
     await env.DB.prepare("UPDATE notifications SET email_pending = 0").run();
-    for (let i = 0; i < 50; i++) await notifyOne(env, userId, "reminder", `Stuck ${i}`, "/projectum");
-    await notifyOne(env, userId, "reminder", "Newer", "/projectum");
+    for (let i = 0; i < 50; i++) await notifyOne(env, userId, "reminder", `Stuck ${i}`, "/w");
+    await notifyOne(env, userId, "reminder", "Newer", "/w");
     const delivered: string[] = [];
     const send = async (_e: unknown, _to: string, subject: string) => (subject.startsWith("Stuck") ? false : (delivered.push(subject), true));
     for (let run = 0; run < 4; run++) await sendPendingEmails(env, send);
@@ -146,7 +146,7 @@ describe("sendPendingEmails", () => {
     const { env, token, userId } = await setup("prefs-cap@mail.weber.edu");
     await call(env, token, "PUT", "/me/notification-prefs", { prefs: [{ kind: "reminder", inApp: true, email: true }] });
     await env.DB.prepare("UPDATE notifications SET email_pending = 0").run();
-    for (let i = 0; i < 55; i++) await notifyOne(env, userId, "reminder", `R${i}`, "/projectum");
+    for (let i = 0; i < 55; i++) await notifyOne(env, userId, "reminder", `R${i}`, "/w");
     expect(await sendPendingEmails(env, async () => true)).toBe(50);
     expect(await sendPendingEmails(env, async () => true)).toBe(5);
   });
@@ -169,9 +169,9 @@ describe("daily digest", () => {
   it("lists unread notifications in one email, and sends nothing a second time", async () => {
     const { env, token, userId } = await setup("digest-on@mail.weber.edu");
     await call(env, token, "PATCH", "/me", { digest: true });
-    await notifyOne(env, userId, "reminder", "First thing", "/projectum?view=a");
-    await notifyOne(env, userId, "reminder", "Second thing", "/projectum?view=b");
-    await notifyOne(env, userId, "reminder", "Already seen", "/projectum");
+    await notifyOne(env, userId, "reminder", "First thing", "/w?view=a");
+    await notifyOne(env, userId, "reminder", "Second thing", "/w?view=b");
+    await notifyOne(env, userId, "reminder", "Already seen", "/w");
     await env.DB.prepare("UPDATE notifications SET read_at = ? WHERE user_id = ? AND title = 'Already seen'").bind(new Date().toISOString(), userId).run();
 
     const outbox: Mail[] = [];
@@ -181,7 +181,7 @@ describe("daily digest", () => {
     expect(outbox[0].to).toBe("digest-on@mail.weber.edu");
     expect(outbox[0].subject).toBe("Your Applied AI Lab digest");
     expect(outbox[0].text).toContain("First thing");
-    expect(outbox[0].text).toContain(`${env.SITE_URL}/projectum?view=b`);
+    expect(outbox[0].text).toContain(`${env.SITE_URL}/w?view=b`);
     expect(outbox[0].text).not.toContain("Already seen");
     expect(await sendDigests(env, new Date(now.getTime() + 1000), collect(outbox))).toBe(0);
     expect(outbox).toHaveLength(1);
@@ -189,7 +189,7 @@ describe("daily digest", () => {
 
   it("sends nothing with the digest off, and keeps the clock when a send fails", async () => {
     const { env, token, userId } = await setup("digest-off@mail.weber.edu");
-    await notifyOne(env, userId, "reminder", "Unseen", "/projectum");
+    await notifyOne(env, userId, "reminder", "Unseen", "/w");
     const outbox: Mail[] = [];
     const now = new Date(Date.now() + 1000);
     expect(await sendDigests(env, now, collect(outbox))).toBe(0);
@@ -205,7 +205,7 @@ describe("daily digest", () => {
   it("caps the list at 50 with an 'and N more' line", async () => {
     const { env, token, userId } = await setup("digest-cap@mail.weber.edu");
     await call(env, token, "PATCH", "/me", { digest: true });
-    for (let i = 0; i < 53; i++) await notifyOne(env, userId, "reminder", `Item ${i}`, "/projectum");
+    for (let i = 0; i < 53; i++) await notifyOne(env, userId, "reminder", `Item ${i}`, "/w");
     const outbox: Mail[] = [];
     await sendDigests(env, new Date(Date.now() + 1000), collect(outbox));
     expect(outbox[0].text.match(/^- /gm)).toHaveLength(50);
